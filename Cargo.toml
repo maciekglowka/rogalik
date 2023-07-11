@@ -1,0 +1,12 @@
+[package]
+name = "rogalik"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+members = ["crates/*"]
+
+[dependencies]
+rogalik_events = { path = "crates/rogalik_events" }
+rogalik_math = { path = "crates/rogalik_math" }
+rogalik_storage = { path = "crates/rogalik_storage" }
