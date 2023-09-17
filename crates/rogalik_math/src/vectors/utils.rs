@@ -69,6 +69,30 @@ impl PartialOrd for Node {
     }
 }
 
+// LINE DRAWING
+
+pub fn get_line(a: Vector2I, b: Vector2I) -> Vec<Vector2I> {
+    let mut tiles = Vec::new();
+    let n = line_dist(a, b);
+    if n == 0 { return tiles };
+    for i in 0..=n {
+        let t = i as f32 / n as f32;
+        let f = a.as_f32().lerp(&b.as_f32(), t);
+        tiles.push(Vector2I::new(
+            f.x.round() as i32,
+            f.y.round() as i32,
+        ));
+    }
+
+    tiles
+}
+
+fn line_dist(a: Vector2I, b: Vector2I) -> i32 {
+    let dx = b.x - a.x;
+    let dy = b.y - a.y;
+    dx.abs().max(dy.abs())
+}
+
 // FOV
 
 // not heavily tested and rather permissive

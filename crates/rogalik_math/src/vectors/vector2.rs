@@ -52,6 +52,12 @@ impl Vector2<f32> {
     pub fn angle(&self, other: &Self) -> f32 {
         (self.dot(other) / (self.len() * other.len())).acos()
     }
+    pub fn lerp(&self, other: &Self, t: f32) -> Self {
+        Vector2F::new(
+            lerp(self.x, other.x, t),
+            lerp(self.y, other.y, t)
+        )
+    }
 }
 
 impl<T: Num + Copy> Add for Vector2<T> {
@@ -102,3 +108,7 @@ pub const ORTHO_DIRECTIONS: [Vector2I; 4] = [
     Vector2I::UP, Vector2I::DOWN,
     Vector2I::LEFT, Vector2I::RIGHT
 ];
+
+fn lerp(a: f32, b: f32, t:f32) -> f32 {
+    a * (1.0 - t) + t * b
+}
