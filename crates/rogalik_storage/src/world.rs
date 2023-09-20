@@ -170,6 +170,12 @@ impl<'a> EntityQuery<'a> {
     pub fn iter_mut<T: Component + 'static>(&self) -> ComponentIteratorMut<'_, T> {
         ComponentIteratorMut::new(self.world, &self.entities)
     }
+    pub fn entities(&self) -> std::slice::Iter<Entity> {
+        self.entities.iter()
+    }
+    pub fn single_entity(&self) -> Option<Entity> {
+        self.entities.get(0).map(|a| *a)
+    }
     pub fn single<T: Component + 'static>(&self) -> Option<Ref<T>> {
         let entity = self.entities.get(0)?;
         self.world.get_component::<T>(*entity)
