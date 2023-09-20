@@ -1,7 +1,7 @@
 use std::{
     any::TypeId,
     cell::{Ref, RefCell, RefMut},
-    collections::HashMap,
+    collections::{HashMap, HashSet}
 };
 
 use rogalik_events::EventBus;
@@ -11,7 +11,6 @@ use super::component::Component;
 use super::component_storage::{ComponentSet, ComponentCell, ComponentStorage};
 use super::entity::{Entity, EntityStorage};
 use super::errors::EntityError;
-use super::query::EntityQuery;
 use super::resource::ResourceCell;
 
 pub struct World {
@@ -45,7 +44,6 @@ impl World {
     }
 
     // components
-
     pub fn get_component_set<T: Component + 'static>(&self) -> Option<Ref<ComponentSet<T>>> {
         let type_id = TypeId::of::<T>();
         let storage = self.component_storage.get(&type_id)?;
@@ -128,7 +126,104 @@ impl World {
 
     // query
 
-    pub fn query<T: 'static + Component>(&self) -> EntityQuery {
-        EntityQuery::new::<T>(self)
+    pub fn query<T: 'static + Component>(&self) -> QueryBuilder {
+        QueryBuilder::new::<T>(self)
+    }
+}
+
+pub struct QueryBuilder<'a> {
+    world: &'a World,
+    inner: HashSet<Entity>
+}
+impl<'a> QueryBuilder<'a> {
+    pub fn new<T: 'static + Component>(world: &World) -> QueryBuilder {
+        let entities = match world.get_component_set::<T>() {
+            Some(c) => c.hashset(),
+            _ => HashSet::new()
+        };
+        QueryBuilder { inner: entities, world }
+    }
+    pub fn with<T: 'static + Component>(self) -> QueryBuilder<'a> {
+        let h = match self.world.get_component_set::<T>() {
+            Some(c) => c.hashset(),
+            _ => HashSet::new()
+        };
+        let entities = self.inner.intersection(&h);
+        QueryBuilder {
+            inner: entities.map(|e| *e).collect(),
+            world: self.world
+        }
+    }
+    pub fn build(self) -> EntityQuery<'a> {
+        EntityQuery { world: self.world, entities: Vec::from_iter(self.inner) }
+    }
+}
+
+pub struct EntityQuery<'a> {
+    world: &'a World,
+    entities: Vec<Entity>
+}
+impl<'a> EntityQuery<'a> {
+    pub fn iter<T: Component + 'static>(&self) -> ComponentIterator<'_, T> {
+        ComponentIterator::new(self.world, &self.entities)
+    }
+    pub fn iter_mut<T: Component + 'static>(&self) -> ComponentIteratorMut<'_, T> {
+        ComponentIteratorMut::new(self.world, &self.entities)
+    }
+    pub fn single<T: Component + 'static>(&self) -> Option<Ref<T>> {
+        let entity = self.entities.get(0)?;
+        self.world.get_component::<T>(*entity)
+    }
+    pub fn single_mut<T: Component + 'static>(&self) -> Option<RefMut<T>> {
+        let entity = self.entities.get(0)?;
+        self.world.get_component_mut::<T>(*entity)
+    }
+}
+
+pub struct ComponentIterator<'a, T: Component + 'static> {
+    inner: std::slice::Iter<'a, Entity>,
+    cell: &'a ComponentCell<T>
+}
+impl<'a, T: Component + 'static> ComponentIterator<'a, T> {
+    pub fn new(world: &'a World, entities: &'a Vec<Entity>) -> Self {
+        let type_id = TypeId::of::<T>();
+        let storage = world.component_storage.get(&type_id).unwrap();
+        let cell: &ComponentCell<T> = storage.as_any().downcast_ref().unwrap();
+        ComponentIterator { 
+            inner: entities.iter(),
+            cell
+        }
+    }
+}
+impl<'a, T: Component + 'static> Iterator for ComponentIterator<'a, T> {
+    type Item = Ref<'a, T>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let entity = self.inner.next()?;
+        let set = self.cell.inner.borrow();
+        Some(Ref::filter_map(set, |s| s.get(*entity)).ok()?)
+    }
+}
+
+pub struct ComponentIteratorMut<'a, T: Component + 'static> {
+    inner: std::slice::Iter<'a, Entity>,
+    cell: &'a ComponentCell<T>
+}
+impl<'a, T: Component + 'static> ComponentIteratorMut<'a, T> {
+    pub fn new(world: &'a World, entities: &'a Vec<Entity>) -> Self {
+        let type_id = TypeId::of::<T>();
+        let storage = world.component_storage.get(&type_id).unwrap();
+        let cell: &ComponentCell<T> = storage.as_any().downcast_ref().unwrap();
+        ComponentIteratorMut { 
+            inner: entities.iter(),
+            cell
+        }
+    }
+}
+impl<'a, T: Component + 'static> Iterator for ComponentIteratorMut<'a, T> {
+    type Item = RefMut<'a, T>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let entity = self.inner.next()?;
+        let set = self.cell.inner.borrow_mut();
+        Some(RefMut::filter_map(set, |s| s.get_mut(*entity)).ok()?)
     }
 }
