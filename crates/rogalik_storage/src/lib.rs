@@ -6,7 +6,7 @@ mod component;
 mod component_storage;
 mod entity;
 mod errors;
-pub mod query;
+// pub mod query;
 mod resource;
 mod world;
 

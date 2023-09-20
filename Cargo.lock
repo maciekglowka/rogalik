@@ -18,6 +18,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "playground"
+version = "0.1.0"
+dependencies = [
+ "rogalik_storage",
+]
+
+[[package]]
 name = "rogalik"
 version = "0.1.0"
 dependencies = [
