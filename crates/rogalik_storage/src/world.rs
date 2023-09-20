@@ -1,6 +1,6 @@
 use std::{
     any::TypeId,
-    cell::{Ref, RefCell, RefMut},
+    cell::{Ref, RefCell, RefMut,},
     collections::{HashMap, HashSet}
 };
 
@@ -188,13 +188,17 @@ impl<'a> EntityQuery<'a> {
 
 pub struct ComponentIterator<'a, T: Component + 'static> {
     inner: std::slice::Iter<'a, Entity>,
-    cell: &'a ComponentCell<T>
+    cell: Option<&'a ComponentCell<T>>
 }
 impl<'a, T: Component + 'static> ComponentIterator<'a, T> {
     pub fn new(world: &'a World, entities: &'a Vec<Entity>) -> Self {
         let type_id = TypeId::of::<T>();
-        let storage = world.component_storage.get(&type_id).unwrap();
-        let cell: &ComponentCell<T> = storage.as_any().downcast_ref().unwrap();
+        let cell = if let Some(storage) = world.component_storage.get(&type_id) {
+            let cell: &ComponentCell<T> = storage.as_any().downcast_ref().unwrap();
+            Some(cell)
+        } else {
+            None
+        };
         ComponentIterator { 
             inner: entities.iter(),
             cell
@@ -205,20 +209,24 @@ impl<'a, T: Component + 'static> Iterator for ComponentIterator<'a, T> {
     type Item = Ref<'a, T>;
     fn next(&mut self) -> Option<Self::Item> {
         let entity = self.inner.next()?;
-        let set = self.cell.inner.borrow();
+        let set = self.cell?.inner.borrow();
         Some(Ref::filter_map(set, |s| s.get(*entity)).ok()?)
     }
 }
 
 pub struct ComponentIteratorMut<'a, T: Component + 'static> {
     inner: std::slice::Iter<'a, Entity>,
-    cell: &'a ComponentCell<T>
+    cell: Option<&'a ComponentCell<T>>
 }
 impl<'a, T: Component + 'static> ComponentIteratorMut<'a, T> {
     pub fn new(world: &'a World, entities: &'a Vec<Entity>) -> Self {
         let type_id = TypeId::of::<T>();
-        let storage = world.component_storage.get(&type_id).unwrap();
-        let cell: &ComponentCell<T> = storage.as_any().downcast_ref().unwrap();
+        let cell = if let Some(storage) = world.component_storage.get(&type_id) {
+            let cell: &ComponentCell<T> = storage.as_any().downcast_ref().unwrap();
+            Some(cell)
+        } else {
+            None
+        };
         ComponentIteratorMut { 
             inner: entities.iter(),
             cell
@@ -229,7 +237,7 @@ impl<'a, T: Component + 'static> Iterator for ComponentIteratorMut<'a, T> {
     type Item = RefMut<'a, T>;
     fn next(&mut self) -> Option<Self::Item> {
         let entity = self.inner.next()?;
-        let set = self.cell.inner.borrow_mut();
+        let set = self.cell?.inner.borrow_mut();
         Some(RefMut::filter_map(set, |s| s.get_mut(*entity)).ok()?)
     }
 }
