@@ -15,7 +15,7 @@ pub struct SpriteAtlas {
 }
 impl SpriteAtlas {
     pub fn new(
-        texture_id: usize,
+        texture_id: ResourceId,
         rows: usize,
         cols: usize,
     ) -> Self {

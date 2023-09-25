@@ -83,7 +83,7 @@ impl SpritePass {
     }
     pub fn render(
         &mut self,
-        cameras: &Vec<camera::Camera>,
+        cameras: &Vec<camera::Camera2D>,
         textures: &Vec<Texture2D>,
         quads: &Vec<RenderQuad>,
         surface: &wgpu::Surface,
@@ -104,6 +104,7 @@ impl SpritePass {
                 usage: wgpu::BufferUsages::VERTEX
             }
         );
+        let camera_bind_group = cameras[0].get_bind_group(device);
 
         let mut encoder = device.create_command_encoder(
             &wgpu::CommandEncoderDescriptor { label: Some("Sprite Encoder")}
@@ -131,9 +132,9 @@ impl SpritePass {
             let mut current_camera_id = quads[0].camera_id;
 
             pass.set_vertex_buffer(0, vertex_buffer.slice(..)); 
-            pass.set_bind_group(0, textures[current_texture_id].get_bind_group(), &[]);
+            pass.set_bind_group(0, textures[current_texture_id.0].get_bind_group(), &[]);
             // TODO bind camera
-            pass.set_bind_group(1, cameras[0].get_bind_group(), &[]);
+            pass.set_bind_group(1, &camera_bind_group, &[]);
 
             for quad in quads {
                 let end = offset + QUAD_VERTICES as u32;
@@ -143,7 +144,7 @@ impl SpritePass {
                     pass.draw(batch_start..offset, 0..1);
 
                     if current_texture_id != quad.texture_id {
-                        pass.set_bind_group(0, textures[current_texture_id].get_bind_group(), &[]);
+                        pass.set_bind_group(0, textures[current_texture_id.0].get_bind_group(), &[]);
                         current_texture_id = quad.texture_id;
                     }
                     if current_camera_id != quad.camera_id {

@@ -40,8 +40,8 @@ impl SpriteManager {
         bytes: &[u8],
         device: &wgpu::Device,
         queue: &wgpu::Queue
-    ) -> usize {
-        let id = self.textures.len();
+    ) -> ResourceId {
+        let id = ResourceId(self.textures.len());
         let texture = texture::Texture2D::from_bytes(
             bytes,
             device,
@@ -59,7 +59,7 @@ impl SpriteManager {
         device: &wgpu::Device,
         queue: &wgpu::Queue
     ) -> ResourceId {
-        let id = self.atlases.len();
+        let id = ResourceId(self.atlases.len());
         let texture_id = self.load_texture(bytes, device, queue);
         let atlas = atlas::SpriteAtlas::new(
             texture_id,
@@ -78,7 +78,7 @@ impl SpriteManager {
         size: Vector2F
     ) {
         // TODO handle errors
-        let quad = self.atlases[atlas_id].get_quad(index, camera_id, position, size);
+        let quad = self.atlases[atlas_id.0].get_quad(index, camera_id, position, size);
         self.render_queue.push(quad);
     }
     pub fn render(
@@ -86,10 +86,10 @@ impl SpriteManager {
         surface: &wgpu::Surface,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        cameras: &Vec<camera::Camera>
+        cameras: &Vec<camera::Camera2D>
     ) {
         // self.draw_indexed_sprite(0, 0, 0, Vector2F::new(0., 0.), Vector2F::new(1.0, 1.0));
-        self.draw_indexed_sprite(0, 0, 0, Vector2F::new(0., 0.), Vector2F::new(400.0, 300.0));
+        self.draw_indexed_sprite(0, ResourceId(0), ResourceId(0), Vector2F::new(0., 0.), Vector2F::new(400.0, 300.0));
         // self.draw_indexed_sprite(0, 0, 0, Vector2F::new(-50., -50.), Vector2F::new(100.0, 100.0));
         // self.draw_indexed_sprite(0, 0, 0, Vector2F::new(50., 50.), Vector2F::new(100.0, 100.0));
         let _ = self.render_pass.render(
@@ -106,6 +106,6 @@ impl SpriteManager {
 
 pub struct RenderQuad {
     vertices: [Vertex; QUAD_VERTICES],
-    texture_id: usize,
-    camera_id: usize
+    texture_id: ResourceId,
+    camera_id: ResourceId
 }

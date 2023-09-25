@@ -1,50 +1,68 @@
 use wgpu::util::DeviceExt;
 
+use rogalik_engine::traits::Camera;
 use rogalik_math::vectors::Vector2F;
 
-pub struct Camera {
-    pub matrix: [[f32; 4]; 4],
-    bind_group: wgpu::BindGroup
+const Z_RANGE: f32 = 100.;
+
+pub struct Camera2D {
+    scale: f32,
+    target: Vector2F,
+    vw: f32,
+    vh: f32,
 }
-impl Camera {
-    pub fn new(device: &wgpu::Device) -> Self {
-        let matrix = [[0.; 4]; 4];
-        let mut camera = Self {
-            matrix,
-            bind_group: Camera::create_bind_group(device, matrix)
-        };
-        camera.update_matrix(device);
-        camera
+impl Camera for Camera2D {
+    fn get_scale(&self) -> f32 {
+        self.scale
     }
-    pub fn get_bind_group(&self) -> &wgpu::BindGroup {
-        &self.bind_group
+    fn get_target(&self) -> Vector2F {
+        self.target
     }
-    fn update_matrix(&mut self, device: &wgpu::Device) {
-        let l = 0.;
-        let r = 800.;
-        let t = 0.;
-        let b = 600.;
-        let n = -100.;
-        let f = 100.;
-        // self.matrix = [
-        //     [2. / (r - l), 0., 0., -(r + l)/(r - l)],
-        //     [0., 2. / (b - t), 0., -(b + t)/(b - t)],
-        //     [0., 0., 1. / (f - n), -n / (f - n)],
-        //     [0., 0., 0., 1.]
-        // ];
-        self.matrix = [
+    fn set_scale(&mut self, scale: f32) {
+        self.scale = scale;
+    }
+    fn set_target(&mut self, target: Vector2F) {
+        self.target = target;
+    }
+}
+impl Camera2D {
+    pub fn new(vw: f32, vh: f32) -> Self {
+        Self {
+            scale: 1.,
+            target: Vector2F::new(vw / 2., vh / 2.),
+            vw,
+            vh
+        }
+    }
+    pub fn get_bind_group(&self, device: &wgpu::Device) -> wgpu::BindGroup {
+        Camera2D::create_bind_group(device, self.get_matrix())
+    }
+    pub fn resize_viewport(&mut self, vw: f32, vh: f32) {
+        self.vw = vw;
+        self.vh = vh;
+    }
+    fn get_matrix(&self) -> [[f32; 4]; 4] {
+        // let l = 0.;
+        // let r = 800.;
+        // let t = 0.;
+        // let b = 600.;
+        // let n = -100.;
+        // let f = 100.;
+
+        let zoom = 1. / self.scale;
+        let n = -Z_RANGE;
+        let f = Z_RANGE;
+        let l = self.target.x - zoom * self.vw / 2.;
+        let r = self.target.x + zoom * self.vw / 2.;
+        let t = self.target.y - zoom * self.vh / 2.;
+        let b = self.target.y + zoom * self.vh / 2.;
+
+        [
             [2. / (r - l), 0., 0., 0.],
             [0., 2. / (b - t), 0., 0.],
             [0., 0., 1. / (f - n), 0.],
             [-(r + l)/(r - l), -(b + t)/(b - t), -n / (f - n), 1.]
-        ];
-        // self.matrix = [
-        //     [1., 0., 0., 0.],
-        //     [0., 1., 0., 0.],
-        //     [0., 0., 1., 0.],
-        //     [0., 0., 0., 1.],
-        // ];
-        self.bind_group = Camera::create_bind_group(device, self.matrix);
+        ]
     }
     fn create_bind_group(
         device: &wgpu::Device,

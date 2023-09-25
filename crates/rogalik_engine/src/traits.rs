@@ -1,12 +1,10 @@
 use winit::{
-    dpi::PhysicalSize,
     window::Window
 };
 use rogalik_math::vectors::Vector2F;
 
-pub type ResourceId = usize;
-
-// pub typ
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub struct ResourceId(pub usize);
 
 pub trait GraphicsContext {
     fn new(window: &Window) -> Self;
@@ -25,4 +23,13 @@ pub trait GraphicsContext {
         position: Vector2F,
         size: Vector2F
     );
+    fn get_camera(&self) -> Option<&dyn Camera>;
+    fn get_camera_mut(&mut self) -> Option<&mut dyn Camera>;
+}
+
+pub trait Camera {
+    fn get_target(&self) -> Vector2F;
+    fn get_scale(&self) -> f32;
+    fn set_target(&mut self, target: Vector2F);
+    fn set_scale(&mut self, scale: f32);
 }
