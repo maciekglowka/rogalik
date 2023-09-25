@@ -6,6 +6,10 @@ edition = "2021"
 [workspace]
 members = ["crates/*"]
 
+[workspace.dependencies]
+pollster = "0.3"
+winit = "0.28"
+
 [dependencies]
 rogalik_events = { path = "crates/rogalik_events" }
 rogalik_math = { path = "crates/rogalik_math" }
