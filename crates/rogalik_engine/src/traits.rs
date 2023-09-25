@@ -23,8 +23,9 @@ pub trait GraphicsContext {
         position: Vector2F,
         size: Vector2F
     );
-    fn get_camera(&self) -> Option<&dyn Camera>;
-    fn get_camera_mut(&mut self) -> Option<&mut dyn Camera>;
+    fn create_camera(&mut self) -> ResourceId;
+    fn get_camera(&self, id: ResourceId) -> Option<&dyn Camera>;
+    fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut dyn Camera>;
 }
 
 pub trait Camera {

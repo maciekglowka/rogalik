@@ -56,11 +56,17 @@ impl GraphicsContext for WgpuContext {
             size
         );
     }
-    fn get_camera(&self) -> Option<&dyn rogalik_engine::traits::Camera>{
-        Some(&self.cameras[0])
+    fn create_camera(&mut self) -> ResourceId {
+        let id = ResourceId(self.cameras.len());
+        let camera = camera::Camera2D::new(self.config.width as f32, self.config.height as f32);
+        self.cameras.push(camera);
+        id
     }
-    fn get_camera_mut(&mut self) -> Option<&mut dyn rogalik_engine::traits::Camera> {
-        Some(&mut self.cameras[0])
+    fn get_camera(&self, id: ResourceId) -> Option<&dyn rogalik_engine::traits::Camera>{
+        Some(self.cameras.get(id.0)?)
+    }
+    fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut dyn rogalik_engine::traits::Camera> {
+        Some(self.cameras.get_mut(id.0)?)
     }
 }
 
@@ -112,11 +118,14 @@ fn create_context(window: &Window) -> WgpuContext {
     surface.configure(&device, &config);
 
     let sprite_manager = sprites::SpriteManager::new(&device, &surface_format);
-    let cameras = vec![
-        camera::Camera2D::new(config.width as f32, config.height as f32)
-    ];
 
     WgpuContext {
-        surface, device, queue, config, sprite_manager, current_camera_id: ResourceId(0), cameras
+        surface,
+        device,
+        queue,
+        config,
+        sprite_manager,
+        current_camera_id: ResourceId(0),
+        cameras: Vec::new()
     }
 }
