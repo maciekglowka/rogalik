@@ -1,11 +1,10 @@
-use std::time::{Duration, Instant};
 use winit::{
-    dpi::PhysicalSize,
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder}
 };
 
+pub mod input;
 pub mod traits;
 
 #[cfg(target_arch = "wasm32")]
@@ -14,7 +13,8 @@ mod wasm;
 pub use traits::{Game, GraphicsContext, ResourceId};
 
 pub struct Context<G: GraphicsContext> {
-    pub graphics: G
+    pub graphics: G,
+    pub input: input::InputContext
 }
 
 pub struct Engine<G, T>
@@ -52,7 +52,8 @@ where
         
         let graphics = GraphicsContext::new(&window);
         let context = Context {
-            graphics
+            graphics,
+            input: input::InputContext::new()
         };
         Self {
             window, event_loop, game, context
@@ -63,7 +64,6 @@ where
     }
 }
 
-// #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
 async fn run<G, T> (
     window: Window,
     event_loop: EventLoop<()>,
@@ -82,6 +82,12 @@ where
                 ref event
             } if window_id == window.id() => {
                 match event {
+                    WindowEvent::KeyboardInput { input, .. } => {
+                        context.input.handle_keyboard(input);
+                    },
+                    WindowEvent::MouseInput { button, state, .. } => {
+                        context.input.handle_mouse_button(button, state);
+                    }
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                     WindowEvent::Resized(physical_size) =>
                         context.graphics.resize(physical_size.width, physical_size.height),
