@@ -6,6 +6,11 @@ use rogalik_math::vectors::Vector2F;
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub struct ResourceId(pub usize);
 
+pub trait Game<G: GraphicsContext> {
+    fn setup(&mut self, context: &mut super::Context<G>);
+    fn update(&mut self, context: &mut super::Context<G>);
+}
+
 pub trait GraphicsContext {
     fn new(window: &Window) -> Self;
     fn resize(&mut self, w: u32, h: u32);

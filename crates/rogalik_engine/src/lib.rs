@@ -11,19 +11,28 @@ pub mod traits;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
-pub use traits::ResourceId;
-pub use traits::GraphicsContext;
+pub use traits::{Game, GraphicsContext, ResourceId};
 
 pub struct Context<G: GraphicsContext> {
     pub graphics: G
 }
 
-pub struct Engine {
+pub struct Engine<G, T>
+where
+    G: GraphicsContext + 'static,
+    T: Game<G> + 'static
+{
     window: Window,
-    event_loop: EventLoop<()>
+    event_loop: EventLoop<()>,
+    context: Context<G>,
+    game: T
 }
-impl Engine {
-    pub fn new<G: GraphicsContext + 'static>() -> (Self, Context<G>) {
+impl<G, T> Engine<G, T>
+where
+    G: GraphicsContext + 'static,
+    T: Game<G> + 'static
+{
+    pub fn new(game: T) -> Self {
         // set logging
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
@@ -42,25 +51,30 @@ impl Engine {
         wasm::set_canvas(&window);
         
         let graphics = GraphicsContext::new(&window);
-        let engine = Engine {
-            window, event_loop
-        };
         let context = Context {
             graphics
         };
-        (engine, context)
+        Self {
+            window, event_loop, game, context
+        }
     }
-    pub fn run<G: GraphicsContext + 'static>(self, context: Context<G>) {
-        pollster::block_on(run::<G>(self.window, self.event_loop, context));
+    pub fn run(self) {
+        pollster::block_on(run::<G, T>(self.window, self.event_loop, self.game, self.context));
     }
 }
 
 // #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
-async fn run<G: GraphicsContext + 'static>(
+async fn run<G, T> (
     window: Window,
     event_loop: EventLoop<()>,
+    mut game: T,
     mut context: Context<G>
-) {
+) 
+where
+    G: GraphicsContext + 'static,
+    T: Game<G> + 'static
+{
+    game.setup(&mut context);
     let _ = event_loop.run(move |event, _, control_flow| {
         match event {
             Event::WindowEvent {
@@ -79,6 +93,7 @@ async fn run<G: GraphicsContext + 'static>(
             Event::RedrawRequested(window_id) if window_id == window.id() => {
                 // state.update();
                 // let now = Instant::now();
+                game.update(&mut context);
                 context.graphics.render();
                 // println!("{}", now.elapsed().as_millis());
                 // match gpu_state.render(&pass) {
