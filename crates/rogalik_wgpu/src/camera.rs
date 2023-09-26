@@ -42,13 +42,6 @@ impl Camera2D {
         self.vh = vh;
     }
     fn get_matrix(&self) -> [[f32; 4]; 4] {
-        // let l = 0.;
-        // let r = 800.;
-        // let t = 0.;
-        // let b = 600.;
-        // let n = -100.;
-        // let f = 100.;
-
         let zoom = 1. / self.scale;
         let n = -Z_RANGE;
         let f = Z_RANGE;

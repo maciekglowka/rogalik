@@ -22,8 +22,8 @@ impl SpriteAtlas {
             rows,
             cols,
             texture_id,
-            u_step: 1.0,
-            v_step: 1.0,
+            u_step: 1.0 / rows as f32,
+            v_step: 1.0 / cols as f32,
         }
     }
     pub fn get_sprite(
@@ -33,14 +33,16 @@ impl SpriteAtlas {
         position: Vector2F,
         size: Vector2F
     ) -> ([Vertex; 4], [u16; 6], BindParams) {
-        let u = 0.0;
-        let v = 0.0;
+        let row = index / self.cols;
+        let col = index % self.cols;
+        let u = self.u_step * col as f32;
+        let v = self.v_step * row as f32;
 
         let vertices = [
-            Vertex { position: [position.x, position.y, 0.0], color: [1.0, 1.0, 1.0, 1.0], tex_coords: [u, v] },
-            Vertex { position: [position.x + size.x, position.y, 0.0], color: [1.0, 1.0, 1.0, 1.0], tex_coords: [u + self.u_step, v] },
-            Vertex { position: [position.x + size.x, position.y + size.y, 0.0], color: [1.0, 1.0, 1.0, 1.0], tex_coords: [u + self.u_step, v + self.v_step] },
-            Vertex { position: [position.x, position.y + size.y, 0.0], color: [1.0, 1.0, 1.0, 1.0], tex_coords: [u, v + self.v_step] }
+            Vertex { position: [position.x, position.y, 0.0], color: [1.0, 1.0, 1.0, 1.0], tex_coords: [u, v + self.v_step] },
+            Vertex { position: [position.x + size.x, position.y, 0.0], color: [1.0, 1.0, 1.0, 1.0], tex_coords: [u + self.u_step, v + self.v_step] },
+            Vertex { position: [position.x + size.x, position.y + size.y, 0.0], color: [1.0, 1.0, 1.0, 1.0], tex_coords: [u + self.u_step, v] },
+            Vertex { position: [position.x, position.y + size.y, 0.0], color: [1.0, 1.0, 1.0, 1.0], tex_coords: [u, v] }
         ];
         let indices = [0, 1, 2, 0, 2, 3];
         (vertices, indices, BindParams { texture_id: self.texture_id, camera_id })

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
 use crate::camera;
@@ -91,6 +92,11 @@ impl SpritePass {
         queue: &wgpu::Queue
     ) -> Result<(), wgpu::SurfaceError> {
         if tris.len() == 0 { return Ok(()) };
+        let mut camera_bind_groups = HashMap::new();
+        for (i, camera) in cameras.iter().enumerate() {
+            camera_bind_groups.insert(i, camera.get_bind_group(device));
+        }
+
         let output = surface.get_current_texture()?;
         let view = output.texture.create_view(
             &wgpu::TextureViewDescriptor::default()
@@ -111,7 +117,6 @@ impl SpritePass {
                 usage: wgpu::BufferUsages::INDEX
             }
         );
-        let camera_bind_group = cameras[0].get_bind_group(device);
 
         let mut encoder = device.create_command_encoder(
             &wgpu::CommandEncoderDescriptor { label: Some("Sprite Encoder")}
@@ -141,7 +146,7 @@ impl SpritePass {
             pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16); 
             pass.set_bind_group(0, textures[current_params.texture_id.0].get_bind_group(), &[]);
             // TODO bind camera
-            pass.set_bind_group(1, &camera_bind_group, &[]);
+            pass.set_bind_group(1, camera_bind_groups.get(&current_params.camera_id.0).unwrap(), &[]);
 
             for tri in tris {
                 let end = offset + 3 as u32;
@@ -154,7 +159,7 @@ impl SpritePass {
                         pass.set_bind_group(0, textures[tri.params.texture_id.0].get_bind_group(), &[]);
                     }
                     if current_params.camera_id != tri.params.camera_id {
-                        // TODO rebind camera
+                        pass.set_bind_group(1, &camera_bind_groups[&tri.params.camera_id.0], &[]);
                     }
                     current_params = tri.params;
                     batch_start = offset;

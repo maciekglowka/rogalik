@@ -3,7 +3,7 @@ use winit::{
 };
 use rogalik_math::vectors::Vector2F;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct ResourceId(pub usize);
 
 pub trait Game<G: GraphicsContext> {
