@@ -2,9 +2,8 @@ use wgpu::util::DeviceExt;
 
 use crate::camera;
 use crate::structs::Vertex;
-use super::atlas::SpriteAtlas;
-use super::texture::Texture2D;
-use super::{QUAD_VERTICES, RenderQuad};
+use super::texture::Texture2d;
+use super::Triangle;
 
 pub struct SpritePass {
     clear_color: wgpu::Color,
@@ -84,24 +83,32 @@ impl SpritePass {
     pub fn render(
         &mut self,
         cameras: &Vec<camera::Camera2D>,
-        textures: &Vec<Texture2D>,
-        quads: &Vec<RenderQuad>,
+        textures: &Vec<Texture2d>,
+        verts: &Vec<Vertex>,
+        tris: &Vec<Triangle>,
         surface: &wgpu::Surface,
         device: &wgpu::Device,
         queue: &wgpu::Queue
     ) -> Result<(), wgpu::SurfaceError> {
-        if quads.len() == 0 { return Ok(()) };
+        if tris.len() == 0 { return Ok(()) };
         let output = surface.get_current_texture()?;
         let view = output.texture.create_view(
             &wgpu::TextureViewDescriptor::default()
         );
-        let verts = quads.iter().map(|a| a.vertices).flatten().collect::<Vec<_>>();
         
         let vertex_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Sprite vertex buffer"),
                 contents: bytemuck::cast_slice(&verts),
                 usage: wgpu::BufferUsages::VERTEX
+            }
+        );
+        let indices = tris.iter().map(|t| t.indices).flatten().collect::<Vec<_>>();
+        let index_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Sprite index buffer"),
+                contents: bytemuck::cast_slice(&indices),
+                usage: wgpu::BufferUsages::INDEX
             }
         );
         let camera_bind_group = cameras[0].get_bind_group(device);
@@ -128,34 +135,33 @@ impl SpritePass {
             pass.set_pipeline(&self.pipeline);
             let mut offset = 0;
             let mut batch_start = 0;
-            let mut current_texture_id = quads[0].texture_id;
-            let mut current_camera_id = quads[0].camera_id;
+            let mut current_params = tris[0].params;
 
             pass.set_vertex_buffer(0, vertex_buffer.slice(..)); 
-            pass.set_bind_group(0, textures[current_texture_id.0].get_bind_group(), &[]);
+            pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16); 
+            pass.set_bind_group(0, textures[current_params.texture_id.0].get_bind_group(), &[]);
             // TODO bind camera
             pass.set_bind_group(1, &camera_bind_group, &[]);
 
-            for quad in quads {
-                let end = offset + QUAD_VERTICES as u32;
+            for tri in tris {
+                let end = offset + 3 as u32;
 
-                if current_texture_id != quad.texture_id || current_camera_id != quad.camera_id {
+                if current_params != tri.params {
                     // draw the previous batch first
-                    pass.draw(batch_start..offset, 0..1);
+                    pass.draw_indexed(batch_start..offset, 0, 0..1);
 
-                    if current_texture_id != quad.texture_id {
-                        pass.set_bind_group(0, textures[current_texture_id.0].get_bind_group(), &[]);
-                        current_texture_id = quad.texture_id;
+                    if current_params.texture_id != tri.params.texture_id {
+                        pass.set_bind_group(0, textures[tri.params.texture_id.0].get_bind_group(), &[]);
                     }
-                    if current_camera_id != quad.camera_id {
+                    if current_params.camera_id != tri.params.camera_id {
                         // TODO rebind camera
-                        current_camera_id = quad.camera_id;
                     }
+                    current_params = tri.params;
                     batch_start = offset;
                 }
                 offset = end;
             }
-            pass.draw(batch_start..offset, 0..1);
+            pass.draw_indexed(batch_start..offset, 0, 0..1);
         }
 
         queue.submit(std::iter::once(encoder.finish()));

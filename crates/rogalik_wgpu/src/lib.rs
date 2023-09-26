@@ -3,7 +3,7 @@ use winit::window::Window;
 use rogalik_engine::traits::{GraphicsContext, ResourceId};
 
 mod camera;
-mod sprites;
+mod renderer2d;
 mod structs;
 
 pub struct WgpuContext {
@@ -11,7 +11,7 @@ pub struct WgpuContext {
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
-    sprite_manager: sprites::SpriteManager,
+    renderer2d: renderer2d::Renderer2d,
     current_camera_id: ResourceId,
     cameras: Vec<camera::Camera2D>
 }
@@ -31,7 +31,7 @@ impl GraphicsContext for WgpuContext {
         }
     }
     fn render(&mut self) {
-        self.sprite_manager.render(
+        self.renderer2d.render(
             &self.surface,
             &self.device,
             &self.queue,
@@ -39,7 +39,7 @@ impl GraphicsContext for WgpuContext {
         );
     }
     fn load_sprite_atlas(&mut self, bytes: &[u8], rows: usize, cols: usize) -> ResourceId {
-        self.sprite_manager.load_atlas(bytes, rows, cols, &self.device, &self.queue)
+        self.renderer2d.load_atlas(bytes, rows, cols, &self.device, &self.queue)
     }
     fn draw_indexed_sprite(
             &mut self,
@@ -48,7 +48,7 @@ impl GraphicsContext for WgpuContext {
             position: rogalik_math::vectors::Vector2F,
             size: rogalik_math::vectors::Vector2F
         ) {
-        self.sprite_manager.draw_indexed_sprite(
+        self.renderer2d.draw_indexed_sprite(
             index,
             atlas_id,
             self.current_camera_id,
@@ -117,14 +117,14 @@ fn create_context(window: &Window) -> WgpuContext {
     };
     surface.configure(&device, &config);
 
-    let sprite_manager = sprites::SpriteManager::new(&device, &surface_format);
+    let renderer2d = renderer2d::Renderer2d::new(&device, &surface_format);
 
     WgpuContext {
         surface,
         device,
         queue,
         config,
-        sprite_manager,
+        renderer2d,
         current_camera_id: ResourceId(0),
         cameras: Vec::new()
     }

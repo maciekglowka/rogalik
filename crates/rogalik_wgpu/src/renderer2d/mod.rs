@@ -10,15 +10,14 @@ mod atlas;
 mod pass;
 mod texture;
 
-const QUAD_VERTICES: usize = 6;
-
-pub struct SpriteManager {
+pub struct Renderer2d {
     atlases: Vec<atlas::SpriteAtlas>,
     render_pass: pass::SpritePass,
-    render_queue: Vec<RenderQuad>,
-    textures: Vec<texture::Texture2D>
+    vertex_queue: Vec<Vertex>,
+    triangle_queue: Vec<Triangle>,
+    textures: Vec<texture::Texture2d>
 }
-impl SpriteManager {
+impl Renderer2d {
     pub fn new(
         device: &wgpu::Device,
         texture_format: &wgpu::TextureFormat
@@ -31,7 +30,8 @@ impl SpriteManager {
         Self {
             render_pass,
             atlases: Vec::new(),
-            render_queue: Vec::new(),
+            vertex_queue: Vec::new(),
+            triangle_queue: Vec::new(),
             textures: Vec::new()
         }
     }
@@ -42,7 +42,7 @@ impl SpriteManager {
         queue: &wgpu::Queue
     ) -> ResourceId {
         let id = ResourceId(self.textures.len());
-        let texture = texture::Texture2D::from_bytes(
+        let texture = texture::Texture2d::from_bytes(
             bytes,
             device,
             queue,
@@ -69,6 +69,18 @@ impl SpriteManager {
         self.atlases.push(atlas);
         id
     }
+    fn add_to_queue(&mut self, vertices: &[Vertex], indices: &[u16], params: BindParams) {
+        // TODO add error if indices are not divisible by 3
+        let offset = self.vertex_queue.len() as u16;
+        self.vertex_queue.extend(vertices);
+        self.triangle_queue.extend(
+            indices.chunks(3)
+                .map(|v| Triangle {
+                    indices: [v[0] + offset, v[1] + offset, v[2] + offset],
+                    params
+                })
+        )
+    }
     pub fn draw_indexed_sprite(
         &mut self,
         index: usize,
@@ -78,8 +90,8 @@ impl SpriteManager {
         size: Vector2F
     ) {
         // TODO handle errors
-        let quad = self.atlases[atlas_id.0].get_quad(index, camera_id, position, size);
-        self.render_queue.push(quad);
+        let s = self.atlases[atlas_id.0].get_sprite(index, camera_id, position, size);
+        self.add_to_queue(&s.0, &s.1, s.2);
     }
     pub fn render(
         &mut self,
@@ -88,24 +100,28 @@ impl SpriteManager {
         queue: &wgpu::Queue,
         cameras: &Vec<camera::Camera2D>
     ) {
-        // self.draw_indexed_sprite(0, 0, 0, Vector2F::new(0., 0.), Vector2F::new(1.0, 1.0));
-        self.draw_indexed_sprite(0, ResourceId(0), ResourceId(0), Vector2F::new(0., 0.), Vector2F::new(400.0, 300.0));
-        // self.draw_indexed_sprite(0, 0, 0, Vector2F::new(-50., -50.), Vector2F::new(100.0, 100.0));
-        // self.draw_indexed_sprite(0, 0, 0, Vector2F::new(50., 50.), Vector2F::new(100.0, 100.0));
         let _ = self.render_pass.render(
             cameras,
             &self.textures,
-            &self.render_queue,
+            &self.vertex_queue,
+            &self.triangle_queue,
             surface,
             device,
             queue
         );
-        self.render_queue.clear();
+        self.vertex_queue.clear();
+        self.triangle_queue.clear();
     }
 }
 
-pub struct RenderQuad {
-    vertices: [Vertex; QUAD_VERTICES],
+#[derive(Clone, Copy)]
+pub struct Triangle {
+    indices: [u16; 3],
+    params: BindParams
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct BindParams {
     texture_id: ResourceId,
     camera_id: ResourceId
 }

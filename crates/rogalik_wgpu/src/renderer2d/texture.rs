@@ -1,9 +1,9 @@
 use image::GenericImageView;
 
-pub struct Texture2D {
+pub struct Texture2d {
     bind_group: wgpu::BindGroup
 }
-impl Texture2D {
+impl Texture2d {
     pub fn from_bytes(
         bytes: &[u8],
         device: &wgpu::Device,
