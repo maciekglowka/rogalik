@@ -168,7 +168,6 @@ impl SpritePass {
             }
             pass.draw_indexed(batch_start..offset, 0, 0..1);
         }
-
         queue.submit(std::iter::once(encoder.finish()));
         output.present();
         Ok(())

@@ -7,12 +7,14 @@ use crate::camera;
 use crate::structs::Vertex;
 
 mod atlas;
-mod pass;
+mod font;
+mod sprite_pass;
 mod texture;
 
 pub struct Renderer2d {
     atlases: Vec<atlas::SpriteAtlas>,
-    render_pass: pass::SpritePass,
+    fonts: Vec<font::Font>,
+    render_pass: sprite_pass::SpritePass,
     vertex_queue: Vec<Vertex>,
     triangle_queue: Vec<Triangle>,
     textures: Vec<texture::Texture2d>
@@ -22,7 +24,7 @@ impl Renderer2d {
         device: &wgpu::Device,
         texture_format: &wgpu::TextureFormat
     ) -> Self {
-        let render_pass = pass::SpritePass::new(
+        let render_pass = sprite_pass::SpritePass::new(
             wgpu::Color::BLUE,
             device,
             texture_format
@@ -30,6 +32,7 @@ impl Renderer2d {
         Self {
             render_pass,
             atlases: Vec::new(),
+            fonts: Vec::new(),
             vertex_queue: Vec::new(),
             triangle_queue: Vec::new(),
             textures: Vec::new()
@@ -69,6 +72,24 @@ impl Renderer2d {
         self.atlases.push(atlas);
         id
     }
+    pub fn load_font(
+        &mut self,
+        bytes: &[u8],
+        rows: usize,
+        cols: usize,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue
+    ) -> ResourceId {
+        let id = ResourceId(self.atlases.len());
+        let texture_id = self.load_texture(bytes, device, queue);
+        let font = font::Font::new(
+            texture_id,
+            rows,
+            cols,
+        );
+        self.fonts.push(font);
+        id
+    }
     fn add_to_queue(&mut self, vertices: &[Vertex], indices: &[u16], params: BindParams) {
         // TODO add error if indices are not divisible by 3
         let offset = self.vertex_queue.len() as u16;
@@ -92,6 +113,18 @@ impl Renderer2d {
         // TODO handle errors
         let s = self.atlases[atlas_id.0].get_sprite(index, camera_id, position, size);
         self.add_to_queue(&s.0, &s.1, s.2);
+    }
+    pub fn draw_text(
+        &mut self,
+        text: &str,
+        font_id: ResourceId,
+        camera_id: ResourceId,
+        position: Vector2F,
+        size: Vector2F
+    ) {
+        for s in self.fonts[font_id.0].get_sprites(text, camera_id, position, size) {
+            self.add_to_queue(&s.0, &s.1, s.2);
+        }
     }
     pub fn render(
         &mut self,

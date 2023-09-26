@@ -26,10 +26,10 @@ impl Camera for Camera2D {
     }
 }
 impl Camera2D {
-    pub fn new(vw: f32, vh: f32) -> Self {
+    pub fn new(vw: f32, vh: f32, scale: f32, target: Vector2F) -> Self {
         Self {
-            scale: 1.,
-            target: Vector2F::new(vw / 2., vh / 2.),
+            scale,
+            target,
             vw,
             vh
         }

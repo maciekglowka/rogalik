@@ -21,6 +21,12 @@ pub trait GraphicsContext {
         rows: usize,
         cols: usize
     ) -> ResourceId;
+    fn load_font(
+        &mut self,
+        bytes: &[u8],
+        rows: usize,
+        cols: usize
+    ) -> ResourceId;
     fn draw_indexed_sprite(
         &mut self,
         atlas_id: ResourceId,
@@ -28,9 +34,18 @@ pub trait GraphicsContext {
         position: Vector2F,
         size: Vector2F
     );
-    fn create_camera(&mut self) -> ResourceId;
+    fn draw_text(
+        &mut self,
+        font_id: ResourceId,
+        text: &str,
+        position: Vector2F,
+        size: Vector2F
+    );
+    fn create_camera(&mut self, scale: f32, target: Vector2F) -> ResourceId;
+    fn set_camera(&mut self, id: ResourceId);
     fn get_camera(&self, id: ResourceId) -> Option<&dyn Camera>;
     fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut dyn Camera>;
+    fn get_viewport_size(&self) -> Vector2F;
 }
 
 pub trait Camera {

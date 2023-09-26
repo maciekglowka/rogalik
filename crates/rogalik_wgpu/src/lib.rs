@@ -1,6 +1,7 @@
 use winit::window::Window;
 
 use rogalik_engine::traits::{GraphicsContext, ResourceId};
+use rogalik_math::vectors::Vector2F;
 
 mod camera;
 mod renderer2d;
@@ -41,6 +42,9 @@ impl GraphicsContext for WgpuContext {
     fn load_sprite_atlas(&mut self, bytes: &[u8], rows: usize, cols: usize) -> ResourceId {
         self.renderer2d.load_atlas(bytes, rows, cols, &self.device, &self.queue)
     }
+    fn load_font(&mut self, bytes: &[u8], rows: usize, cols: usize) -> ResourceId {
+        self.renderer2d.load_font(bytes, rows, cols, &self.device, &self.queue)
+    }
     fn draw_indexed_sprite(
             &mut self,
             atlas_id: ResourceId,
@@ -56,17 +60,41 @@ impl GraphicsContext for WgpuContext {
             size
         );
     }
-    fn create_camera(&mut self) -> ResourceId {
+    fn draw_text(
+            &mut self,
+            font_id: ResourceId,
+            text: &str,
+            position: Vector2F,
+            size: Vector2F
+        ) {
+        self.renderer2d.draw_text(
+            text,
+            font_id,
+            self.current_camera_id,
+            position,
+            size
+        );
+    }
+    fn create_camera(&mut self, scale: f32, target: Vector2F) -> ResourceId {
         let id = ResourceId(self.cameras.len());
-        let camera = camera::Camera2D::new(self.config.width as f32, self.config.height as f32);
+        let camera = camera::Camera2D::new(self.config.width as f32, self.config.height as f32, scale, target);
         self.cameras.push(camera);
         id
+    }
+    fn set_camera(&mut self, id: ResourceId) {
+        self.current_camera_id = id;
     }
     fn get_camera(&self, id: ResourceId) -> Option<&dyn rogalik_engine::traits::Camera>{
         Some(self.cameras.get(id.0)?)
     }
     fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut dyn rogalik_engine::traits::Camera> {
         Some(self.cameras.get_mut(id.0)?)
+    }
+    fn get_viewport_size(&self) -> Vector2F {
+        Vector2F::new(
+            self.config.width as f32,
+            self.config.height as f32,
+        )
     }
 }
 

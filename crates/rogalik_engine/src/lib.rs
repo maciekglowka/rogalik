@@ -92,10 +92,10 @@ where
             },
             Event::RedrawRequested(window_id) if window_id == window.id() => {
                 // state.update();
-                // let now = Instant::now();
+                // let start = Instant::now();
                 game.update(&mut context);
                 context.graphics.render();
-                // println!("{}", now.elapsed().as_millis());
+                // println!("{} {}", 1. / start.elapsed().as_secs_f32(), start.elapsed().as_secs_f32());
                 // match gpu_state.render(&pass) {
                 //     Ok(_) => {},
                 //     Err(wgpu::SurfaceError::Lost) => gpu_state.resize(window.inner_size()),
