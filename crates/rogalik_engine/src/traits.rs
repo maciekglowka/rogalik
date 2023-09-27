@@ -12,6 +12,7 @@ pub trait Game<G: GraphicsContext> {
 
 pub trait GraphicsContext {
     fn new(window: &Window) -> Self;
+    fn set_clear_color(&mut self, color: Color);
     fn resize(&mut self, w: u32, h: u32);
     fn render(&mut self);
     fn load_sprite_atlas(

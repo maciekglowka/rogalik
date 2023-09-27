@@ -7,7 +7,7 @@ use super::texture::Texture2d;
 use super::Triangle;
 
 pub struct SpritePass {
-    clear_color: wgpu::Color,
+    pub clear_color: wgpu::Color,
     pipeline: wgpu::RenderPipeline,
     bind_group_layout: wgpu::BindGroupLayout,
 }

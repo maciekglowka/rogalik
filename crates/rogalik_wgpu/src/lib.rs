@@ -14,11 +14,18 @@ pub struct WgpuContext {
     config: wgpu::SurfaceConfiguration,
     renderer2d: renderer2d::Renderer2d,
     current_camera_id: ResourceId,
-    cameras: Vec<camera::Camera2D>
+    cameras: Vec<camera::Camera2D>,
+    // clear_color: 
 }
 impl GraphicsContext for WgpuContext {
     fn new(window: &Window) -> Self {
         create_context(window)
+    }
+    fn set_clear_color(&mut self, color: rogalik_engine::Color) {
+        let col = color.as_f32();
+        self.renderer2d.set_clear_color(wgpu::Color { 
+            r: col[0] as f64, g: col[1] as f64, b: col[2] as f64, a: col[3] as f64 
+        });
     }
     fn resize(&mut self, width: u32, height: u32) {
         if width > 0 && height > 0 {

@@ -25,7 +25,7 @@ impl Renderer2d {
         texture_format: &wgpu::TextureFormat
     ) -> Self {
         let render_pass = sprite_pass::SpritePass::new(
-            wgpu::Color::BLUE,
+            wgpu::Color::BLACK,
             device,
             texture_format
         );
@@ -37,6 +37,9 @@ impl Renderer2d {
             triangle_queue: Vec::new(),
             textures: Vec::new()
         }
+    }
+    pub fn set_clear_color(&mut self, color: wgpu::Color) {
+        self.render_pass.clear_color = color;
     }
     fn load_texture(
         &mut self,

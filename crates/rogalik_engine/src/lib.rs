@@ -108,6 +108,7 @@ where
                 context.time.update();
                 game.update(&mut context);
                 context.graphics.render();
+                context.input.clear();
                 // println!("{} {}", 1. / start.elapsed().as_secs_f32(), start.elapsed().as_secs_f32());
                 // match gpu_state.render(&pass) {
                 //     Ok(_) => {},
