@@ -1,7 +1,9 @@
 use image::GenericImageView;
 
 pub struct Texture2d {
-    bind_group: wgpu::BindGroup
+    bind_group: wgpu::BindGroup,
+    width: u32,
+    height: u32
 }
 impl Texture2d {
     pub fn from_bytes(
@@ -10,9 +12,9 @@ impl Texture2d {
         queue: &wgpu::Queue,
         bind_group_layout: &wgpu::BindGroupLayout
     ) -> Self {
-        let texture = wgpu_texture_from_bytes(bytes, device, queue);
+        let (texture, width, height) = wgpu_texture_from_bytes(bytes, device, queue);
         let bind_group = get_texture_bind_group(texture, device, bind_group_layout);
-        Self { bind_group }
+        Self { bind_group, width, height }
     }
     pub fn get_bind_group(&self) -> &wgpu::BindGroup {
         &self.bind_group
@@ -56,7 +58,7 @@ fn wgpu_texture_from_bytes(
     bytes: &[u8],
     device: &wgpu::Device,
     queue: &wgpu::Queue
-) -> wgpu::Texture {
+) -> (wgpu::Texture, u32, u32) {
     let img = image::load_from_memory(bytes).expect("Could not create image!");
     let rgba = img.to_rgba8();
     let img_dim = img.dimensions();
@@ -93,5 +95,5 @@ fn wgpu_texture_from_bytes(
         },
         size
     );
-    texture
+    (texture, img_dim.0, img_dim.1)
 }

@@ -1,6 +1,6 @@
 // use std::cell::RefCell;
 
-use rogalik_engine::traits::ResourceId;
+use rogalik_engine::{ResourceId, Params2d};
 use rogalik_math::vectors::Vector2F;
 
 use crate::camera;
@@ -102,16 +102,17 @@ impl Renderer2d {
                 })
         )
     }
-    pub fn draw_indexed_sprite(
+    pub fn draw_atlas_sprite(
         &mut self,
         index: usize,
         atlas_id: ResourceId,
         camera_id: ResourceId,
         position: Vector2F,
-        size: Vector2F
+        size: Vector2F,
+        params: Params2d
     ) {
         // TODO handle errors
-        let s = self.atlases[atlas_id.0].get_sprite(index, camera_id, position, size);
+        let s = self.atlases[atlas_id.0].get_sprite(index, camera_id, position, size, params);
         self.add_to_queue(&s.0, &s.1, s.2);
     }
     pub fn draw_text(
@@ -120,9 +121,10 @@ impl Renderer2d {
         font_id: ResourceId,
         camera_id: ResourceId,
         position: Vector2F,
-        size: Vector2F
+        size: f32,
+        params: Params2d
     ) {
-        for s in self.fonts[font_id.0].get_sprites(text, camera_id, position, size) {
+        for s in self.fonts[font_id.0].get_sprites(text, camera_id, position, size, params) {
             self.add_to_queue(&s.0, &s.1, s.2);
         }
     }

@@ -1,6 +1,6 @@
 use rogalik_math::vectors::Vector2F;
 
-use rogalik_engine::traits::ResourceId;
+use rogalik_engine::{ResourceId, Params2d};
 use crate::structs::Vertex;
 use super::BindParams;
 
@@ -31,18 +31,21 @@ impl SpriteAtlas {
         index: usize,
         camera_id: ResourceId,
         position: Vector2F,
-        size: Vector2F
+        size: Vector2F,
+        params: Params2d
     ) -> ([Vertex; 4], [u16; 6], BindParams) {
         let row = index / self.cols;
         let col = index % self.cols;
         let u = self.u_step * col as f32;
         let v = self.v_step * row as f32;
 
+        let color = params.color.as_f32();
+
         let vertices = [
-            Vertex { position: [position.x, position.y, 0.0], color: [1.0, 1.0, 1.0, 1.0], tex_coords: [u, v + self.v_step] },
-            Vertex { position: [position.x + size.x, position.y, 0.0], color: [1.0, 1.0, 1.0, 1.0], tex_coords: [u + self.u_step, v + self.v_step] },
-            Vertex { position: [position.x + size.x, position.y + size.y, 0.0], color: [1.0, 1.0, 1.0, 1.0], tex_coords: [u + self.u_step, v] },
-            Vertex { position: [position.x, position.y + size.y, 0.0], color: [1.0, 1.0, 1.0, 1.0], tex_coords: [u, v] }
+            Vertex { position: [position.x, position.y, 0.0], color, tex_coords: [u, v + self.v_step] },
+            Vertex { position: [position.x + size.x, position.y, 0.0], color, tex_coords: [u + self.u_step, v + self.v_step] },
+            Vertex { position: [position.x + size.x, position.y + size.y, 0.0], color, tex_coords: [u + self.u_step, v] },
+            Vertex { position: [position.x, position.y + size.y, 0.0], color, tex_coords: [u, v] }
         ];
         let indices = [0, 1, 2, 0, 2, 3];
         (vertices, indices, BindParams { texture_id: self.texture_id, camera_id })

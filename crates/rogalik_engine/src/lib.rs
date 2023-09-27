@@ -5,12 +5,14 @@ use winit::{
 };
 
 pub mod input;
+pub mod structs;
 pub mod traits;
 
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
-pub use traits::{Game, GraphicsContext, ResourceId};
+pub use traits::{Game, GraphicsContext};
+pub use structs::{ResourceId, Params2d, Color};
 
 pub struct Context<G: GraphicsContext> {
     pub graphics: G,

@@ -1,6 +1,6 @@
 use winit::window::Window;
 
-use rogalik_engine::traits::{GraphicsContext, ResourceId};
+use rogalik_engine::{GraphicsContext, ResourceId, Params2d};
 use rogalik_math::vectors::Vector2F;
 
 mod camera;
@@ -45,19 +45,21 @@ impl GraphicsContext for WgpuContext {
     fn load_font(&mut self, bytes: &[u8], rows: usize, cols: usize) -> ResourceId {
         self.renderer2d.load_font(bytes, rows, cols, &self.device, &self.queue)
     }
-    fn draw_indexed_sprite(
+    fn draw_atlas_sprite(
             &mut self,
             atlas_id: ResourceId,
             index: usize,
             position: rogalik_math::vectors::Vector2F,
-            size: rogalik_math::vectors::Vector2F
+            size: rogalik_math::vectors::Vector2F,
+            params: Params2d
         ) {
-        self.renderer2d.draw_indexed_sprite(
+        self.renderer2d.draw_atlas_sprite(
             index,
             atlas_id,
             self.current_camera_id,
             position,
-            size
+            size,
+            params
         );
     }
     fn draw_text(
@@ -65,14 +67,16 @@ impl GraphicsContext for WgpuContext {
             font_id: ResourceId,
             text: &str,
             position: Vector2F,
-            size: Vector2F
+            size: f32,
+            params: Params2d
         ) {
         self.renderer2d.draw_text(
             text,
             font_id,
             self.current_camera_id,
             position,
-            size
+            size,
+            params
         );
     }
     fn create_camera(&mut self, scale: f32, target: Vector2F) -> ResourceId {

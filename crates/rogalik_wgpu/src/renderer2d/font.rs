@@ -1,4 +1,4 @@
-use rogalik_engine::traits::ResourceId;
+use rogalik_engine::{ResourceId, Params2d};
 use rogalik_math::vectors::Vector2F;
 
 use crate::structs::Vertex;
@@ -24,15 +24,18 @@ impl Font {
         text: &str,
         camera_id: ResourceId,
         position: Vector2F,
-        size: Vector2F
+        size: f32,
+        params: Params2d
     ) -> Vec<([Vertex; 4], [u16; 6], BindParams)> {
+        // TODO calculate font proportions
+        // TODO take flip_h into account?
         let mut offset = Vector2F::new(0., 0.);
         let mut sprites = Vec::new();
         for c in text.chars() {
             sprites.push(
-                self.atlas.get_sprite(c as usize, camera_id, position + offset, size)
+                self.atlas.get_sprite(c as usize, camera_id, position + offset, Vector2F::new(size, size), params)
             );
-            offset += Vector2F::new(size.x, 0.);
+            offset += Vector2F::new(size, 0.);
         }
         sprites
     }

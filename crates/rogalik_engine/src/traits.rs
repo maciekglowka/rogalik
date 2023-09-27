@@ -3,8 +3,7 @@ use winit::{
 };
 use rogalik_math::vectors::Vector2F;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct ResourceId(pub usize);
+use crate::structs::{Color, Params2d, ResourceId};
 
 pub trait Game<G: GraphicsContext> {
     fn setup(&mut self, context: &mut super::Context<G>);
@@ -27,19 +26,21 @@ pub trait GraphicsContext {
         rows: usize,
         cols: usize
     ) -> ResourceId;
-    fn draw_indexed_sprite(
+    fn draw_atlas_sprite(
         &mut self,
         atlas_id: ResourceId,
         index: usize,
         position: Vector2F,
-        size: Vector2F
+        size: Vector2F,
+        params: Params2d
     );
     fn draw_text(
         &mut self,
         font_id: ResourceId,
         text: &str,
         position: Vector2F,
-        size: Vector2F
+        size: f32,
+        params: Params2d
     );
     fn create_camera(&mut self, scale: f32, target: Vector2F) -> ResourceId;
     fn set_camera(&mut self, id: ResourceId);
