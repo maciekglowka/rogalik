@@ -1,14 +1,14 @@
-use crate::vectors::Vector2F;
+use crate::vectors::Vector2f;
 
 pub struct Aabb {
-    pub a: Vector2F,
-    pub b: Vector2F
+    pub a: Vector2f,
+    pub b: Vector2f
 }
 impl Aabb {
-    pub fn new(a: Vector2F, b: Vector2F) -> Self {
+    pub fn new(a: Vector2f, b: Vector2f) -> Self {
         Self { 
-            a: Vector2F::new(a.x.min(b.x), a.y.min(b.y)),
-            b: Vector2F::new(a.x.max(b.x), a.y.max(b.y)),
+            a: Vector2f::new(a.x.min(b.x), a.y.min(b.y)),
+            b: Vector2f::new(a.x.max(b.x), a.y.max(b.y)),
         }
     }
     pub fn intersects(&self, other: &Self) -> bool {
@@ -26,32 +26,32 @@ mod tests {
     #[test]
     fn intersects_true() {
         let a = Aabb::new(
-            Vector2F::new(5., 5.),
-            Vector2F::new(10., 10.)
+            Vector2f::new(5., 5.),
+            Vector2f::new(10., 10.)
         );
         let b = Aabb::new(
-            Vector2F::new(8., 7.),
-            Vector2F::new(20., 30.)
+            Vector2f::new(8., 7.),
+            Vector2f::new(20., 30.)
         );
         assert!(a.intersects(&b));
     }
     #[test]
     fn intersects_false() {
         let a = Aabb::new(
-            Vector2F::new(5., 5.),
-            Vector2F::new(10., 10.)
+            Vector2f::new(5., 5.),
+            Vector2f::new(10., 10.)
         );
         let b = Aabb::new(
-            Vector2F::new(12., 7.),
-            Vector2F::new(20., 30.)
+            Vector2f::new(12., 7.),
+            Vector2f::new(20., 30.)
         );
         assert!(!a.intersects(&b));
     }
     #[test]
     fn test_coord_swap() {
         let a = Aabb::new(
-            Vector2F::new(10., 11.),
-            Vector2F::new(5., 6.)
+            Vector2f::new(10., 11.),
+            Vector2f::new(5., 6.)
         );
         assert!(a.a.x == 5.);
         assert!(a.a.y == 6.);

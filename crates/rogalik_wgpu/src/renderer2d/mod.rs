@@ -1,7 +1,7 @@
 // use std::cell::RefCell;
 
 use rogalik_engine::{ResourceId, Params2d};
-use rogalik_math::vectors::Vector2F;
+use rogalik_math::vectors::Vector2f;
 
 use crate::camera;
 use crate::structs::Vertex;
@@ -110,8 +110,8 @@ impl Renderer2d {
         index: usize,
         atlas_id: ResourceId,
         camera_id: ResourceId,
-        position: Vector2F,
-        size: Vector2F,
+        position: Vector2f,
+        size: Vector2f,
         params: Params2d
     ) {
         // TODO handle errors
@@ -123,7 +123,7 @@ impl Renderer2d {
         text: &str,
         font_id: ResourceId,
         camera_id: ResourceId,
-        position: Vector2F,
+        position: Vector2f,
         size: f32,
         params: Params2d
     ) {

@@ -1,13 +1,13 @@
 use wgpu::util::DeviceExt;
 
 use rogalik_engine::traits::Camera;
-use rogalik_math::vectors::Vector2F;
+use rogalik_math::vectors::Vector2f;
 
 const Z_RANGE: f32 = 100.;
 
 pub struct Camera2D {
     scale: f32,
-    target: Vector2F,
+    target: Vector2f,
     vw: f32,
     vh: f32,
 }
@@ -15,18 +15,18 @@ impl Camera for Camera2D {
     fn get_scale(&self) -> f32 {
         self.scale
     }
-    fn get_target(&self) -> Vector2F {
+    fn get_target(&self) -> Vector2f {
         self.target
     }
     fn set_scale(&mut self, scale: f32) {
         self.scale = scale;
     }
-    fn set_target(&mut self, target: Vector2F) {
+    fn set_target(&mut self, target: Vector2f) {
         self.target = target;
     }
 }
 impl Camera2D {
-    pub fn new(vw: f32, vh: f32, scale: f32, target: Vector2F) -> Self {
+    pub fn new(vw: f32, vh: f32, scale: f32, target: Vector2f) -> Self {
         Self {
             scale,
             target,

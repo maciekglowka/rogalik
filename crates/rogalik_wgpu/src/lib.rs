@@ -1,7 +1,7 @@
 use winit::window::Window;
 
 use rogalik_engine::{GraphicsContext, ResourceId, Params2d};
-use rogalik_math::vectors::Vector2F;
+use rogalik_math::vectors::Vector2f;
 
 mod camera;
 mod renderer2d;
@@ -56,8 +56,8 @@ impl GraphicsContext for WgpuContext {
             &mut self,
             atlas_id: ResourceId,
             index: usize,
-            position: rogalik_math::vectors::Vector2F,
-            size: rogalik_math::vectors::Vector2F,
+            position: rogalik_math::vectors::Vector2f,
+            size: rogalik_math::vectors::Vector2f,
             params: Params2d
         ) {
         self.renderer2d.draw_atlas_sprite(
@@ -73,7 +73,7 @@ impl GraphicsContext for WgpuContext {
             &mut self,
             font_id: ResourceId,
             text: &str,
-            position: Vector2F,
+            position: Vector2f,
             size: f32,
             params: Params2d
         ) {
@@ -86,7 +86,7 @@ impl GraphicsContext for WgpuContext {
             params
         );
     }
-    fn create_camera(&mut self, scale: f32, target: Vector2F) -> ResourceId {
+    fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId {
         let id = ResourceId(self.cameras.len());
         let camera = camera::Camera2D::new(self.config.width as f32, self.config.height as f32, scale, target);
         self.cameras.push(camera);
@@ -101,8 +101,8 @@ impl GraphicsContext for WgpuContext {
     fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut dyn rogalik_engine::traits::Camera> {
         Some(self.cameras.get_mut(id.0)?)
     }
-    fn get_viewport_size(&self) -> Vector2F {
-        Vector2F::new(
+    fn get_viewport_size(&self) -> Vector2f {
+        Vector2f::new(
             self.config.width as f32,
             self.config.height as f32,
         )

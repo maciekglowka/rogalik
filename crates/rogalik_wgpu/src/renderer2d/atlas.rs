@@ -1,4 +1,4 @@
-use rogalik_math::vectors::Vector2F;
+use rogalik_math::vectors::Vector2f;
 
 use rogalik_engine::{ResourceId, Params2d};
 use crate::structs::Vertex;
@@ -30,8 +30,8 @@ impl SpriteAtlas {
         &self, 
         index: usize,
         camera_id: ResourceId,
-        position: Vector2F,
-        size: Vector2F,
+        position: Vector2f,
+        size: Vector2f,
         params: Params2d
     ) -> ([Vertex; 4], [u16; 6], BindParams) {
         let row = index / self.cols;

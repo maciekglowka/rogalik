@@ -3,8 +3,8 @@ use std::{
     ops::{Add, AddAssign, Div, Mul, Sub, SubAssign}
 };
 
-pub type Vector2I = Vector2<i32>;
-pub type Vector2F = Vector2<f32>;
+pub type Vector2i = Vector2<i32>;
+pub type Vector2f = Vector2<f32>;
 
 #[derive(Copy, Clone, Debug, Default, Ord, PartialOrd, PartialEq, Eq, Hash)]
 pub struct Vector2<T: Num + Copy> {
@@ -45,6 +45,7 @@ impl Vector2<f32> {
     pub const DOWN: Vector2<f32> = Vector2::<f32> { x: 0., y: -1. };
     pub const LEFT: Vector2<f32> = Vector2::<f32> { x: -1., y: 0. };
     pub const RIGHT: Vector2<f32> = Vector2::<f32> { x: 1., y: 0. };
+    pub const ZERO: Vector2<f32> = Vector2::<f32> { x: 0., y: 0.};
 
     pub fn len(&self) -> f32 {
         (self.x * self.x + self.y * self.y).sqrt()
@@ -53,7 +54,7 @@ impl Vector2<f32> {
         (self.dot(other) / (self.len() * other.len())).acos()
     }
     pub fn lerp(&self, other: &Self, t: f32) -> Self {
-        Vector2F::new(
+        Vector2f::new(
             lerp(self.x, other.x, t),
             lerp(self.y, other.y, t)
         )
@@ -104,9 +105,9 @@ impl<T: Num + Copy> Mul<T> for Vector2<T> {
     }
 }
 
-pub const ORTHO_DIRECTIONS: [Vector2I; 4] = [
-    Vector2I::UP, Vector2I::DOWN,
-    Vector2I::LEFT, Vector2I::RIGHT
+pub const ORTHO_DIRECTIONS: [Vector2i; 4] = [
+    Vector2i::UP, Vector2i::DOWN,
+    Vector2i::LEFT, Vector2i::RIGHT
 ];
 
 fn lerp(a: f32, b: f32, t:f32) -> f32 {
