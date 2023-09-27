@@ -6,6 +6,7 @@ use winit::{
 
 pub mod input;
 pub mod structs;
+mod time;
 pub mod traits;
 
 #[cfg(target_arch = "wasm32")]
@@ -16,7 +17,8 @@ pub use structs::{ResourceId, Params2d, Color};
 
 pub struct Context<G: GraphicsContext> {
     pub graphics: G,
-    pub input: input::InputContext
+    pub input: input::InputContext,
+    pub time: time::Time
 }
 
 pub struct Engine<G, T>
@@ -55,7 +57,8 @@ where
         let graphics = GraphicsContext::new(&window);
         let context = Context {
             graphics,
-            input: input::InputContext::new()
+            input: input::InputContext::new(),
+            time: time::Time::new()
         };
         Self {
             window, event_loop, game, context
@@ -77,6 +80,8 @@ where
     T: Game<G> + 'static
 {
     game.setup(&mut context);
+    let mut frame_start = std::time::Instant::now();
+
     let _ = event_loop.run(move |event, _, control_flow| {
         match event {
             Event::WindowEvent {
@@ -100,7 +105,7 @@ where
             },
             Event::RedrawRequested(window_id) if window_id == window.id() => {
                 // state.update();
-                // let start = Instant::now();
+                context.time.update();
                 game.update(&mut context);
                 context.graphics.render();
                 // println!("{} {}", 1. / start.elapsed().as_secs_f32(), start.elapsed().as_secs_f32());

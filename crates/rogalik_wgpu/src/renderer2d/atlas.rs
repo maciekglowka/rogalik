@@ -40,12 +40,27 @@ impl SpriteAtlas {
         let v = self.v_step * row as f32;
 
         let color = params.color.as_f32();
+        let l = u; let r = u + self.u_step;
+        let b = v + self.v_step; let t = v;
+
+        let mut uvs = [[l, b], [r, b], [r, t], [l, t]];
+
+        if params.flip_x {
+            for uv in uvs.iter_mut() {
+                if uv[0] == l { uv[0] = r } else { uv[0] = l }
+            }
+        }
+        if params.flip_y {
+            for uv in uvs.iter_mut() {
+                if uv[1] == b { uv[1] = t } else { uv[1] = b }
+            }
+        }
 
         let vertices = [
-            Vertex { position: [position.x, position.y, 0.0], color, tex_coords: [u, v + self.v_step] },
-            Vertex { position: [position.x + size.x, position.y, 0.0], color, tex_coords: [u + self.u_step, v + self.v_step] },
-            Vertex { position: [position.x + size.x, position.y + size.y, 0.0], color, tex_coords: [u + self.u_step, v] },
-            Vertex { position: [position.x, position.y + size.y, 0.0], color, tex_coords: [u, v] }
+            Vertex { position: [position.x, position.y, 0.0], color, tex_coords: uvs[0] },
+            Vertex { position: [position.x + size.x, position.y, 0.0], color, tex_coords: uvs[1] },
+            Vertex { position: [position.x + size.x, position.y + size.y, 0.0], color, tex_coords: uvs[2] },
+            Vertex { position: [position.x, position.y + size.y, 0.0], color, tex_coords: uvs[3] }
         ];
         let indices = [0, 1, 2, 0, 2, 3];
         (vertices, indices, BindParams { texture_id: self.texture_id, camera_id })
