@@ -59,6 +59,14 @@ impl Vector2<f32> {
             lerp(self.y, other.y, t)
         )
     }
+    pub fn normalized(&self) -> Self {
+        let m = self.len();
+        if m == 0. { return Self::ZERO };
+        Vector2f::new(
+            self.x / m,
+            self.y / m
+        )
+    }
 }
 
 impl<T: Num + Copy> Add for Vector2<T> {

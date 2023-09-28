@@ -83,7 +83,7 @@ impl Renderer2d {
         device: &wgpu::Device,
         queue: &wgpu::Queue
     ) -> ResourceId {
-        let id = ResourceId(self.atlases.len());
+        let id = ResourceId(self.fonts.len());
         let texture_id = self.load_texture(bytes, device, queue);
         let font = font::Font::new(
             texture_id,
