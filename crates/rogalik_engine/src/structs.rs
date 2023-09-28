@@ -1,5 +1,5 @@
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct ResourceId(pub usize);
 
 #[derive(Clone, Copy, Debug)]

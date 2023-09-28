@@ -1,5 +1,6 @@
 use crate::vectors::Vector2f;
 
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Aabb {
     pub a: Vector2f,
     pub b: Vector2f
