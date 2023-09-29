@@ -22,8 +22,8 @@ impl<T: Num + Copy> Vector2<T> {
 
 impl Vector2<i32> {
     pub const ZERO: Vector2<i32> = Vector2::<i32> { x: 0, y: 0 };
-    pub const UP: Vector2<i32> = Vector2::<i32> { x: 0, y: -1 };
-    pub const DOWN: Vector2<i32> = Vector2::<i32> { x: 0, y: 1 };
+    pub const UP: Vector2<i32> = Vector2::<i32> { x: 0, y: 1 };
+    pub const DOWN: Vector2<i32> = Vector2::<i32> { x: 0, y: -1 };
     pub const LEFT: Vector2<i32> = Vector2::<i32> { x: -1, y: 0 };
     pub const RIGHT: Vector2<i32> = Vector2::<i32> { x: 1, y: 0 };
     pub fn manhattan(&self, other: Vector2<i32>) -> i32 {

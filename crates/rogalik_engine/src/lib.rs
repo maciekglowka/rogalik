@@ -36,7 +36,7 @@ where
     G: GraphicsContext + 'static,
     T: Game<G> + 'static
 {
-    pub fn new(game: T) -> Self {
+    pub fn new(game: T, width: f32, height: f32, title: &str) -> Self {
         // set logging
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
@@ -48,7 +48,13 @@ where
 
         // set window
         let event_loop = EventLoop::new();
-        let window = WindowBuilder::new().build(&event_loop).unwrap();
+        let window = WindowBuilder::new()
+            .with_title(title)
+            .with_inner_size(
+                winit::dpi::LogicalSize::new(width, height)
+            )
+            .build(&event_loop)
+            .expect("Can't create window!");
 
         // set canvas
         #[cfg(target_arch = "wasm32")]
