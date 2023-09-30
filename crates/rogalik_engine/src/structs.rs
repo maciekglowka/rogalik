@@ -13,6 +13,16 @@ impl Color {
             self.3 as f32 / 255.,
         ]
     }
+    pub fn as_srgb(&self) -> [f32; 4] {
+        let f = self.as_f32();
+        [
+            srgb_single(f[0]),
+            srgb_single(f[1]),
+            srgb_single(f[2]),
+            f[3]
+        ] 
+    }
+
 }
 impl Default for Color {
     fn default() -> Self {
@@ -25,4 +35,9 @@ pub struct Params2d {
     pub color: Color,
     pub flip_x: bool,
     pub flip_y: bool
+}
+
+#[inline(always)]
+fn srgb_single(v: f32) -> f32 {
+    ((v + 0.055) / 1.055).powf(2.4)
 }

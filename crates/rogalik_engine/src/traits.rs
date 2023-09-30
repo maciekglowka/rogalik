@@ -47,7 +47,7 @@ pub trait GraphicsContext {
     fn set_camera(&mut self, id: ResourceId);
     fn get_camera(&self, id: ResourceId) -> Option<&dyn Camera>;
     fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut dyn Camera>;
-    fn get_viewport_size(&self) -> Vector2f;
+    // fn get_viewport_size(&self) -> Vector2f;
 }
 
 pub trait Camera {

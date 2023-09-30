@@ -39,7 +39,7 @@ impl SpriteAtlas {
         let u = self.u_step * col as f32;
         let v = self.v_step * row as f32;
 
-        let color = params.color.as_f32();
+        let color = params.color.as_srgb();
         let l = u; let r = u + self.u_step;
         let b = v + self.v_step; let t = v;
 

@@ -1,7 +1,8 @@
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    window::{Window, WindowBuilder}
+    window::{Window, WindowBuilder},
+    dpi::LogicalSize
 };
 
 pub mod input;
@@ -18,7 +19,13 @@ pub use structs::{ResourceId, Params2d, Color};
 pub struct Context<G: GraphicsContext> {
     pub graphics: G,
     pub input: input::InputContext,
-    pub time: time::Time
+    pub time: time::Time,
+    window_size: LogicalSize<f32>
+}
+impl<G: GraphicsContext> Context<G> {
+    pub fn get_viewport_size(&self) -> rogalik_math::vectors::Vector2f {
+        rogalik_math::vectors::vector2::Vector2f::new(self.window_size.width, self.window_size.height)
+    }
 }
 
 pub struct Engine<G, T>
@@ -47,12 +54,11 @@ where
         }
 
         // set window
+        let window_size = LogicalSize::new(width, height);
         let event_loop = EventLoop::new();
         let window = WindowBuilder::new()
             .with_title(title)
-            .with_inner_size(
-                winit::dpi::LogicalSize::new(width, height)
-            )
+            .with_inner_size(window_size)
             .build(&event_loop)
             .expect("Can't create window!");
 
@@ -64,7 +70,8 @@ where
         let context = Context {
             graphics,
             input: input::InputContext::new(),
-            time: time::Time::new()
+            time: time::Time::new(),
+            window_size
         };
         Self {
             window, event_loop, game, context
@@ -102,10 +109,14 @@ where
                         context.input.handle_mouse_button(button, state);
                     }
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                    WindowEvent::Resized(physical_size) =>
-                        context.graphics.resize(physical_size.width, physical_size.height),
-                    WindowEvent::ScaleFactorChanged { new_inner_size, ..} => 
-                        context.graphics.resize(new_inner_size.width, new_inner_size.height),
+                    WindowEvent::Resized(physical_size) => {
+                        context.graphics.resize(physical_size.width, physical_size.height);
+                        context.window_size = physical_size.to_logical(window.scale_factor());
+                    }
+                    WindowEvent::ScaleFactorChanged { new_inner_size, ..} => {
+                        context.graphics.resize(new_inner_size.width, new_inner_size.height);
+                        context.window_size = new_inner_size.to_logical(window.scale_factor());
+                    }
                     _ => {}
                 }
             },

@@ -101,12 +101,12 @@ impl GraphicsContext for WgpuContext {
     fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut dyn rogalik_engine::traits::Camera> {
         Some(self.cameras.get_mut(id.0)?)
     }
-    fn get_viewport_size(&self) -> Vector2f {
-        Vector2f::new(
-            self.config.width as f32,
-            self.config.height as f32,
-        )
-    }
+    // fn get_viewport_size(&self) -> Vector2f {
+    //     Vector2f::new(
+    //         self.config.width as f32,
+    //         self.config.height as f32,
+    //     )
+    // }
 }
 
 fn create_context(window: &Window) -> WgpuContext {
