@@ -55,4 +55,5 @@ pub trait Camera {
     fn get_scale(&self) -> f32;
     fn set_target(&mut self, target: Vector2f);
     fn set_scale(&mut self, scale: f32);
+    fn camera_to_world(&self, v: Vector2f) -> Vector2f;
 }

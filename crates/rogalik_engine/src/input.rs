@@ -1,10 +1,11 @@
 use std::collections::HashSet;
-use winit::event::{
-    ElementState,
-    KeyboardInput
+use winit::{
+    dpi::{PhysicalPosition, PhysicalSize},
+    event::{ElementState, KeyboardInput},
 };
 
 pub use winit::event::{MouseButton, VirtualKeyCode};
+use rogalik_math::vectors::Vector2f;
 
 pub struct InputContext {
     keys_down: HashSet<VirtualKeyCode>,
@@ -13,6 +14,7 @@ pub struct InputContext {
     mouse_buttons_down: HashSet<MouseButton>,
     mouse_buttons_pressed: HashSet<MouseButton>,
     mouse_buttons_released: HashSet<MouseButton>,
+    mouse_position: Vector2f
 }
 impl InputContext {
     pub fn new() -> Self {
@@ -22,7 +24,8 @@ impl InputContext {
             keys_released: HashSet::new(),
             mouse_buttons_down: HashSet::new(),
             mouse_buttons_pressed: HashSet::new(),
-            mouse_buttons_released: HashSet::new()
+            mouse_buttons_released: HashSet::new(),
+            mouse_position: Vector2f::ZERO
         }
     }
     pub fn clear(&mut self) {
@@ -30,6 +33,12 @@ impl InputContext {
         self.keys_released = HashSet::new();
         self.mouse_buttons_pressed = HashSet::new();
         self.mouse_buttons_released = HashSet::new();
+    }
+    pub fn handle_mouse_move(&mut self, position: PhysicalPosition<f64>, window_size: PhysicalSize<u32>) {
+        self.mouse_position = Vector2f::new(
+            position.x as f32,
+            window_size.height as f32 - position.y as f32,
+        );
     }
     pub fn handle_keyboard(&mut self, input: &KeyboardInput) {
         if let Some(key) = input.virtual_keycode {
@@ -60,6 +69,9 @@ impl InputContext {
                 self.mouse_buttons_released.insert(*button);
             },
         };
+    }
+    pub fn get_mouse_position(&self) -> Vector2f {
+        self.mouse_position
     }
     pub fn is_key_down(&self, code: VirtualKeyCode) -> bool {
         self.keys_down.contains(&code)

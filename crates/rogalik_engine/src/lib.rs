@@ -2,7 +2,7 @@ use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
-    dpi::LogicalSize
+    dpi::PhysicalSize
 };
 
 pub mod input;
@@ -20,11 +20,13 @@ pub struct Context<G: GraphicsContext> {
     pub graphics: G,
     pub input: input::InputContext,
     pub time: time::Time,
-    window_size: LogicalSize<f32>
+    window_size: PhysicalSize<u32>
 }
 impl<G: GraphicsContext> Context<G> {
     pub fn get_viewport_size(&self) -> rogalik_math::vectors::Vector2f {
-        rogalik_math::vectors::vector2::Vector2f::new(self.window_size.width, self.window_size.height)
+        rogalik_math::vectors::vector2::Vector2f::new(
+            self.window_size.width as f32, self.window_size.height as f32
+        )
     }
 }
 
@@ -43,7 +45,7 @@ where
     G: GraphicsContext + 'static,
     T: Game<G> + 'static
 {
-    pub fn new(game: T, width: f32, height: f32, title: &str) -> Self {
+    pub fn new(game: T, width: u32, height: u32, title: &str) -> Self {
         // set logging
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
@@ -54,7 +56,7 @@ where
         }
 
         // set window
-        let window_size = LogicalSize::new(width, height);
+        let window_size = PhysicalSize::new(width, height);
         let event_loop = EventLoop::new();
         let window = WindowBuilder::new()
             .with_title(title)
@@ -64,7 +66,7 @@ where
 
         // set canvas
         #[cfg(target_arch = "wasm32")]
-        wasm::set_canvas(&window);
+        wasm::set_canvas(&window, width, height);
         
         let graphics = GraphicsContext::new(&window);
         let context = Context {
@@ -93,7 +95,6 @@ where
     T: Game<G> + 'static
 {
     game.setup(&mut context);
-    let mut frame_start = std::time::Instant::now();
 
     let _ = event_loop.run(move |event, _, control_flow| {
         match event {
@@ -108,14 +109,17 @@ where
                     WindowEvent::MouseInput { button, state, .. } => {
                         context.input.handle_mouse_button(button, state);
                     }
+                    WindowEvent::CursorMoved { position, .. } => {
+                        context.input.handle_mouse_move(*position, window.inner_size());
+                    },
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                     WindowEvent::Resized(physical_size) => {
                         context.graphics.resize(physical_size.width, physical_size.height);
-                        context.window_size = physical_size.to_logical(window.scale_factor());
+                        context.window_size = *physical_size;
                     }
                     WindowEvent::ScaleFactorChanged { new_inner_size, ..} => {
                         context.graphics.resize(new_inner_size.width, new_inner_size.height);
-                        context.window_size = new_inner_size.to_logical(window.scale_factor());
+                        context.window_size = **new_inner_size;
                     }
                     _ => {}
                 }

@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    time::Instant
-};
+use std::collections::HashMap;
 
 use super::ResourceId;
 
@@ -9,7 +6,7 @@ pub struct Time {
     delta: f32,
     timers: HashMap<ResourceId, Timer>,
     next_timer_id: usize,
-    frame_start: Instant
+    frame_start: Now
 }
 impl Time {
     pub fn new() -> Self {
@@ -17,12 +14,12 @@ impl Time {
             delta: 1.0,
             timers: HashMap::default(),
             next_timer_id: 0,
-            frame_start: Instant::now()
+            frame_start: Now::init()
         }
     }
     pub fn update(&mut self) {
-        self.delta = self.frame_start.elapsed().as_secs_f32();
-        self.frame_start = Instant::now();
+        self.delta = self.frame_start.elapsed();
+        self.frame_start = Now::init();
         for timer in self.timers.values_mut() {
             timer.update(self.delta);
         }
@@ -65,5 +62,38 @@ impl Timer {
     }
     pub fn is_finished(&self) -> bool {
         self.finished
+    }
+}
+
+struct Now {
+    #[cfg(not(target_arch = "wasm32"))]
+    inner: std::time::Instant,
+    #[cfg(target_arch = "wasm32")]
+    inner: f64
+}
+impl Now {
+    pub fn init() -> Self {
+        Self {
+            #[cfg(not(target_arch = "wasm32"))]
+            inner: std::time::Instant::now(),
+            #[cfg(target_arch = "wasm32")]
+            inner: Now::web_value()
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn elapsed(&self) -> f32 {
+        self.inner.elapsed().as_secs_f32()
+    }
+    #[cfg(target_arch = "wasm32")]
+    pub fn elapsed(&self) -> f32 {
+        ((Now::web_value() - self.inner) / 1000.) as f32
+    }
+    #[cfg(target_arch = "wasm32")]
+    fn web_value() -> f64 {
+        web_sys::window()
+            .expect("Can't acquire window!")
+            .performance()
+            .expect("Can't get performance!")
+            .now()
     }
 }

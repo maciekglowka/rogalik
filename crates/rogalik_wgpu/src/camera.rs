@@ -24,6 +24,13 @@ impl Camera for Camera2D {
     fn set_target(&mut self, target: Vector2f) {
         self.target = target;
     }
+    fn camera_to_world(&self, v: Vector2f) -> Vector2f {
+        // TODO solve quirks with physical vs logical size
+        Vector2f::new(
+            (-self.target.x + v.x) / self.scale,
+            (-self.target.y + v.y) / self.scale
+        )
+    }
 }
 impl Camera2D {
     pub fn new(vw: f32, vh: f32, scale: f32, target: Vector2f) -> Self {
