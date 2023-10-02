@@ -3,10 +3,7 @@ use winit::{
     window::Window,
 };
 
-pub fn set_canvas(window: &Window, width: u32, height: u32) {
-    use winit::dpi::PhysicalSize;
-    window.set_inner_size(PhysicalSize::new(width, height));
-
+pub fn set_canvas(window: &Window) {
     web_sys::window()
         .and_then(|win| win.document())
         .and_then(|doc| {

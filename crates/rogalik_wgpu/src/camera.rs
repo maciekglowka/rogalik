@@ -25,10 +25,10 @@ impl Camera for Camera2D {
         self.target = target;
     }
     fn camera_to_world(&self, v: Vector2f) -> Vector2f {
-        // TODO solve quirks with physical vs logical size
+        // in physical pixels
         Vector2f::new(
-            (-self.target.x + v.x) / self.scale,
-            (-self.target.y + v.y) / self.scale
+            (v.x - 0.5 * self.vw + self.target.x) / self.scale,
+            (v.y - 0.5 * self.vh + self.target.y) / self.scale,
         )
     }
 }
