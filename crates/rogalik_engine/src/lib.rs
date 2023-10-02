@@ -153,7 +153,7 @@ where
                         context.input.handle_mouse_button(button, state);
                     }
                     WindowEvent::CursorMoved { position, .. } => {
-                        context.input.handle_mouse_move(*position, context.window.inner_size());
+                        context.input.handle_mouse_move(*position, &context.window);
                     },
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                     WindowEvent::Resized(physical_size) => {

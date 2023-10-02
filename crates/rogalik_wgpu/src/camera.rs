@@ -27,8 +27,8 @@ impl Camera for Camera2D {
     fn camera_to_world(&self, v: Vector2f) -> Vector2f {
         // in physical pixels
         Vector2f::new(
-            (v.x - 0.5 * self.vw + self.target.x) / self.scale,
-            (v.y - 0.5 * self.vh + self.target.y) / self.scale,
+            (v.x - 0.5 * self.vw) / self.scale + self.target.x,
+            (v.y - 0.5 * self.vh) / self.scale + self.target.y,
         )
     }
 }
