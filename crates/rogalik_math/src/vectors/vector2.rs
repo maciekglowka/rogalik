@@ -3,8 +3,8 @@ use std::{
     ops::{Add, AddAssign, Div, Mul, Sub, SubAssign}
 };
 
-pub type Vector2I = Vector2<i32>;
-pub type Vector2F = Vector2<f32>;
+pub type Vector2i = Vector2<i32>;
+pub type Vector2f = Vector2<f32>;
 
 #[derive(Copy, Clone, Debug, Default, Ord, PartialOrd, PartialEq, Eq, Hash)]
 pub struct Vector2<T: Num + Copy> {
@@ -22,8 +22,8 @@ impl<T: Num + Copy> Vector2<T> {
 
 impl Vector2<i32> {
     pub const ZERO: Vector2<i32> = Vector2::<i32> { x: 0, y: 0 };
-    pub const UP: Vector2<i32> = Vector2::<i32> { x: 0, y: -1 };
-    pub const DOWN: Vector2<i32> = Vector2::<i32> { x: 0, y: 1 };
+    pub const UP: Vector2<i32> = Vector2::<i32> { x: 0, y: 1 };
+    pub const DOWN: Vector2<i32> = Vector2::<i32> { x: 0, y: -1 };
     pub const LEFT: Vector2<i32> = Vector2::<i32> { x: -1, y: 0 };
     pub const RIGHT: Vector2<i32> = Vector2::<i32> { x: 1, y: 0 };
     pub fn manhattan(&self, other: Vector2<i32>) -> i32 {
@@ -45,6 +45,7 @@ impl Vector2<f32> {
     pub const DOWN: Vector2<f32> = Vector2::<f32> { x: 0., y: -1. };
     pub const LEFT: Vector2<f32> = Vector2::<f32> { x: -1., y: 0. };
     pub const RIGHT: Vector2<f32> = Vector2::<f32> { x: 1., y: 0. };
+    pub const ZERO: Vector2<f32> = Vector2::<f32> { x: 0., y: 0.};
 
     pub fn len(&self) -> f32 {
         (self.x * self.x + self.y * self.y).sqrt()
@@ -53,9 +54,17 @@ impl Vector2<f32> {
         (self.dot(other) / (self.len() * other.len())).acos()
     }
     pub fn lerp(&self, other: &Self, t: f32) -> Self {
-        Vector2F::new(
+        Vector2f::new(
             lerp(self.x, other.x, t),
             lerp(self.y, other.y, t)
+        )
+    }
+    pub fn normalized(&self) -> Self {
+        let m = self.len();
+        if m == 0. { return Self::ZERO };
+        Vector2f::new(
+            self.x / m,
+            self.y / m
         )
     }
 }
@@ -104,9 +113,25 @@ impl<T: Num + Copy> Mul<T> for Vector2<T> {
     }
 }
 
-pub const ORTHO_DIRECTIONS: [Vector2I; 4] = [
-    Vector2I::UP, Vector2I::DOWN,
-    Vector2I::LEFT, Vector2I::RIGHT
+// generic reverse multiplication didn't work due to orphan rules
+impl Mul<Vector2<f32>> for f32 {
+    type Output = Vector2<f32>;
+
+    fn mul(self, other: Vector2<f32>) -> Vector2<f32> {
+        return Vector2::<f32>::new(other.x * self, other.y * self)
+    }
+}
+impl Mul<Vector2<i32>> for i32 {
+    type Output = Vector2<i32>;
+
+    fn mul(self, other: Vector2<i32>) -> Vector2<i32> {
+        return Vector2::<i32>::new(other.x * self, other.y * self)
+    }
+}
+
+pub const ORTHO_DIRECTIONS: [Vector2i; 4] = [
+    Vector2i::UP, Vector2i::DOWN,
+    Vector2i::LEFT, Vector2i::RIGHT
 ];
 
 fn lerp(a: f32, b: f32, t:f32) -> f32 {

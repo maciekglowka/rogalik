@@ -4,16 +4,16 @@ use std::{
     collections::{BinaryHeap, HashMap, HashSet, VecDeque}
 };
 
-use super::vector2::{ORTHO_DIRECTIONS, Vector2I};
+use super::vector2::{ORTHO_DIRECTIONS, Vector2i};
 
 // PATH FINDING
 
 pub fn find_path(
-    start: Vector2I,
-    end: Vector2I,
-    tiles: &HashSet<Vector2I>,
-    blockers: &HashSet<Vector2I>
-) -> Option<VecDeque<Vector2I>> {
+    start: Vector2i,
+    end: Vector2i,
+    tiles: &HashSet<Vector2i>,
+    blockers: &HashSet<Vector2i>
+) -> Option<VecDeque<Vector2i>> {
     
     let mut queue = BinaryHeap::new();
     queue.push(Node { v: start, cost: 0});
@@ -52,7 +52,7 @@ pub fn find_path(
 // helper struct for the path finder
 #[derive(Copy, Clone, Eq, PartialEq)]
 struct Node {
-    pub v: Vector2I,
+    pub v: Vector2i,
     pub cost: u32
 }
 
@@ -71,14 +71,14 @@ impl PartialOrd for Node {
 
 // LINE DRAWING
 
-pub fn get_line(a: Vector2I, b: Vector2I) -> Vec<Vector2I> {
+pub fn get_line(a: Vector2i, b: Vector2i) -> Vec<Vector2i> {
     let mut tiles = Vec::new();
     let n = line_dist(a, b);
     if n == 0 { return tiles };
     for i in 0..=n {
         let t = i as f32 / n as f32;
         let f = a.as_f32().lerp(&b.as_f32(), t);
-        tiles.push(Vector2I::new(
+        tiles.push(Vector2i::new(
             f.x.round() as i32,
             f.y.round() as i32,
         ));
@@ -87,7 +87,7 @@ pub fn get_line(a: Vector2I, b: Vector2I) -> Vec<Vector2I> {
     tiles
 }
 
-fn line_dist(a: Vector2I, b: Vector2I) -> i32 {
+fn line_dist(a: Vector2i, b: Vector2i) -> i32 {
     let dx = b.x - a.x;
     let dy = b.y - a.y;
     dx.abs().max(dy.abs())
@@ -98,11 +98,11 @@ fn line_dist(a: Vector2I, b: Vector2I) -> i32 {
 // not heavily tested and rather permissive
 
 pub fn visible_tiles(
-    origin: Vector2I,
-    tiles: &HashSet<Vector2I>,
-    blockers: &HashSet<Vector2I>,
+    origin: Vector2i,
+    tiles: &HashSet<Vector2i>,
+    blockers: &HashSet<Vector2i>,
     range: u32,
-) -> HashSet<Vector2I> {
+) -> HashSet<Vector2i> {
     let mut visible = Vec::new();
 
     for octant in 0..8 {
@@ -123,30 +123,30 @@ pub fn visible_tiles(
     HashSet::from_iter(visible)
 }
 
-fn transform_octant(v: Vector2I, octant: u32) -> Vector2I {
+fn transform_octant(v: Vector2i, octant: u32) -> Vector2i {
     match octant {
-        0 => Vector2I::new(v.y, -v.x),
-        1 => Vector2I::new(v.x, -v.y),
-        2 => Vector2I::new(v.x, v.y),
-        3 => Vector2I::new(v.y, v.x),
-        4 => Vector2I::new(-v.y, v.x),
-        5 => Vector2I::new(-v.x, v.y),
-        6 => Vector2I::new(-v.x, -v.y),
-        7 => Vector2I::new(-v.y, -v.x),
-        _ => Vector2I::ZERO
+        0 => Vector2i::new(v.y, -v.x),
+        1 => Vector2i::new(v.x, -v.y),
+        2 => Vector2i::new(v.x, v.y),
+        3 => Vector2i::new(v.y, v.x),
+        4 => Vector2i::new(-v.y, v.x),
+        5 => Vector2i::new(-v.x, v.y),
+        6 => Vector2i::new(-v.x, -v.y),
+        7 => Vector2i::new(-v.y, -v.x),
+        _ => Vector2i::ZERO
     }
 }
 
 fn visible_octant(
-    origin: Vector2I,
-    tiles: &HashSet<Vector2I>,
-    blockers: &HashSet<Vector2I>,
+    origin: Vector2i,
+    tiles: &HashSet<Vector2i>,
+    blockers: &HashSet<Vector2i>,
     range: i32,
     start: i32,
     mut left_slope: f32,
     right_slope: f32,
     octant: u32
-) -> Vec<Vector2I> {
+) -> Vec<Vector2i> {
     let mut visible = vec![origin];
     if left_slope >= right_slope { return visible };
 
@@ -155,7 +155,7 @@ fn visible_octant(
         let ex = (y as f32 * right_slope).round() as i32;
 
         for x in sx..=ex {
-            let v = origin + transform_octant(Vector2I::new(x, y), octant);
+            let v = origin + transform_octant(Vector2i::new(x, y), octant);
             if origin.manhattan(v) > range { continue; }
             if !tiles.contains(&v) { continue; }
             visible.push(v);
