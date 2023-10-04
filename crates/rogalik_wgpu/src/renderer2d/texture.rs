@@ -1,5 +1,7 @@
 use image::GenericImageView;
 
+use rogalik_math::vectors::Vector2i;
+
 pub struct Texture2d {
     bind_group: wgpu::BindGroup,
     width: u32,
@@ -18,6 +20,9 @@ impl Texture2d {
     }
     pub fn get_bind_group(&self) -> &wgpu::BindGroup {
         &self.bind_group
+    }
+    pub fn size(&self) -> Vector2i {
+        Vector2i::new(self.width as i32, self.height as i32)
     }
 }
 

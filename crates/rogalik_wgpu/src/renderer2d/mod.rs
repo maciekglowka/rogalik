@@ -87,6 +87,7 @@ impl Renderer2d {
         let texture_id = self.load_texture(bytes, device, queue);
         let font = font::Font::new(
             texture_id,
+            self.textures[texture_id.0].size(),
             rows,
             cols,
         );
@@ -130,6 +131,20 @@ impl Renderer2d {
         for s in self.fonts[font_id.0].get_sprites(text, camera_id, position, size, params) {
             self.add_to_queue(&s.0, &s.1, s.2);
         }
+    }
+    pub fn text_dimensions(
+        &self,
+        text: &str,
+        font_id: ResourceId,
+        size: f32
+    ) -> Vector2f {
+        let dim = self.fonts[font_id.0].get_character_size();
+        let ratio = dim.x / dim.y;
+        let l = text.chars().count();
+        size * Vector2f::new(
+            ratio * l as f32,
+            1.
+        )
     }
     pub fn render(
         &mut self,

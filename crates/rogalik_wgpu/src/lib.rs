@@ -86,6 +86,9 @@ impl GraphicsContext for WgpuContext {
             params
         );
     }
+    fn text_dimensions(&self, font_id: ResourceId, text: &str, size: f32) -> Vector2f {
+        self.renderer2d.text_dimensions(text, font_id, size)
+    }
     fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId {
         let id = ResourceId(self.cameras.len());
         let camera = camera::Camera2D::new(self.config.width as f32, self.config.height as f32, scale, target);

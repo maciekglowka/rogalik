@@ -1,23 +1,33 @@
 use rogalik_engine::{ResourceId, Params2d};
-use rogalik_math::vectors::Vector2f;
+use rogalik_math::vectors::{Vector2i, Vector2f};
 
 use crate::structs::Vertex;
 use super::BindParams;
 use super::atlas::SpriteAtlas;
 
 pub struct Font {
-    atlas: SpriteAtlas
+    atlas: SpriteAtlas,
+    character_size: Vector2f
 }
 impl Font {
     pub fn new(
         texture_id: ResourceId,
+        texture_size: Vector2i,
         rows: usize,
         cols: usize,
     ) -> Self {
         let atlas = SpriteAtlas::new(texture_id, rows, cols);
+        let character_size = Vector2f::new(
+            texture_size.x as f32 / cols as f32,
+            texture_size.y as f32 / rows as f32,
+        );
         Self {
-            atlas
+            atlas,
+            character_size
         }
+    }
+    pub fn get_character_size(&self) -> Vector2f {
+        self.character_size
     }
     pub fn get_sprites(
         &self,
