@@ -122,23 +122,31 @@ impl Renderer2d {
     pub fn draw_text(
         &mut self,
         text: &str,
-        font_id: ResourceId,
+        font_id: Option<ResourceId>,
         camera_id: ResourceId,
         position: Vector2f,
         size: f32,
         params: Params2d
     ) {
-        for s in self.fonts[font_id.0].get_sprites(text, camera_id, position, size, params) {
+        let id = match font_id {
+            Some(id) => id.0,
+            None => 0
+        };
+        for s in self.fonts[id].get_sprites(text, camera_id, position, size, params) {
             self.add_to_queue(&s.0, &s.1, s.2);
         }
     }
     pub fn text_dimensions(
         &self,
         text: &str,
-        font_id: ResourceId,
+        font_id: Option<ResourceId>,
         size: f32
     ) -> Vector2f {
-        let dim = self.fonts[font_id.0].get_character_size();
+        let id = match font_id {
+            Some(id) => id.0,
+            None => 0
+        };
+        let dim = self.fonts[id].get_character_size();
         let ratio = dim.x / dim.y;
         let l = text.chars().count();
         size * Vector2f::new(

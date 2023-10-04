@@ -22,7 +22,7 @@ impl GraphicsContext for WgpuContext {
         create_context(window)
     }
     fn set_clear_color(&mut self, color: rogalik_engine::Color) {
-        let col = color.as_f32();
+        let col = color.as_srgb();
         self.renderer2d.set_clear_color(wgpu::Color { 
             r: col[0] as f64, g: col[1] as f64, b: col[2] as f64, a: col[3] as f64 
         });
@@ -71,7 +71,7 @@ impl GraphicsContext for WgpuContext {
     }
     fn draw_text(
             &mut self,
-            font_id: ResourceId,
+            font_id: Option<ResourceId>,
             text: &str,
             position: Vector2f,
             size: f32,
@@ -86,7 +86,7 @@ impl GraphicsContext for WgpuContext {
             params
         );
     }
-    fn text_dimensions(&self, font_id: ResourceId, text: &str, size: f32) -> Vector2f {
+    fn text_dimensions(&self, font_id: Option<ResourceId>, text: &str, size: f32) -> Vector2f {
         self.renderer2d.text_dimensions(text, font_id, size)
     }
     fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId {

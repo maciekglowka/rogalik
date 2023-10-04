@@ -37,13 +37,13 @@ pub trait GraphicsContext {
     );
     fn draw_text(
         &mut self,
-        font_id: ResourceId,
+        font_id: Option<ResourceId>,
         text: &str,
         position: Vector2f,
         size: f32,
         params: Params2d
     );
-    fn text_dimensions(&self, font_id: ResourceId, text: &str, size: f32) -> Vector2f;
+    fn text_dimensions(&self, font_id: Option<ResourceId>, text: &str, size: f32) -> Vector2f;
     fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId;
     fn set_camera(&mut self, id: ResourceId);
     fn get_camera(&self, id: ResourceId) -> Option<&dyn Camera>;
