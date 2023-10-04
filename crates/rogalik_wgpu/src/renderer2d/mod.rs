@@ -1,4 +1,5 @@
 // use std::cell::RefCell;
+use std::collections::HashMap;
 
 use rogalik_engine::{ResourceId, Params2d};
 use rogalik_math::vectors::Vector2f;
@@ -13,7 +14,9 @@ mod texture;
 
 pub struct Renderer2d {
     atlases: Vec<atlas::SpriteAtlas>,
+    atlas_map: HashMap<String, ResourceId>,
     fonts: Vec<font::Font>,
+    font_map: HashMap<String, ResourceId>,
     render_pass: sprite_pass::SpritePass,
     vertex_queue: Vec<Vertex>,
     triangle_queue: Vec<Triangle>,
@@ -32,7 +35,9 @@ impl Renderer2d {
         Self {
             render_pass,
             atlases: Vec::new(),
+            atlas_map: HashMap::new(),
             fonts: Vec::new(),
+            font_map: HashMap::new(),
             vertex_queue: Vec::new(),
             triangle_queue: Vec::new(),
             textures: Vec::new()
@@ -59,30 +64,36 @@ impl Renderer2d {
     }
     pub fn load_atlas(
         &mut self,
+        name: &str,
         bytes: &[u8],
         rows: usize,
         cols: usize,
+        padding: Option<(f32, f32)>,
         device: &wgpu::Device,
         queue: &wgpu::Queue
-    ) -> ResourceId {
+    ) {
         let id = ResourceId(self.atlases.len());
         let texture_id = self.load_texture(bytes, device, queue);
         let atlas = atlas::SpriteAtlas::new(
             texture_id,
+            self.textures[texture_id.0].size(),
             rows,
             cols,
+            padding
         );
         self.atlases.push(atlas);
-        id
+        self.atlas_map.insert(name.to_string(), id);
     }
     pub fn load_font(
         &mut self,
+        name: &str,
         bytes: &[u8],
         rows: usize,
         cols: usize,
+        padding: Option<(f32, f32)>,
         device: &wgpu::Device,
         queue: &wgpu::Queue
-    ) -> ResourceId {
+    ) {
         let id = ResourceId(self.fonts.len());
         let texture_id = self.load_texture(bytes, device, queue);
         let font = font::Font::new(
@@ -90,9 +101,10 @@ impl Renderer2d {
             self.textures[texture_id.0].size(),
             rows,
             cols,
+            padding
         );
         self.fonts.push(font);
-        id
+        self.font_map.insert(name.to_string(), id);
     }
     fn add_to_queue(&mut self, vertices: &[Vertex], indices: &[u16], params: BindParams) {
         // TODO add error if indices are not divisible by 3
@@ -109,44 +121,39 @@ impl Renderer2d {
     pub fn draw_atlas_sprite(
         &mut self,
         index: usize,
-        atlas_id: ResourceId,
+        atlas: &str,
         camera_id: ResourceId,
         position: Vector2f,
         size: Vector2f,
         params: Params2d
     ) {
         // TODO handle errors
-        let s = self.atlases[atlas_id.0].get_sprite(index, camera_id, position, size, params);
+        let id = self.atlas_map.get(atlas).expect(&format!("Unknown atlas: {}", atlas));
+        let s = self.atlases[id.0].get_sprite(index, camera_id, position, size, params);
         self.add_to_queue(&s.0, &s.1, s.2);
     }
     pub fn draw_text(
         &mut self,
+        font: &str,
         text: &str,
-        font_id: Option<ResourceId>,
         camera_id: ResourceId,
         position: Vector2f,
         size: f32,
         params: Params2d
     ) {
-        let id = match font_id {
-            Some(id) => id.0,
-            None => 0
-        };
-        for s in self.fonts[id].get_sprites(text, camera_id, position, size, params) {
+        let id = self.font_map.get(font).expect(&format!("Unknown font: {}", font));
+        for s in self.fonts[id.0].get_sprites(text, camera_id, position, size, params) {
             self.add_to_queue(&s.0, &s.1, s.2);
         }
     }
     pub fn text_dimensions(
         &self,
+        font: &str,
         text: &str,
-        font_id: Option<ResourceId>,
         size: f32
     ) -> Vector2f {
-        let id = match font_id {
-            Some(id) => id.0,
-            None => 0
-        };
-        let dim = self.fonts[id].get_character_size();
+        let id = self.font_map.get(font).expect(&format!("Unknown font: {}", font));
+        let dim = self.fonts[id.0].get_character_size();
         let ratio = dim.x / dim.y;
         let l = text.chars().count();
         size * Vector2f::new(

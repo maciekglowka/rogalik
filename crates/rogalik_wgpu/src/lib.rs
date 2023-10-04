@@ -46,15 +46,15 @@ impl GraphicsContext for WgpuContext {
             &self.cameras
         );
     }
-    fn load_sprite_atlas(&mut self, bytes: &[u8], rows: usize, cols: usize) -> ResourceId {
-        self.renderer2d.load_atlas(bytes, rows, cols, &self.device, &self.queue)
+    fn load_sprite_atlas(&mut self, name: &str, bytes: &[u8], rows: usize, cols: usize, padding: Option<(f32, f32)>) {
+        self.renderer2d.load_atlas(name, bytes, rows, cols, padding, &self.device, &self.queue);
     }
-    fn load_font(&mut self, bytes: &[u8], rows: usize, cols: usize) -> ResourceId {
-        self.renderer2d.load_font(bytes, rows, cols, &self.device, &self.queue)
+    fn load_font(&mut self, name: &str, bytes: &[u8], rows: usize, cols: usize, padding: Option<(f32, f32)>) {
+        self.renderer2d.load_font(name, bytes, rows, cols, padding, &self.device, &self.queue);
     }
     fn draw_atlas_sprite(
             &mut self,
-            atlas_id: ResourceId,
+            atlas: &str,
             index: usize,
             position: rogalik_math::vectors::Vector2f,
             size: rogalik_math::vectors::Vector2f,
@@ -62,7 +62,7 @@ impl GraphicsContext for WgpuContext {
         ) {
         self.renderer2d.draw_atlas_sprite(
             index,
-            atlas_id,
+            atlas,
             self.current_camera_id,
             position,
             size,
@@ -71,23 +71,23 @@ impl GraphicsContext for WgpuContext {
     }
     fn draw_text(
             &mut self,
-            font_id: Option<ResourceId>,
+            font: &str,
             text: &str,
             position: Vector2f,
             size: f32,
             params: Params2d
         ) {
         self.renderer2d.draw_text(
+            font,
             text,
-            font_id,
             self.current_camera_id,
             position,
             size,
             params
         );
     }
-    fn text_dimensions(&self, font_id: Option<ResourceId>, text: &str, size: f32) -> Vector2f {
-        self.renderer2d.text_dimensions(text, font_id, size)
+    fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f {
+        self.renderer2d.text_dimensions(font, text, size)
     }
     fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId {
         let id = ResourceId(self.cameras.len());
@@ -97,6 +97,9 @@ impl GraphicsContext for WgpuContext {
     }
     fn set_camera(&mut self, id: ResourceId) {
         self.current_camera_id = id;
+    }
+    fn get_current_camera(&self) -> &dyn rogalik_engine::traits::Camera {
+        &self.cameras[self.current_camera_id.0]
     }
     fn get_camera(&self, id: ResourceId) -> Option<&dyn rogalik_engine::traits::Camera>{
         Some(self.cameras.get(id.0)?)

@@ -15,12 +15,17 @@ impl Font {
         texture_size: Vector2i,
         rows: usize,
         cols: usize,
+        padding: Option<(f32, f32)>
     ) -> Self {
-        let atlas = SpriteAtlas::new(texture_id, rows, cols);
-        let character_size = Vector2f::new(
-            texture_size.x as f32 / cols as f32,
-            texture_size.y as f32 / rows as f32,
+        let atlas = SpriteAtlas::new(
+            texture_id,
+            texture_size,
+            rows,
+            cols,
+            padding
         );
+        let (sp_w, sp_h) = super::atlas::sprite_pixel_size(texture_size, rows, cols, padding);
+        let character_size = Vector2f::new(sp_w, sp_h);
         Self {
             atlas,
             character_size

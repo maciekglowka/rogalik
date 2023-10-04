@@ -1,6 +1,4 @@
-use winit::{
-    window::Window
-};
+use winit::window::Window;
 use rogalik_math::vectors::Vector2f;
 
 use crate::structs::{Color, Params2d, ResourceId};
@@ -17,19 +15,23 @@ pub trait GraphicsContext {
     fn render(&mut self);
     fn load_sprite_atlas(
         &mut self,
+        name: &str,
         bytes: &[u8],
         rows: usize,
-        cols: usize
-    ) -> ResourceId;
+        cols: usize,
+        padding: Option<(f32, f32)>
+    );
     fn load_font(
         &mut self,
+        name: &str,
         bytes: &[u8],
         rows: usize,
-        cols: usize
-    ) -> ResourceId;
+        cols: usize,
+        padding: Option<(f32, f32)>
+    );
     fn draw_atlas_sprite(
         &mut self,
-        atlas_id: ResourceId,
+        atlas: &str,
         index: usize,
         position: Vector2f,
         size: Vector2f,
@@ -37,16 +39,17 @@ pub trait GraphicsContext {
     );
     fn draw_text(
         &mut self,
-        font_id: Option<ResourceId>,
+        font: &str,
         text: &str,
         position: Vector2f,
         size: f32,
         params: Params2d
     );
-    fn text_dimensions(&self, font_id: Option<ResourceId>, text: &str, size: f32) -> Vector2f;
+    fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f;
     fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId;
     fn set_camera(&mut self, id: ResourceId);
     fn get_camera(&self, id: ResourceId) -> Option<&dyn Camera>;
+    fn get_current_camera(&self) -> &dyn Camera;
     fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut dyn Camera>;
     // fn get_viewport_size(&self) -> Vector2f;
 }
