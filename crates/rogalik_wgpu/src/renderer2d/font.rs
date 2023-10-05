@@ -5,6 +5,7 @@ use crate::structs::Vertex;
 use super::BindParams;
 use super::atlas::SpriteAtlas;
 
+#[derive(Clone, Copy, Debug)]
 pub struct Font {
     atlas: SpriteAtlas,
     character_size: Vector2f
@@ -42,15 +43,15 @@ impl Font {
         size: f32,
         params: Params2d
     ) -> Vec<([Vertex; 4], [u16; 6], BindParams)> {
-        // TODO calculate font proportions
         // TODO take flip_h into account?
         let mut offset = Vector2f::new(0., 0.);
         let mut sprites = Vec::new();
+        let ratio = self.character_size.x / self.character_size.y;
         for c in text.chars() {
             sprites.push(
-                self.atlas.get_sprite(c as usize, camera_id, position + offset, Vector2f::new(size, size), params)
+                self.atlas.get_sprite(c as usize, camera_id, position + offset, Vector2f::new(ratio * size, size), params)
             );
-            offset += Vector2f::new(size, 0.);
+            offset += Vector2f::new(ratio * size, 0.);
         }
         sprites
     }

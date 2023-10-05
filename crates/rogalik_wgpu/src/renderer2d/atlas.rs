@@ -4,7 +4,7 @@ use rogalik_engine::{ResourceId, Params2d};
 use crate::structs::Vertex;
 use super::BindParams;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct SpriteAtlas {
     rows: usize,
     cols: usize,
@@ -81,11 +81,11 @@ pub fn sprite_pixel_size(
     cols: usize,
     padding: Option<(f32, f32)>
 ) -> (f32,f32) {
-    let grid_width = texture_size.x as f32 / cols as f32;
-    let grid_height = texture_size.y as f32 / rows as f32;
+    let grid_width = (texture_size.x as f32) / (cols as f32);
+    let grid_height = (texture_size.y as f32) / (rows as f32);
 
     match padding {
         None => (grid_width, grid_height),
-        Some((x, y)) => (grid_width - x, grid_height - x)
+        Some((x, y)) => (grid_width - x, grid_height - y)
     }
 }
