@@ -21,17 +21,18 @@ pub struct Context<G: GraphicsContext> {
     pub input: input::InputContext,
     pub time: time::Time,
     pub window: Window,
+    inner_size: PhysicalSize<u32>,
+    scale_factor: f64
 }
 impl<G: GraphicsContext> Context<G> {
     pub fn get_physical_size(&self) -> rogalik_math::vectors::Vector2f {
-        let size = self.window.inner_size();
         rogalik_math::vectors::vector2::Vector2f::new(
-            size.width as f32, size.height as f32
+            self.inner_size.width as f32, self.inner_size.height as f32
         )
     }
     pub fn get_logical_size(&self) -> rogalik_math::vectors::Vector2f {
-        let size: LogicalSize<f32> = self.window.inner_size()
-            .to_logical(self.window.scale_factor());
+        let size: LogicalSize<f32> = self.inner_size
+            .to_logical(self.scale_factor);
         rogalik_math::vectors::vector2::Vector2f::new(
             size.width, size.height
         )
@@ -101,7 +102,9 @@ impl EngineBuilder {
             graphics,
             input: input::InputContext::new(),
             time: time::Time::new(),
-            window
+            inner_size: window.inner_size(),
+            scale_factor: window.scale_factor(),
+            window,
         };
         Engine {
             event_loop, game, context
@@ -157,9 +160,13 @@ where
                     },
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                     WindowEvent::Resized(physical_size) => {
+                        context.inner_size = context.window.inner_size();
+                        context.scale_factor = context.window.scale_factor();
                         context.graphics.resize(physical_size.width, physical_size.height);
                     }
                     WindowEvent::ScaleFactorChanged { new_inner_size, ..} => {
+                        context.inner_size = context.window.inner_size();
+                        context.scale_factor = context.window.scale_factor();
                         context.graphics.resize(new_inner_size.width, new_inner_size.height);
                     }
                     _ => {}
