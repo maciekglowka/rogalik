@@ -129,8 +129,14 @@ impl Renderer2d {
     ) {
         // TODO handle errors
         let id = self.atlas_map.get(atlas).expect(&format!("Unknown atlas: {}", atlas));
-        let s = self.atlases[id.0].get_sprite(index, camera_id, position, size, params);
-        self.add_to_queue(&s.0, &s.1, s.2);
+
+        if let Some(_) = params.slice {
+            let s = self.atlases[id.0].get_sliced_sprite(index, camera_id, position, size, params);
+            self.add_to_queue(&s.0, &s.1, s.2);
+        } else {
+            let s = self.atlases[id.0].get_sprite(index, camera_id, position, size, params);
+            self.add_to_queue(&s.0, &s.1, s.2);
+        }
     }
     pub fn draw_text(
         &mut self,

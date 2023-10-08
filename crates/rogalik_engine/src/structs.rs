@@ -1,3 +1,4 @@
+use rogalik_math::vectors::Vector2f;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct ResourceId(pub usize);
@@ -34,7 +35,9 @@ impl Default for Color {
 pub struct Params2d {
     pub color: Color,
     pub flip_x: bool,
-    pub flip_y: bool
+    pub flip_y: bool,
+    // slice size in px, base sprite size
+    pub slice: Option<(usize, Vector2f)>
 }
 
 #[inline(always)]
