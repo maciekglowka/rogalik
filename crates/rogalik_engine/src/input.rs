@@ -1,12 +1,18 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize, LogicalSize},
-    event::{ElementState, KeyboardInput},
+    event::{ElementState, KeyboardInput, TouchPhase},
     window::Window
 };
 
 pub use winit::event::{MouseButton, VirtualKeyCode};
 use rogalik_math::vectors::Vector2f;
+
+#[derive(Clone, Copy, Debug)]
+pub struct Touch {
+    pub position: Vector2f,
+    phase: TouchPhase
+}
 
 pub struct InputContext {
     keys_down: HashSet<VirtualKeyCode>,
@@ -16,7 +22,9 @@ pub struct InputContext {
     mouse_buttons_pressed: HashSet<MouseButton>,
     mouse_buttons_released: HashSet<MouseButton>,
     mouse_physical_position: Vector2f,
-    mouse_logical_position: Vector2f
+    // mouse_logical_position: Vector2f,
+    touches: HashMap<u64, Touch>,
+    touch_click: bool
 }
 impl InputContext {
     pub fn new() -> Self {
@@ -28,7 +36,9 @@ impl InputContext {
             mouse_buttons_pressed: HashSet::new(),
             mouse_buttons_released: HashSet::new(),
             mouse_physical_position: Vector2f::ZERO,
-            mouse_logical_position: Vector2f::ZERO,
+            // mouse_logical_position: Vector2f::ZERO,
+            touches: HashMap::new(),
+            touch_click: true
         }
     }
     pub fn clear(&mut self) {
@@ -36,19 +46,22 @@ impl InputContext {
         self.keys_released = HashSet::new();
         self.mouse_buttons_pressed = HashSet::new();
         self.mouse_buttons_released = HashSet::new();
+        self.touches.retain(|_, t| t.phase != TouchPhase::Ended && t.phase != TouchPhase::Cancelled);
     }
-    pub fn handle_mouse_move(&mut self, position: PhysicalPosition<f64>, window: &Window) {
-        let window_physical = window.inner_size();
-        let window_logical: LogicalSize<f32> = window_physical.to_logical(window.scale_factor());
-        let mouse_logical = position.to_logical(window.scale_factor());
-        self.mouse_physical_position = Vector2f::new(
+    fn calculate_position(&self, position: PhysicalPosition<f64>, window_size: &PhysicalSize<u32>) -> Vector2f {
+        Vector2f::new(
             position.x as f32,
-            window_physical.height as f32 - position.y as f32,
-        );
-        self.mouse_logical_position = Vector2f::new(
-            mouse_logical.x,
-            window_logical.height - mouse_logical.y
-        );
+            window_size.height as f32 - position.y as f32,
+        )
+    }
+    pub fn handle_mouse_move(&mut self, position: PhysicalPosition<f64>, window_size: &PhysicalSize<u32>) {
+        // let window_logical: LogicalSize<f32> = window_size.to_logical(scale);
+        // let mouse_logical = position.to_logical(scale);
+        self.mouse_physical_position = self.calculate_position(position, window_size);
+        // self.mouse_logical_position = Vector2f::new(
+        //     mouse_logical.x,
+        //     window_logical.height - mouse_logical.y
+        // );
     }
     pub fn handle_keyboard(&mut self, input: &KeyboardInput) {
         if let Some(key) = input.virtual_keycode {
@@ -80,12 +93,32 @@ impl InputContext {
             },
         };
     }
+    pub fn handle_touch(
+        &mut self,
+        id: u64,
+        phase: TouchPhase,
+        position: PhysicalPosition<f64>,
+        window_size: &PhysicalSize<u32>,
+    ) {
+        self.touches.insert(id, Touch { phase, position: self.calculate_position(position, window_size) });
+
+        if self.touch_click {
+            match phase {
+                TouchPhase::Started => {
+                    self.handle_mouse_button(&MouseButton::Left, &ElementState::Pressed);
+                    self.handle_mouse_move(position, window_size);
+                },
+                TouchPhase::Ended => self.handle_mouse_button(&MouseButton::Left, &ElementState::Released),
+                _ => ()
+            };
+        }
+    }
     pub fn get_mouse_physical_position(&self) -> Vector2f {
         self.mouse_physical_position
     }
-    pub fn get_mouse_logical_position(&self) -> Vector2f {
-        self.mouse_logical_position
-    }
+    // pub fn get_mouse_logical_position(&self) -> Vector2f {
+    //     self.mouse_logical_position
+    // }
     pub fn is_key_down(&self, code: VirtualKeyCode) -> bool {
         self.keys_down.contains(&code)
     }
@@ -103,5 +136,8 @@ impl InputContext {
     }
     pub fn is_mouse_button_released(&self, button: MouseButton) -> bool {
         self.mouse_buttons_released.contains(&button)
+    }
+    pub fn get_touches(&self) -> &HashMap<u64, Touch> {
+        &self.touches
     }
 }

@@ -126,8 +126,8 @@ impl EngineBuilder {
         use winit::event_loop::EventLoopBuilder;
 
         android_logger::init_once(android_logger::Config::default()
-            .with_max_level(log::LevelFilter::Debug)
-            .with_tag("tower")
+            .with_max_level(log::LevelFilter::Info)
+            .with_tag("Rogalik")
         );
 
         // set window
@@ -152,7 +152,7 @@ impl EngineBuilder {
             .expect("Can't create window!");
         
         log::info!("Creating graphics context");
-        let graphics = GraphicsContext::new(&window);
+        let graphics = GraphicsContext::new();
         log::info!("Graphics created");
         let context = Context {
             graphics,
@@ -213,7 +213,10 @@ where
                         context.input.handle_mouse_button(button, state);
                     }
                     WindowEvent::CursorMoved { position, .. } => {
-                        context.input.handle_mouse_move(*position, &context.window);
+                        context.input.handle_mouse_move(*position, &context.inner_size);
+                    },
+                    WindowEvent::Touch(winit::event::Touch { phase, location, id, .. }) => {
+                        context.input.handle_touch(*id, *phase, *location, &context.inner_size);
                     },
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                     WindowEvent::Resized(physical_size) => {
