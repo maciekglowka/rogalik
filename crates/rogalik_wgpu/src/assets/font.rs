@@ -2,18 +2,17 @@ use rogalik_engine::{ResourceId, Params2d};
 use rogalik_math::vectors::{Vector2i, Vector2f};
 
 use crate::structs::Vertex;
-use super::BindParams;
 use super::atlas::SpriteAtlas;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Font {
-    atlas: SpriteAtlas,
+    pub atlas: SpriteAtlas,
     character_size: Vector2f
 }
 impl Font {
     pub fn new(
         texture_id: ResourceId,
-        texture_size: Vector2i,
+        texture_size: (u32, u32),
         rows: usize,
         cols: usize,
         padding: Option<(f32, f32)>
@@ -25,7 +24,7 @@ impl Font {
             cols,
             padding
         );
-        let (sp_w, sp_h) = super::atlas::sprite_pixel_size(texture_size, rows, cols, padding);
+        let (sp_w, sp_h) = super::atlas::sprite_pixel_size(texture_size.0, texture_size.1, rows, cols, padding);
         let character_size = Vector2f::new(sp_w, sp_h);
         Self {
             atlas,
@@ -42,7 +41,7 @@ impl Font {
         position: Vector2f,
         size: f32,
         params: Params2d
-    ) -> Vec<([Vertex; 4], [u16; 6], BindParams)> {
+    ) -> Vec<([Vertex; 4], [u16; 6])> {
         // TODO take flip_h into account?
         let mut offset = Vector2f::new(0., 0.);
         let mut sprites = Vec::new();
@@ -54,5 +53,18 @@ impl Font {
             offset += Vector2f::new(ratio * size, 0.);
         }
         sprites
+    }
+    pub fn text_dimensions(
+        &self,
+        text: &str,
+        size: f32
+    ) -> Vector2f {
+        let dim = self.character_size;
+        let ratio = dim.x / dim.y;
+        let l = text.chars().count();
+        size * Vector2f::new(
+            ratio * l as f32,
+            1.
+        )
     }
 }

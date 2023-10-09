@@ -7,8 +7,9 @@ edition = "2021"
 members = ["crates/*"]
 
 [workspace.dependencies]
+log = "0.4"
 pollster = "0.3"
-winit = "0.28"
+winit = { version = "0.28", features = [ "android-native-activity" ] }
 
 [dependencies]
 rogalik_engine = { path = "crates/rogalik_engine" }

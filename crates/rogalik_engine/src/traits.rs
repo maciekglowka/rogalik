@@ -1,6 +1,7 @@
 use winit::window::Window;
 use rogalik_math::vectors::Vector2f;
 
+use crate::EngineError;
 use crate::structs::{Color, Params2d, ResourceId};
 
 pub trait Game<G: GraphicsContext> {
@@ -9,7 +10,8 @@ pub trait Game<G: GraphicsContext> {
 }
 
 pub trait GraphicsContext {
-    fn new(window: &Window) -> Self;
+    fn new() -> Self;
+    fn create_context(&mut self, window: &Window);
     fn set_clear_color(&mut self, color: Color);
     fn resize(&mut self, w: u32, h: u32);
     fn render(&mut self);
@@ -36,7 +38,7 @@ pub trait GraphicsContext {
         position: Vector2f,
         size: Vector2f,
         params: Params2d
-    );
+    ) -> Result<(), EngineError>;
     fn draw_text(
         &mut self,
         font: &str,
@@ -44,7 +46,7 @@ pub trait GraphicsContext {
         position: Vector2f,
         size: f32,
         params: Params2d
-    );
+    ) -> Result<(), EngineError>;
     fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f;
     fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId;
     fn set_camera(&mut self, id: ResourceId);

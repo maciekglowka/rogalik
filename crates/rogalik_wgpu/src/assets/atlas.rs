@@ -1,41 +1,41 @@
 use rogalik_math::vectors::{Vector2f, Vector2i};
 
-use rogalik_engine::{ResourceId, Params2d, Color};
+use rogalik_engine::{ResourceId, Params2d};
 use crate::structs::Vertex;
-use super::BindParams;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct SpriteAtlas {
+    pub texture_id: ResourceId,
     rows: usize,
     cols: usize,
-    pub texture_id: ResourceId,
+    padding: Option<(f32, f32)>,
     pub u_step: f32,
     pub v_step: f32,
     u_size: f32,
     v_size: f32,
     sprite_w: f32,
-    sprite_h: f32
+    sprite_h: f32,
 }
 impl SpriteAtlas {
     pub fn new(
         texture_id: ResourceId,
-        texture_size: Vector2i,
+        texture_size: (u32, u32),
         rows: usize,
         cols: usize,
         padding: Option<(f32, f32)>
     ) -> Self {
-        let (sp_w, sp_h) = sprite_pixel_size(texture_size, rows, cols, padding);
-        
+        let (sp_w, sp_h) = sprite_pixel_size(texture_size.0, texture_size.1, rows, cols, padding);
         Self {
+            texture_id,
             rows,
             cols,
-            texture_id,
+            padding,
             u_step: 1.0 / rows as f32,
             v_step: 1.0 / cols as f32,
-            u_size: sp_w / texture_size.x as f32,
-            v_size: sp_h / texture_size.y as f32,
+            u_size: sp_w / texture_size.0 as f32,
+            v_size: sp_h / texture_size.1 as f32,
             sprite_w: sp_w,
-            sprite_h: sp_h,
+            sprite_h: sp_h
         }
     }
     pub fn get_sprite(
@@ -45,7 +45,7 @@ impl SpriteAtlas {
         position: Vector2f,
         size: Vector2f,
         params: Params2d
-    ) -> ([Vertex; 4], [u16; 6], BindParams) {
+    ) -> ([Vertex; 4], [u16; 6]) {
         let row = index / self.cols;
         let col = index % self.cols;
         let u = self.u_step * col as f32;
@@ -75,17 +75,16 @@ impl SpriteAtlas {
             Vertex { position: [position.x, position.y + size.y, 0.0], color, tex_coords: uvs[3] }
         ];
         let indices = [0, 1, 2, 0, 2, 3];
-        (vertices, indices, BindParams { texture_id: self.texture_id, camera_id })
+        (vertices, indices)
     }
 
     pub fn get_sliced_sprite(
         &self, 
         index: usize,
-        camera_id: ResourceId,
         position: Vector2f,
         size: Vector2f,
         params: Params2d
-    ) -> ([Vertex; 16], [u16; 54], BindParams) {
+    ) -> ([Vertex; 16], [u16; 54]) {
         let row = index / self.cols;
         let col = index % self.cols;
         let u = self.u_step * col as f32;
@@ -133,18 +132,19 @@ impl SpriteAtlas {
             6, 2, 7, 2, 3, 7
         ];
 
-        (vertices, indices, BindParams { texture_id: self.texture_id, camera_id })
+        (vertices, indices)
     }
 }
 
 pub fn sprite_pixel_size(
-    texture_size: Vector2i,
+    texture_w: u32,
+    texture_h: u32,
     rows: usize,
     cols: usize,
     padding: Option<(f32, f32)>
 ) -> (f32,f32) {
-    let grid_width = (texture_size.x as f32) / (cols as f32);
-    let grid_height = (texture_size.y as f32) / (rows as f32);
+    let grid_width = (texture_w as f32) / (cols as f32);
+    let grid_height = (texture_h as f32) / (rows as f32);
 
     match padding {
         None => (grid_width, grid_height),

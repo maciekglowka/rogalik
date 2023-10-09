@@ -4,7 +4,10 @@ use winit::{
     window::{Window, WindowBuilder},
     dpi::{LogicalSize, PhysicalSize}
 };
+#[cfg(target_os = "android")]
+pub use winit::platform::android::activity::AndroidApp;
 
+pub mod errors;
 pub mod input;
 pub mod structs;
 mod time;
@@ -13,6 +16,7 @@ pub mod traits;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
+pub use errors::EngineError;
 pub use traits::{Game, GraphicsContext};
 pub use structs::{ResourceId, Params2d, Color};
 
@@ -71,12 +75,14 @@ impl EngineBuilder {
             if #[cfg(target_arch = "wasm32")] {
                 wasm::configure_handlers()
             } else {
+                #[cfg(not(target_os = "android"))]
                 env_logger::init();
             }
         }
 
         // set window
         let event_loop = EventLoop::new();
+
         let mut window_builder = WindowBuilder::new();
 
         if let Some(title) = &self.title {
@@ -93,11 +99,11 @@ impl EngineBuilder {
         let window = window_builder.build(&event_loop)
             .expect("Can't create window!");
 
-            // set canvas
+        // set canvas
         #[cfg(target_arch = "wasm32")]
         wasm::set_canvas(&window);
         
-        let graphics = GraphicsContext::new(&window);
+        let graphics = GraphicsContext::new();
         let context = Context {
             graphics,
             input: input::InputContext::new(),
@@ -106,6 +112,57 @@ impl EngineBuilder {
             scale_factor: window.scale_factor(),
             window,
         };
+        Engine {
+            event_loop, game, context
+        }
+    }
+    #[cfg(target_os = "android")]
+    pub fn build_android<G, T>(&self, game: T, app: AndroidApp) -> Engine<G, T>
+    where
+        G: GraphicsContext + 'static,
+        T: Game<G> + 'static
+    {
+        use winit::platform::android::EventLoopBuilderExtAndroid;
+        use winit::event_loop::EventLoopBuilder;
+
+        android_logger::init_once(android_logger::Config::default()
+            .with_max_level(log::LevelFilter::Debug)
+            .with_tag("tower")
+        );
+
+        // set window
+        let event_loop = EventLoopBuilder::new()
+            .with_android_app(app)
+            .build();
+
+        let mut window_builder = WindowBuilder::new();
+
+        if let Some(title) = &self.title {
+            window_builder = window_builder.with_title(title);
+        }
+        // if let Some(size) = self.physical_size {
+        //     let window_size = PhysicalSize::new(size.0, size.1);
+        //     window_builder = window_builder.with_inner_size(window_size);
+        // } else if let Some(size) = self.logical_size {
+        //     let window_size = LogicalSize::new(size.0, size.1);
+        //     window_builder = window_builder.with_inner_size(window_size);
+        // }
+        
+        let window = window_builder.build(&event_loop)
+            .expect("Can't create window!");
+        
+        log::info!("Creating graphics context");
+        let graphics = GraphicsContext::new(&window);
+        log::info!("Graphics created");
+        let context = Context {
+            graphics,
+            input: input::InputContext::new(),
+            time: time::Time::new(),
+            inner_size: window.inner_size(),
+            scale_factor: window.scale_factor(),
+            window,
+        };
+        log::info!("Creating Engine");
         Engine {
             event_loop, game, context
         }
@@ -171,6 +228,9 @@ where
                     }
                     _ => {}
                 }
+            },
+            Event::Resumed => {
+                context.graphics.create_context(&context.window);
             },
             Event::RedrawRequested(window_id) if window_id == context.window.id() => {
                 // state.update();

@@ -2,35 +2,39 @@ use image::GenericImageView;
 
 use rogalik_math::vectors::Vector2i;
 
-pub struct Texture2d {
-    bind_group: wgpu::BindGroup,
-    width: u32,
-    height: u32
-}
-impl Texture2d {
-    pub fn from_bytes(
-        bytes: &[u8],
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        bind_group_layout: &wgpu::BindGroupLayout
-    ) -> Self {
-        let (texture, width, height) = wgpu_texture_from_bytes(bytes, device, queue);
-        let bind_group = get_texture_bind_group(texture, device, bind_group_layout);
-        Self { bind_group, width, height }
-    }
-    pub fn get_bind_group(&self) -> &wgpu::BindGroup {
-        &self.bind_group
-    }
-    pub fn size(&self) -> Vector2i {
-        Vector2i::new(self.width as i32, self.height as i32)
-    }
-}
+use crate::assets::texture::TextureData;
 
-fn get_texture_bind_group(
-    texture: wgpu::Texture,
+// pub struct Texture2d {
+//     bind_group: wgpu::BindGroup,
+//     width: u32,
+//     height: u32
+// }
+// impl Texture2d {
+//     pub fn from_bytes(
+//         bytes: &[u8],
+//         device: &wgpu::Device,
+//         queue: &wgpu::Queue,
+//         bind_group_layout: &wgpu::BindGroupLayout
+//     ) -> Self {
+//         let (texture, width, height) = wgpu_texture_from_bytes(bytes, device, queue);
+//         let bind_group = get_texture_bind_group(texture, device, bind_group_layout);
+//         Self { bind_group, width, height }
+//     }
+//     pub fn get_bind_group(&self) -> &wgpu::BindGroup {
+//         &self.bind_group
+//     }
+//     pub fn size(&self) -> Vector2i {
+//         Vector2i::new(self.width as i32, self.height as i32)
+//     }
+// }
+
+pub fn get_texture_bind_group(
+    texture_data: &TextureData,
     device: &wgpu::Device,
+    queue: &wgpu::Queue,
     bind_group_layout: &wgpu::BindGroupLayout
 ) -> wgpu::BindGroup {
+    let texture = wgpu_texture_from_bytes(texture_data, device, queue);
     let diff_tex_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     let diff_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
         address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -60,17 +64,13 @@ fn get_texture_bind_group(
 }
 
 fn wgpu_texture_from_bytes(
-    bytes: &[u8],
+    texture_data: &TextureData,
     device: &wgpu::Device,
     queue: &wgpu::Queue
-) -> (wgpu::Texture, u32, u32) {
-    let img = image::load_from_memory(bytes).expect("Could not create image!");
-    let rgba = img.to_rgba8();
-    let img_dim = img.dimensions();
-
+) -> wgpu::Texture {
     let size = wgpu::Extent3d {
-        width: img_dim.0,
-        height: img_dim.1,
+        width: texture_data.dim.0,
+        height: texture_data.dim.1,
         depth_or_array_layers: 1
     };
     let texture = device.create_texture(
@@ -92,13 +92,13 @@ fn wgpu_texture_from_bytes(
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All
         },
-        &rgba,
+        &texture_data.buffer,
         wgpu::ImageDataLayout {
             offset: 0,
-            bytes_per_row: Some(4 * img_dim.0),
-            rows_per_image: Some(img_dim.1)
+            bytes_per_row: Some(4 * texture_data.dim.0),
+            rows_per_image: Some(texture_data.dim.1)
         },
         size
     );
-    (texture, img_dim.0, img_dim.1)
+    texture
 }

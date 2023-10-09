@@ -12,10 +12,12 @@ crate-type = ["cdylib", "rlib"]
 rogalik_math = { path = "../rogalik_math" }
 
 cfg-if = "1"
-env_logger = "0.10"
-log = "0.4"
+log = { workspace = true }
 pollster = { workspace = true }
 winit = { workspace = true }
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+env_logger = "0.10"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1"
@@ -24,3 +26,6 @@ wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = [
     "Document", "Window", "Element", "HtmlCollection"
 ]}
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = "0.13"

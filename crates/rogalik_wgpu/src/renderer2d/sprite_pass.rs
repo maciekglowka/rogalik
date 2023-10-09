@@ -3,13 +3,13 @@ use wgpu::util::DeviceExt;
 
 use crate::camera;
 use crate::structs::Vertex;
-use super::texture::Texture2d;
+// use super::texture::Texture2d;
 use super::Triangle;
 
 pub struct SpritePass {
     pub clear_color: wgpu::Color,
     pipeline: wgpu::RenderPipeline,
-    bind_group_layout: wgpu::BindGroupLayout,
+    pub bind_group_layout: wgpu::BindGroupLayout,
 }
 impl SpritePass {
     pub fn new(
@@ -84,7 +84,7 @@ impl SpritePass {
     pub fn render(
         &mut self,
         cameras: &Vec<camera::Camera2D>,
-        textures: &Vec<Texture2d>,
+        textures: &Vec<wgpu::BindGroup>,
         verts: &Vec<Vertex>,
         tris: &Vec<Triangle>,
         surface: &wgpu::Surface,
@@ -144,7 +144,7 @@ impl SpritePass {
 
             pass.set_vertex_buffer(0, vertex_buffer.slice(..)); 
             pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16); 
-            pass.set_bind_group(0, textures[current_params.texture_id.0].get_bind_group(), &[]);
+            pass.set_bind_group(0, &textures[current_params.texture_id.0], &[]);
             // TODO bind camera
             pass.set_bind_group(1, camera_bind_groups.get(&current_params.camera_id.0).unwrap(), &[]);
 
@@ -156,7 +156,7 @@ impl SpritePass {
                     pass.draw_indexed(batch_start..offset, 0, 0..1);
 
                     if current_params.texture_id != tri.params.texture_id {
-                        pass.set_bind_group(0, textures[tri.params.texture_id.0].get_bind_group(), &[]);
+                        pass.set_bind_group(0, &textures[tri.params.texture_id.0], &[]);
                     }
                     if current_params.camera_id != tri.params.camera_id {
                         pass.set_bind_group(1, &camera_bind_groups[&tri.params.camera_id.0], &[]);
