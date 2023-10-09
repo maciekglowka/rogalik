@@ -1,17 +1,16 @@
 use std::collections::{HashSet, HashMap};
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize, LogicalSize},
-    event::{ElementState, KeyboardInput, TouchPhase},
-    window::Window
+    event::{ElementState, KeyboardInput},
 };
 
-pub use winit::event::{MouseButton, VirtualKeyCode};
+pub use winit::event::{MouseButton, VirtualKeyCode, TouchPhase};
 use rogalik_math::vectors::Vector2f;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Touch {
     pub position: Vector2f,
-    phase: TouchPhase
+    pub phase: TouchPhase
 }
 
 pub struct InputContext {

@@ -223,17 +223,20 @@ where
                         context.inner_size = context.window.inner_size();
                         context.scale_factor = context.window.scale_factor();
                         context.graphics.resize(physical_size.width, physical_size.height);
+                        game.resize(&mut context);
                     }
                     WindowEvent::ScaleFactorChanged { new_inner_size, ..} => {
                         context.inner_size = context.window.inner_size();
                         context.scale_factor = context.window.scale_factor();
                         context.graphics.resize(new_inner_size.width, new_inner_size.height);
+                        game.resize(&mut context);
                     }
                     _ => {}
                 }
             },
             Event::Resumed => {
                 context.graphics.create_context(&context.window);
+                game.resize(&mut context);
             },
             Event::RedrawRequested(window_id) if window_id == context.window.id() => {
                 // state.update();
