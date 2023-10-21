@@ -37,6 +37,7 @@ pub trait GraphicsContext {
         atlas: &str,
         index: usize,
         position: Vector2f,
+        z_index: i32,
         size: Vector2f,
         params: Params2d
     ) -> Result<(), EngineError>;
@@ -45,6 +46,7 @@ pub trait GraphicsContext {
         font: &str,
         text: &str,
         position: Vector2f,
+        z_index: i32,
         size: f32,
         params: Params2d
     ) -> Result<(), EngineError>;

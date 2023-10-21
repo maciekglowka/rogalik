@@ -1,6 +1,6 @@
 use rogalik_math::vectors::Vector2f;
 
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub struct ResourceId(pub usize);
 
 #[derive(Clone, Copy, Debug)]

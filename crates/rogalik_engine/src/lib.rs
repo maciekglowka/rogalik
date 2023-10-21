@@ -240,6 +240,7 @@ where
             },
             Event::RedrawRequested(window_id) if window_id == context.window.id() => {
                 // state.update();
+                // let start = std::time::Instant::now();
                 context.time.update();
                 game.update(&mut context);
                 context.graphics.render();

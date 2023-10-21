@@ -50,7 +50,13 @@ impl Renderer2d {
     pub fn set_clear_color(&mut self, color: wgpu::Color) {
         self.render_pass.clear_color = color;
     }
-    fn add_to_queue(&mut self, vertices: &[Vertex], indices: &[u16], params: BindParams) {
+    fn add_to_queue(
+        &mut self,
+        vertices: &[Vertex],
+        indices: &[u16],
+        z_index: i32,
+        params: BindParams
+    ) {
         // TODO add error if indices are not divisible by 3
         let offset = self.vertex_queue.len() as u16;
         self.vertex_queue.extend(vertices);
@@ -58,6 +64,7 @@ impl Renderer2d {
             indices.chunks(3)
                 .map(|v| Triangle {
                     indices: [v[0] + offset, v[1] + offset, v[2] + offset],
+                    z_index,
                     params
                 })
         )
@@ -69,6 +76,7 @@ impl Renderer2d {
         atlas: &str,
         camera_id: ResourceId,
         position: Vector2f,
+        z_index: i32,
         size: Vector2f,
         params: Params2d
     ) -> Result<(), EngineError> {
@@ -78,10 +86,10 @@ impl Renderer2d {
 
         if let Some(_) = params.slice {
             let s = atlas.get_sliced_sprite(index, position, size, params);
-            self.add_to_queue(&s.0, &s.1, bind_params);
+            self.add_to_queue(&s.0, &s.1, z_index, bind_params);
         } else {
             let s = atlas.get_sprite(index, camera_id, position, size, params);
-            self.add_to_queue(&s.0, &s.1, bind_params);
+            self.add_to_queue(&s.0, &s.1, z_index, bind_params);
         };
         Ok(())
     }
@@ -92,13 +100,14 @@ impl Renderer2d {
         text: &str,
         camera_id: ResourceId,
         position: Vector2f,
+        z_index: i32,
         size: f32,
         params: Params2d
     ) -> Result<(), EngineError> {
         let font = assets.get_font(font).ok_or(EngineError::ResourceNotFound)?;
         let bind_params = BindParams { camera_id, texture_id: font.atlas.texture_id };
         for s in font.get_sprites(text, camera_id, position, size, params) {
-            self.add_to_queue(&s.0, &s.1, bind_params);
+            self.add_to_queue(&s.0, &s.1, z_index, bind_params);
         };
         Ok(())
     }
@@ -113,7 +122,7 @@ impl Renderer2d {
             cameras,
             &self.texture_bind_groups,
             &self.vertex_queue,
-            &self.triangle_queue,
+            &mut self.triangle_queue,
             surface,
             device,
             queue
@@ -126,6 +135,7 @@ impl Renderer2d {
 #[derive(Clone, Copy)]
 pub struct Triangle {
     indices: [u16; 3],
+    z_index: i32,
     params: BindParams
 }
 

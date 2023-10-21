@@ -86,7 +86,7 @@ impl SpritePass {
         cameras: &Vec<camera::Camera2D>,
         textures: &Vec<wgpu::BindGroup>,
         verts: &Vec<Vertex>,
-        tris: &Vec<Triangle>,
+        tris: &mut Vec<Triangle>,
         surface: &wgpu::Surface,
         device: &wgpu::Device,
         queue: &wgpu::Queue
@@ -109,6 +109,14 @@ impl SpritePass {
                 usage: wgpu::BufferUsages::VERTEX
             }
         );
+
+        // let start = std::time::Instant::now();
+        tris.sort_by(|a, b| a.z_index.cmp(&b.z_index)
+            .then(a.params.camera_id.cmp(&b.params.camera_id))
+            .then(a.params.texture_id.cmp(&b.params.texture_id))
+        );
+        // println!("Sort: {:?}", start.elapsed());
+
         let indices = tris.iter().map(|t| t.indices).flatten().collect::<Vec<_>>();
         let index_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
@@ -145,7 +153,6 @@ impl SpritePass {
             pass.set_vertex_buffer(0, vertex_buffer.slice(..)); 
             pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16); 
             pass.set_bind_group(0, &textures[current_params.texture_id.0], &[]);
-            // TODO bind camera
             pass.set_bind_group(1, camera_bind_groups.get(&current_params.camera_id.0).unwrap(), &[]);
 
             for tri in tris {
@@ -154,7 +161,7 @@ impl SpritePass {
                 if current_params != tri.params {
                     // draw the previous batch first
                     pass.draw_indexed(batch_start..offset, 0, 0..1);
-
+                    // counter += 1;
                     if current_params.texture_id != tri.params.texture_id {
                         pass.set_bind_group(0, &textures[tri.params.texture_id.0], &[]);
                     }
@@ -169,7 +176,9 @@ impl SpritePass {
             pass.draw_indexed(batch_start..offset, 0, 0..1);
         }
         queue.submit(std::iter::once(encoder.finish()));
+        // let start = std::time::Instant::now();
         output.present();
+        // println!("Present: {:?}, {}", start.elapsed(), counter);
         Ok(())
     }
 }

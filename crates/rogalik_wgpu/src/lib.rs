@@ -89,6 +89,7 @@ impl GraphicsContext for WgpuContext {
             atlas: &str,
             index: usize,
             position: rogalik_math::vectors::Vector2f,
+            z_index: i32,
             size: rogalik_math::vectors::Vector2f,
             params: Params2d
         ) -> Result<(), EngineError> {
@@ -99,6 +100,7 @@ impl GraphicsContext for WgpuContext {
                 atlas,
                 self.current_camera_id,
                 position,
+                z_index,
                 size,
                 params
             )
@@ -111,6 +113,7 @@ impl GraphicsContext for WgpuContext {
             font: &str,
             text: &str,
             position: Vector2f,
+            z_index: i32,
             size: f32,
             params: Params2d
         ) -> Result<(), EngineError> {
@@ -121,6 +124,7 @@ impl GraphicsContext for WgpuContext {
                 text,
                 self.current_camera_id,
                 position,
+                z_index,
                 size,
                 params
             )
