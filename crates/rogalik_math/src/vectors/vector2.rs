@@ -38,6 +38,19 @@ impl Vector2<i32> {
     pub fn angle(&self, other: &Self) -> f32 {
         self.as_f32().angle(&other.as_f32())
     }
+    pub fn clamped(&self) -> Self {
+        let x = if self.x != 0 {
+            self.x / self.x.abs()
+        } else {
+            0
+        };
+        let y = if self.y != 0 {
+            self.y / self.y.abs()
+        } else {
+            0
+        };
+        Vector2i { x, y }
+    }
 }
 
 impl Vector2<f32> {
