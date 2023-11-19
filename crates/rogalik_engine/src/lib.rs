@@ -19,6 +19,7 @@ mod wasm;
 pub use errors::EngineError;
 pub use traits::{Game, GraphicsContext};
 pub use structs::{ResourceId, Params2d, Color};
+pub use time::Instant;
 
 pub struct Context<G: GraphicsContext> {
     pub graphics: G,

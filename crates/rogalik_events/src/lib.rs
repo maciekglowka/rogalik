@@ -16,6 +16,7 @@ impl<'a, T: Copy> SubscriberHandle<T> {
         let mut queue = strong.lock().ok()?;
         Some(queue.drain(..).collect())
     }
+    // TODO add drop impl to prevent memory leaks
 }
 
 pub struct EventBus<T: Copy> {
