@@ -27,7 +27,7 @@ pub struct Context<G: GraphicsContext> {
     pub time: time::Time,
     pub window: Window,
     inner_size: PhysicalSize<u32>,
-    scale_factor: f64
+    scale_factor: f64,
 }
 impl<G: GraphicsContext> Context<G> {
     pub fn get_physical_size(&self) -> rogalik_math::vectors::Vector2f {
@@ -72,18 +72,10 @@ impl EngineBuilder {
         T: Game<G> + 'static
     {
         // set logging
-        cfg_if::cfg_if! {
-            if #[cfg(target_arch = "wasm32")] {
-                wasm::configure_handlers()
-            } else {
-                #[cfg(not(target_os = "android"))]
-                env_logger::init();
-            }
-        }
-
+        env_logger::init();
+        
         // set window
         let event_loop = EventLoop::new();
-
         let mut window_builder = WindowBuilder::new();
 
         if let Some(title) = &self.title {
@@ -99,10 +91,6 @@ impl EngineBuilder {
         
         let window = window_builder.build(&event_loop)
             .expect("Can't create window!");
-
-        // set canvas
-        #[cfg(target_arch = "wasm32")]
-        wasm::set_canvas(&window);
         
         let graphics = GraphicsContext::new();
         let context = Context {
@@ -117,6 +105,33 @@ impl EngineBuilder {
             event_loop, game, context
         }
     }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn build_wasm<G, T>(&self, game: T) -> Engine<G, T>
+    where
+        G: GraphicsContext + 'static,
+        T: Game<G> + 'static
+    {
+        wasm::configure_handlers();
+        log::info!("Loggin configured");
+        let event_loop = EventLoop::new();
+        let window = wasm::get_window(&event_loop);
+        log::info!("Created WASM window");
+
+        let graphics = GraphicsContext::new();
+        let context = Context {
+            graphics,
+            input: input::InputContext::new(),
+            time: time::Time::new(),
+            inner_size: window.inner_size(),
+            scale_factor: window.scale_factor(),
+            window,
+        };
+        Engine {
+            event_loop, game, context
+        }
+    }
+
     #[cfg(target_os = "android")]
     pub fn build_android<G, T>(&self, game: T, app: AndroidApp) -> Engine<G, T>
     where
@@ -141,13 +156,6 @@ impl EngineBuilder {
         if let Some(title) = &self.title {
             window_builder = window_builder.with_title(title);
         }
-        // if let Some(size) = self.physical_size {
-        //     let window_size = PhysicalSize::new(size.0, size.1);
-        //     window_builder = window_builder.with_inner_size(window_size);
-        // } else if let Some(size) = self.logical_size {
-        //     let window_size = LogicalSize::new(size.0, size.1);
-        //     window_builder = window_builder.with_inner_size(window_size);
-        // }
         
         let window = window_builder.build(&event_loop)
             .expect("Can't create window!");
@@ -221,14 +229,14 @@ where
                     },
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                     WindowEvent::Resized(physical_size) => {
-                        context.inner_size = context.window.inner_size();
-                        context.scale_factor = context.window.scale_factor();
+                        context.inner_size = *physical_size;
+                        // context.scale_factor = context.window.scale_factor();
                         context.graphics.resize(physical_size.width, physical_size.height);
                         game.resize(&mut context);
                     }
-                    WindowEvent::ScaleFactorChanged { new_inner_size, ..} => {
-                        context.inner_size = context.window.inner_size();
-                        context.scale_factor = context.window.scale_factor();
+                    WindowEvent::ScaleFactorChanged { new_inner_size, scale_factor } => {
+                        context.inner_size = **new_inner_size;
+                        context.scale_factor = *scale_factor;
                         context.graphics.resize(new_inner_size.width, new_inner_size.height);
                         game.resize(&mut context);
                     }

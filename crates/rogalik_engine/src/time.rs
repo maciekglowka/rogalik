@@ -77,7 +77,7 @@ impl Instant {
             #[cfg(not(target_arch = "wasm32"))]
             inner: std::time::Instant::now(),
             #[cfg(target_arch = "wasm32")]
-            inner: Now::web_value()
+            inner: Instant::web_value()
         }
     }
     #[cfg(not(target_arch = "wasm32"))]
@@ -86,7 +86,7 @@ impl Instant {
     }
     #[cfg(target_arch = "wasm32")]
     pub fn elapsed(&self) -> f32 {
-        ((Now::web_value() - self.inner) / 1000.) as f32
+        ((Instant::web_value() - self.inner) / 1000.) as f32
     }
     #[cfg(target_arch = "wasm32")]
     fn web_value() -> f64 {
