@@ -28,6 +28,7 @@ pub struct Context<G: GraphicsContext> {
     pub window: Window,
     inner_size: PhysicalSize<u32>,
     scale_factor: f64,
+    pub os_path: Option<String>
 }
 impl<G: GraphicsContext> Context<G> {
     pub fn get_physical_size(&self) -> rogalik_math::vectors::Vector2f {
@@ -72,6 +73,7 @@ impl EngineBuilder {
         T: Game<G> + 'static
     {
         // set logging
+        #[cfg(not(target_os = "android"))]
         env_logger::init();
         
         // set window
@@ -100,6 +102,7 @@ impl EngineBuilder {
             inner_size: window.inner_size(),
             scale_factor: window.scale_factor(),
             window,
+            os_path: None
         };
         Engine {
             event_loop, game, context
@@ -126,6 +129,7 @@ impl EngineBuilder {
             inner_size: window.inner_size(),
             scale_factor: window.scale_factor(),
             window,
+            os_path: None
         };
         Engine {
             event_loop, game, context
@@ -146,6 +150,9 @@ impl EngineBuilder {
             .with_tag("Rogalik")
         );
 
+        let os_path = app.internal_data_path()
+            .map_or(None, |a| a.to_str().map(|a| a.to_string()));
+
         // set window
         let event_loop = EventLoopBuilder::new()
             .with_android_app(app)
@@ -163,6 +170,7 @@ impl EngineBuilder {
         log::info!("Creating graphics context");
         let graphics = GraphicsContext::new();
         log::info!("Graphics created");
+
         let context = Context {
             graphics,
             input: input::InputContext::new(),
@@ -170,6 +178,7 @@ impl EngineBuilder {
             inner_size: window.inner_size(),
             scale_factor: window.scale_factor(),
             window,
+            os_path
         };
         log::info!("Creating Engine");
         Engine {
