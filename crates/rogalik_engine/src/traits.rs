@@ -8,6 +8,7 @@ pub trait Game<G: GraphicsContext> {
     fn setup(&mut self, context: &mut super::Context<G>);
     fn update(&mut self, context: &mut super::Context<G>);
     fn resize(&mut self, _context: &mut super::Context<G>) {}
+    fn resume(&mut self, _context: &mut super::Context<G>) {}
 }
 
 pub trait GraphicsContext {

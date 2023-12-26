@@ -21,7 +21,7 @@ pub use traits::{Game, GraphicsContext};
 pub use structs::{ResourceId, Params2d, Color};
 pub use time::Instant;
 
-pub struct Context<G: GraphicsContext> {
+pub struct Context<G> {
     pub graphics: G,
     pub input: input::InputContext,
     pub time: time::Time,
@@ -254,6 +254,7 @@ where
             },
             Event::Resumed => {
                 context.graphics.create_context(&context.window);
+                game.resume(&mut context);
                 game.resize(&mut context);
             },
             Event::RedrawRequested(window_id) if window_id == context.window.id() => {
