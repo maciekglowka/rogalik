@@ -7,6 +7,9 @@ use winit::{
 #[cfg(target_os = "android")]
 pub use winit::platform::android::activity::AndroidApp;
 
+#[cfg(target_os = "android")]
+mod android;
+
 pub mod errors;
 pub mod input;
 pub mod structs;
@@ -155,8 +158,8 @@ impl EngineBuilder {
 
         // set window
         let event_loop = EventLoopBuilder::new()
-            .with_android_app(app)
-            .build();
+        .with_android_app(app)
+        .build();
 
         let mut window_builder = WindowBuilder::new();
 
@@ -165,11 +168,13 @@ impl EngineBuilder {
         }
         
         let window = window_builder.build(&event_loop)
-            .expect("Can't create window!");
-        
+        .expect("Can't create window!");
+    
         log::info!("Creating graphics context");
         let graphics = GraphicsContext::new();
         log::info!("Graphics created");
+        
+        android::hide_ui();
 
         let context = Context {
             graphics,
@@ -254,6 +259,8 @@ where
             },
             Event::Resumed => {
                 context.graphics.create_context(&context.window);
+                #[cfg(target_os = "android")]
+                android::hide_ui();
                 game.resume(&mut context);
                 game.resize(&mut context);
             },
