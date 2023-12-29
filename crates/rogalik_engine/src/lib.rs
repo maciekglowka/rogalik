@@ -259,8 +259,6 @@ where
             },
             Event::Resumed => {
                 context.graphics.create_context(&context.window);
-                #[cfg(target_os = "android")]
-                android::hide_ui();
                 game.resume(&mut context);
                 game.resize(&mut context);
             },
