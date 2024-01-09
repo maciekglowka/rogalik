@@ -3,7 +3,7 @@ use jni::{
     objects::{JObject, JValueGen},
     JavaVM
 };
-pub use winit::platform::android::activity::AndroidApp;
+use winit::platform::android::activity::AndroidApp;
 
 pub fn hide_ui() {
     let ctx = ndk_context::android_context();

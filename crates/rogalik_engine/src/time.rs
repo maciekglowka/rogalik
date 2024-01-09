@@ -65,6 +65,7 @@ impl Timer {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Instant {
     #[cfg(not(target_arch = "wasm32"))]
     inner: std::time::Instant,

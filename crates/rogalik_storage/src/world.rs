@@ -17,15 +17,25 @@ pub struct World {
     component_storage: HashMap<TypeId, Box<dyn ComponentStorage>>,
     entitiy_storage: EntityStorage,
     resource_storage: HashMap<TypeId, Box<dyn Storage>>,
-    pub events: EventBus<WorldEvent>
+    // pub events: EventBus<WorldEvent>
 }
 impl World {
     pub fn new() -> Self {
-        World { 
+        let mut world = World { 
             component_storage: HashMap::new(),
             resource_storage: HashMap::new(),
             entitiy_storage: EntityStorage::new(),
-            events: EventBus::new()
+        };
+        let events = EventBus::<WorldEvent>::new();
+        world.insert_resource(events);
+        world
+    }
+
+    // events
+
+    fn publish(&self, event: WorldEvent) {
+        if let Some(mut bus) = self.get_resource_mut::<EventBus<WorldEvent>>() {
+            bus.publish(event);
         }
     }
 
@@ -38,7 +48,7 @@ impl World {
         self.entitiy_storage.despawn(entity);
         for (type_id, storage) in self.component_storage.iter() {
             if storage.remove_untyped(entity).is_some() {
-                self.events.publish(WorldEvent::ComponentRemoved(entity, *type_id))
+                self.publish(WorldEvent::ComponentRemoved(entity, *type_id))
             }
         }
     }
@@ -77,14 +87,14 @@ impl World {
         let res = self.get_component_set_mut()
             .ok_or(EntityError)?
             .insert(entity, component);
-        if res.is_ok() { self.events.publish(WorldEvent::ComponentSpawned(entity, type_id)) }
+        if res.is_ok() { self.publish(WorldEvent::ComponentSpawned(entity, type_id)) }
         res
     }
     pub fn remove_component<T: Component + 'static>(&mut self, entity: Entity) -> Option<T> {
         let type_id = TypeId::of::<T>();
         let res = self.get_component_set_mut()?
             .remove(entity);
-        if res.is_some() { self.events.publish(WorldEvent::ComponentRemoved(entity, type_id)) }
+        if res.is_some() { self.publish(WorldEvent::ComponentRemoved(entity, type_id)) }
         res
     }
     pub fn get_component<T: Component + 'static>(&self, entity: Entity) -> Option<Ref<T>> {

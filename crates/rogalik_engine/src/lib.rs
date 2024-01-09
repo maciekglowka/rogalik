@@ -158,8 +158,8 @@ impl EngineBuilder {
 
         // set window
         let event_loop = EventLoopBuilder::new()
-        .with_android_app(app)
-        .build();
+            .with_android_app(app)
+            .build();
 
         let mut window_builder = WindowBuilder::new();
 
@@ -168,7 +168,7 @@ impl EngineBuilder {
         }
         
         let window = window_builder.build(&event_loop)
-        .expect("Can't create window!");
+            .expect("Can't create window!");
     
         log::info!("Creating graphics context");
         let graphics = GraphicsContext::new();
