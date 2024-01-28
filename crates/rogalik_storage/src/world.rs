@@ -15,7 +15,7 @@ use super::resource::ResourceCell;
 
 pub struct World {
     component_storage: HashMap<TypeId, Box<dyn ComponentStorage>>,
-    entitiy_storage: EntityStorage,
+    entity_storage: EntityStorage,
     resource_storage: HashMap<TypeId, Box<dyn Storage>>,
     // pub events: EventBus<WorldEvent>
 }
@@ -24,7 +24,7 @@ impl World {
         let mut world = World { 
             component_storage: HashMap::new(),
             resource_storage: HashMap::new(),
-            entitiy_storage: EntityStorage::new(),
+            entity_storage: EntityStorage::new(),
         };
         let events = EventBus::<WorldEvent>::new();
         world.insert_resource(events);
@@ -42,10 +42,10 @@ impl World {
     // entities
 
     pub fn spawn_entity(&mut self) -> Entity {
-        self.entitiy_storage.spawn()
+        self.entity_storage.spawn()
     }
     pub fn despawn_entity(&mut self, entity: Entity) {
-        self.entitiy_storage.despawn(entity);
+        self.entity_storage.despawn(entity);
         for (type_id, storage) in self.component_storage.iter() {
             if storage.remove_untyped(entity).is_some() {
                 self.publish(WorldEvent::ComponentRemoved(entity, *type_id))
@@ -159,6 +159,17 @@ impl<'a> QueryBuilder<'a> {
             _ => HashSet::new()
         };
         let entities = self.inner.intersection(&h);
+        QueryBuilder {
+            inner: entities.map(|e| *e).collect(),
+            world: self.world
+        }
+    }
+    pub fn without<T: 'static + Component>(self) -> QueryBuilder<'a> {
+        let h = match self.world.get_component_set::<T>() {
+            Some(c) => c.hashset(),
+            _ => HashSet::new()
+        };
+        let entities = self.inner.difference(&h);
         QueryBuilder {
             inner: entities.map(|e| *e).collect(),
             world: self.world
