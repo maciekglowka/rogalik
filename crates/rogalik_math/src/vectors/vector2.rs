@@ -38,6 +38,9 @@ impl Vector2<i32> {
     pub fn angle(&self, other: &Self) -> f32 {
         self.as_f32().angle(&other.as_f32())
     }
+    pub fn signed_angle(&self, other: &Self) -> f32 {
+        self.as_f32().signed_angle(&other.as_f32())
+    }
     pub fn clamped(&self) -> Self {
         let x = if self.x != 0 {
             self.x / self.x.abs()
@@ -65,6 +68,9 @@ impl Vector2<f32> {
     }
     pub fn angle(&self, other: &Self) -> f32 {
         (self.dot(other) / (self.len() * other.len())).acos()
+    }
+    pub fn signed_angle(&self, other: &Self) -> f32 {
+        other.y.atan2(other.x) - self.y.atan2(self.x)
     }
     pub fn lerp(&self, other: &Self, t: f32) -> Self {
         Vector2f::new(
