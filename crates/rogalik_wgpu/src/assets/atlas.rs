@@ -68,12 +68,35 @@ impl SpriteAtlas {
             }
         }
 
-        let vertices = [
+        let mut vertices = [
             Vertex { position: [position.x, position.y, 0.0], color, tex_coords: uvs[0] },
             Vertex { position: [position.x + size.x, position.y, 0.0], color, tex_coords: uvs[1] },
             Vertex { position: [position.x + size.x, position.y + size.y, 0.0], color, tex_coords: uvs[2] },
             Vertex { position: [position.x, position.y + size.y, 0.0], color, tex_coords: uvs[3] }
         ];
+        if let Some(rotate) = params.rotate {
+            // not tested for performance :)
+            // perhaps should be moved to the shader
+            let cx = position.x + 0.5 * size.x;
+            let cy = position.y + 0.5 * size.y;
+            rotate_verts(&mut vertices, rotate, cx, cy);
+            // let c = rotate.cos();
+            // let s = rotate.sin();
+
+            // for i in 0..4 {
+            //     vertices[i].position[0] -= cx;
+            //     vertices[i].position[1] -= cy;
+
+            //     let x = vertices[i].position[0];
+            //     vertices[i].position[0] = vertices[i].position[0] * c
+            //         - vertices[i].position[1] * s;
+            //     vertices[i].position[1] = x * s
+            //         + vertices[i].position[1] * c;
+
+            //     vertices[i].position[0] += cx;
+            //     vertices[i].position[1] += cy;
+            // }
+        }
         let indices = [0, 1, 2, 0, 2, 3];
         (vertices, indices)
     }
@@ -132,6 +155,12 @@ impl SpriteAtlas {
             6, 2, 7, 2, 3, 7
         ];
 
+        if let Some(rotate) = params.rotate {
+            let cx = position.x + 0.5 * size.x;
+            let cy = position.y + 0.5 * size.y;
+            rotate_verts(&mut vertices, rotate, cx, cy);
+        }
+
         (vertices, indices)
     }
 }
@@ -149,5 +178,24 @@ pub fn sprite_pixel_size(
     match padding {
         None => (grid_width, grid_height),
         Some((x, y)) => (grid_width - x, grid_height - y)
+    }
+}
+
+fn rotate_verts(vertices: &mut [Vertex], angle: f32, cx: f32, cy: f32) {
+    // not tested for performance :)
+    // perhaps should be moved to the shader
+    let c = angle.cos();
+    let s = angle.sin();
+
+    for v in vertices {
+        v.position[0] -= cx;
+        v.position[1] -= cy;
+
+        let x = v.position[0];
+        v.position[0] = x * c - v.position[1] * s;
+        v.position[1] = x * s + v.position[1] * c;
+
+        v.position[0] += cx;
+        v.position[1] += cy;
     }
 }

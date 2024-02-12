@@ -36,8 +36,9 @@ pub struct Params2d {
     pub color: Color,
     pub flip_x: bool,
     pub flip_y: bool,
+    pub rotate: Option<f32>,
     // slice size in px, base sprite size
-    pub slice: Option<(usize, Vector2f)>
+    pub slice: Option<(usize, Vector2f)>,
 }
 
 #[inline(always)]
