@@ -1,10 +1,14 @@
 use std::collections::{HashSet, HashMap};
 use winit::{
-    dpi::{PhysicalPosition, PhysicalSize, LogicalSize},
-    event::{ElementState, KeyboardInput},
+    dpi::{PhysicalPosition, PhysicalSize},
+    event::{ElementState, KeyEvent},
+    keyboard::PhysicalKey
 };
 
-pub use winit::event::{MouseButton, VirtualKeyCode, TouchPhase};
+pub use winit::{
+    event::{MouseButton, TouchPhase},
+    keyboard::KeyCode
+};
 use rogalik_math::vectors::Vector2f;
 
 #[derive(Clone, Copy, Debug)]
@@ -14,9 +18,9 @@ pub struct Touch {
 }
 
 pub struct InputContext {
-    keys_down: HashSet<VirtualKeyCode>,
-    keys_pressed: HashSet<VirtualKeyCode>,
-    keys_released: HashSet<VirtualKeyCode>,
+    keys_down: HashSet<KeyCode>,
+    keys_pressed: HashSet<KeyCode>,
+    keys_released: HashSet<KeyCode>,
     mouse_buttons_down: HashSet<MouseButton>,
     mouse_buttons_pressed: HashSet<MouseButton>,
     mouse_buttons_released: HashSet<MouseButton>,
@@ -35,7 +39,6 @@ impl InputContext {
             mouse_buttons_pressed: HashSet::new(),
             mouse_buttons_released: HashSet::new(),
             mouse_physical_position: Vector2f::ZERO,
-            // mouse_logical_position: Vector2f::ZERO,
             touches: HashMap::new(),
             touch_click: true
         }
@@ -54,26 +57,20 @@ impl InputContext {
         )
     }
     pub fn handle_mouse_move(&mut self, position: PhysicalPosition<f64>, window_size: &PhysicalSize<u32>) {
-        // let window_logical: LogicalSize<f32> = window_size.to_logical(scale);
-        // let mouse_logical = position.to_logical(scale);
         self.mouse_physical_position = self.calculate_position(position, window_size);
-        // self.mouse_logical_position = Vector2f::new(
-        //     mouse_logical.x,
-        //     window_logical.height - mouse_logical.y
-        // );
     }
-    pub fn handle_keyboard(&mut self, input: &KeyboardInput) {
-        if let Some(key) = input.virtual_keycode {
-            match input.state {
+    pub fn handle_keyboard(&mut self, event: &KeyEvent) {
+        if let PhysicalKey::Code(code) = event.physical_key {
+            match event.state {
                 ElementState::Pressed => {
-                    if !self.keys_down.contains(&key) {
-                        self.keys_pressed.insert(key);
-                        self.keys_down.insert(key);
+                    if !self.keys_down.contains(&code) {
+                        self.keys_pressed.insert(code);
+                        self.keys_down.insert(code);
                     }
                 },
                 ElementState::Released => {
-                    self.keys_down.remove(&key);
-                    self.keys_released.insert(key);
+                    self.keys_down.remove(&code);
+                    self.keys_released.insert(code);
                 },
             };
         }
@@ -118,13 +115,13 @@ impl InputContext {
     // pub fn get_mouse_logical_position(&self) -> Vector2f {
     //     self.mouse_logical_position
     // }
-    pub fn is_key_down(&self, code: VirtualKeyCode) -> bool {
+    pub fn is_key_down(&self, code: KeyCode) -> bool {
         self.keys_down.contains(&code)
     }
-    pub fn is_key_pressed(&self, code: VirtualKeyCode) -> bool {
+    pub fn is_key_pressed(&self, code: KeyCode) -> bool {
         self.keys_pressed.contains(&code)
     }
-    pub fn is_key_released(&self, code: VirtualKeyCode) -> bool {
+    pub fn is_key_released(&self, code: KeyCode) -> bool {
         self.keys_released.contains(&code)
     }
     pub fn is_mouse_button_down(&self, button: MouseButton) -> bool {

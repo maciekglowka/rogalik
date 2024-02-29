@@ -80,7 +80,8 @@ impl EngineBuilder {
         env_logger::init();
         
         // set window
-        let event_loop = EventLoop::new();
+        let event_loop = EventLoop::new()
+            .expect("Can't create the event loop!");
         let mut window_builder = WindowBuilder::new();
 
         if let Some(title) = &self.title {
@@ -96,7 +97,7 @@ impl EngineBuilder {
         
         let window = window_builder.build(&event_loop)
             .expect("Can't create window!");
-        
+
         let graphics = GraphicsContext::new();
         let context = Context {
             graphics,
@@ -119,11 +120,12 @@ impl EngineBuilder {
         T: Game<G> + 'static
     {
         wasm::configure_handlers();
-        log::info!("Loggin configured");
-        let event_loop = EventLoop::new();
+        log::info!("Logging configured");
+        let event_loop = EventLoop::new()
+            .expect("Can't create the event loop!");
         let window = wasm::get_window(&event_loop);
         log::info!("Created WASM window");
-
+        log::info!("{:?}", window.inner_size());
         let graphics = GraphicsContext::new();
         let context = Context {
             graphics,
@@ -159,7 +161,8 @@ impl EngineBuilder {
         // set window
         let event_loop = EventLoopBuilder::new()
             .with_android_app(app)
-            .build();
+            .build()
+            .expect("Can't create the event loop!");
 
         let mut window_builder = WindowBuilder::new();
 
@@ -221,16 +224,17 @@ where
     T: Game<G> + 'static
 {
     game.setup(&mut context);
+    let mut close_requested = false;
 
-    let _ = event_loop.run(move |event, _, control_flow| {
+    let _ = event_loop.run(move |event, event_loop| {
         match event {
             Event::WindowEvent {
                 window_id,
                 ref event
             } if window_id == context.window.id() => {
                 match event {
-                    WindowEvent::KeyboardInput { input, .. } => {
-                        context.input.handle_keyboard(input);
+                    WindowEvent::KeyboardInput { event, .. } => {
+                        context.input.handle_keyboard(event);
                     },
                     WindowEvent::MouseInput { button, state, .. } => {
                         context.input.handle_mouse_button(button, state);
@@ -241,19 +245,35 @@ where
                     WindowEvent::Touch(winit::event::Touch { phase, location, id, .. }) => {
                         context.input.handle_touch(*id, *phase, *location, &context.inner_size);
                     },
-                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                    WindowEvent::CloseRequested => close_requested = true,
                     WindowEvent::Resized(physical_size) => {
+                        if !context.graphics.has_context() {
+                            context.graphics.create_context(&context.window);
+                        }
+                        log::info!("Resized: {:?}", physical_size);
                         context.inner_size = *physical_size;
                         // context.scale_factor = context.window.scale_factor();
                         context.graphics.resize(physical_size.width, physical_size.height);
                         game.resize(&mut context);
                     }
-                    WindowEvent::ScaleFactorChanged { new_inner_size, scale_factor } => {
-                        context.inner_size = **new_inner_size;
+                    WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                         context.scale_factor = *scale_factor;
-                        context.graphics.resize(new_inner_size.width, new_inner_size.height);
-                        game.resize(&mut context);
-                    }
+                    },
+                    WindowEvent::RedrawRequested => {
+                        // state.update();
+                        // let start = std::time::Instant::now();
+                        context.time.update();
+                        game.update(&mut context);
+                        context.graphics.render();
+                        context.input.clear();
+                        // println!("{} {}", 1. / start.elapsed().as_secs_f32(), start.elapsed().as_secs_f32());
+                        // match gpu_state.render(&pass) {
+                        //     Ok(_) => {},
+                        //     Err(wgpu::SurfaceError::Lost) => gpu_state.resize(window.inner_size()),
+                        //     Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                        //     Err(e) => eprintln!("{:?}", e)
+                        // }
+                    },
                     _ => {}
                 }
             },
@@ -262,24 +282,13 @@ where
                 game.resume(&mut context);
                 game.resize(&mut context);
             },
-            Event::RedrawRequested(window_id) if window_id == context.window.id() => {
-                // state.update();
-                // let start = std::time::Instant::now();
-                context.time.update();
-                game.update(&mut context);
-                context.graphics.render();
-                context.input.clear();
-                // println!("{} {}", 1. / start.elapsed().as_secs_f32(), start.elapsed().as_secs_f32());
-                // match gpu_state.render(&pass) {
-                //     Ok(_) => {},
-                //     Err(wgpu::SurfaceError::Lost) => gpu_state.resize(window.inner_size()),
-                //     Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                //     Err(e) => eprintln!("{:?}", e)
-                // }
-            },
-            Event::MainEventsCleared => {
-                context.window.request_redraw();
-            },
+            Event::AboutToWait => {
+                if !close_requested {
+                    context.window.request_redraw();
+                } else {
+                    event_loop.exit();
+                }
+            }
             _ => {}
         }
     });

@@ -33,17 +33,22 @@ impl GraphicsContext for WgpuContext {
             surface_state: None
         }
     }
+    fn has_context(&self) -> bool {
+        self.surface_state.is_some()
+    }
     fn create_context(&mut self, window: &Window) {
-        self.surface_state = Some(create_surface_state(
+        self.surface_state = create_surface_state(
             window,
             &self.assets,
             self.clear_color
-        ));
-        for camera in self.cameras.iter_mut() {
-            camera.resize_viewport(
-                self.surface_state.as_ref().unwrap().config.width as f32,
-                self.surface_state.as_ref().unwrap().config.height as f32,
-            );
+        );
+        if self.surface_state.is_some() {
+            for camera in self.cameras.iter_mut() {
+                camera.resize_viewport(
+                    self.surface_state.as_ref().unwrap().config.width as f32,
+                    self.surface_state.as_ref().unwrap().config.height as f32,
+                );
+            }
         }
     }
     fn set_clear_color(&mut self, color: rogalik_engine::Color) {
@@ -167,14 +172,20 @@ fn create_surface_state(
     window: &Window,
     assets: &assets::AssetStore,
     clear_color: wgpu::Color
-) -> SurfaceState {
+) -> Option<SurfaceState> {
+    let size = window.inner_size();
+
+    if size.width == 0 || size.height == 0 {
+        return None;
+    }
+
     log::debug!("Creating WGPU instance");
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends: wgpu::Backends::all(),
         dx12_shader_compiler: Default::default()
     });
     log::debug!("Creating WGPU surface");
-    let surface = unsafe { instance.create_surface(&window) }.unwrap();
+    let surface = unsafe { instance.create_surface(window) }.unwrap();
     log::debug!("Creating WGPU adapter");
     let adapter = pollster::block_on(instance.request_adapter(
             &wgpu::RequestAdapterOptions {
@@ -204,7 +215,6 @@ fn create_surface_state(
         .find(|f| f.is_srgb())
         .unwrap_or(surface_caps.formats[0]);
 
-    let size = window.inner_size();
     let config = wgpu::SurfaceConfiguration {
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
         format: surface_format,
@@ -225,11 +235,11 @@ fn create_surface_state(
         clear_color
     );
 
-    SurfaceState { 
+    Some(SurfaceState { 
         surface,
         device,
         queue,
         config,
         renderer2d
-    }
+    })
 }

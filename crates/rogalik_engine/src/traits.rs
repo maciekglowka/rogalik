@@ -14,6 +14,7 @@ pub trait Game<G: GraphicsContext> {
 pub trait GraphicsContext {
     fn new() -> Self;
     fn create_context(&mut self, window: &Window);
+    fn has_context(&self) -> bool;
     fn set_clear_color(&mut self, color: Color);
     fn resize(&mut self, w: u32, h: u32);
     fn render(&mut self);
