@@ -1,16 +1,16 @@
-#[cfg(feature = "yaml")]
+#[cfg(feature = "serialize")]
 use serde::{Serialize, Deserialize};
 
 pub type IdSize = u16;
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-#[cfg_attr(feature = "yaml", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Entity {
     pub id: IdSize,
     pub version: IdSize
 }
 
-#[cfg_attr(feature = "yaml", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct EntityStorage {
     entities: Vec<Entity>,
     next_recycled: Option<IdSize>,

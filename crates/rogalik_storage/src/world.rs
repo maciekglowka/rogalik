@@ -13,19 +13,19 @@ use crate::entity::{Entity, EntityStorage};
 use crate::errors::EntityError;
 use crate::resource::ResourceCell;
 
-#[cfg(feature = "yaml")]
+#[cfg(feature = "serialize")]
 use serde::{
     Serialize,
     de::DeserializeOwned
 };
-#[cfg(feature = "yaml")]
-use crate::yaml::ComponentRegistry;
+#[cfg(feature = "serialize")]
+use crate::serialize::ComponentRegistry;
 
 pub struct World {
     component_storage: HashMap<TypeId, Box<dyn ComponentStorage>>,
     entity_storage: EntityStorage,
     resource_storage: HashMap<TypeId, Box<dyn Storage>>,
-    #[cfg(feature = "yaml")]
+    #[cfg(feature = "serialize")]
     component_registry: ComponentRegistry
 }
 impl World {
@@ -34,7 +34,7 @@ impl World {
             component_storage: HashMap::new(),
             resource_storage: HashMap::new(),
             entity_storage: EntityStorage::new(),
-            #[cfg(feature = "yaml")]
+            #[cfg(feature = "serialize")]
             component_registry: ComponentRegistry::new()
         };
         let events = EventBus::<WorldEvent>::new();
@@ -153,14 +153,14 @@ impl World {
 
     // yaml
 
-    #[cfg(feature = "yaml")]
+    #[cfg(feature = "serialize")]
     pub fn register_serializable_component<T>(&mut self, tag: &str)
     where T: Component + DeserializeOwned + Serialize + 'static {
         self.component_registry.register::<T>(tag);
     }
 
-    #[cfg(feature = "yaml")]
-    pub fn serialize_components(&self) -> String {
+    #[cfg(feature = "serialize")]
+    pub fn serialize_components(&self) -> Vec<u8> {
         let mut map = HashMap::new();
         for (type_id, val) in self.component_storage.iter() {
             let Some(f) = self.component_registry.serializers.get(type_id)
@@ -170,12 +170,12 @@ impl World {
             let s = f(val);
             map.insert(tag.to_string(), s);
         }
-        serde_yaml::to_string(&map)
+        bincode::serialize(&map)
             .expect("Can't serialize component map!")
     }
-    #[cfg(feature = "yaml")]
-    pub fn deserialize_components(&mut self, data: &str) {
-        let map: HashMap<String, String> = serde_yaml::from_str(data)
+    #[cfg(feature = "serialize")]
+    pub fn deserialize_components(&mut self, data: &[u8]) {
+        let map: HashMap<String, &[u8]> = bincode::deserialize(data)
             .expect("Can't deserialize component map!");
         for (tag, value) in map.iter() {
             let Some(type_id) = self.component_registry.type_ids.get(tag)

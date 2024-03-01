@@ -7,9 +7,9 @@ mod component_storage;
 mod entity;
 mod errors;
 mod resource;
+#[cfg(feature = "serialize")]
+mod serialize;
 mod world;
-#[cfg(feature = "yaml")]
-mod yaml;
 
 pub use component::Component;
 pub use entity::Entity;

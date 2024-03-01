@@ -18,11 +18,11 @@ pub(crate) struct ComponentRegistry {
     pub type_ids: HashMap<String, TypeId>,
     pub serializers: HashMap<
         TypeId,
-        Box<dyn Fn(&Box<dyn ComponentStorage>) -> String>
+        Box<dyn Fn(&Box<dyn ComponentStorage>) -> Vec<u8>>
     >,
     pub deserializers: HashMap<
         TypeId,
-        Box<dyn Fn(&str) -> Box<dyn ComponentStorage>>
+        Box<dyn Fn(&[u8]) -> Box<dyn ComponentStorage>>
     >
 }
 impl ComponentRegistry {
@@ -44,15 +44,15 @@ impl ComponentRegistry {
         let serializer = move |val: &Box<dyn ComponentStorage>| {
             let c = val.as_any().downcast_ref::<ComponentCell<T>>()
                 .expect(&format!("Can't downcast {}", tag_str));
-            serde_yaml::to_string(c)
+            bincode::serialize(c)
                 .expect(&format!("Can't serialize {}", tag_str))
         };
         self.serializers.insert(type_id, Box::new(serializer));
 
         let tag_str = tag.to_string();
-        let deserializer = move |val: &str| {
+        let deserializer = move |val: &[u8]| {
             Box::new(
-                serde_yaml::from_str::<ComponentCell<T>>(val)
+                bincode::deserialize::<ComponentCell<T>>(val)
                     .expect(&format!("Can't deserialize {}", tag_str))
             ) as Box<dyn ComponentStorage>
         };
