@@ -30,5 +30,5 @@ pub fn get_window(event_loop: &EventLoop<()>) -> Window {
 
 pub fn configure_handlers() {
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-    console_log::init_with_level(log::Level::Warning).expect("Can't init the logger!");
+    console_log::init_with_level(log::Level::Warn).expect("Can't init the logger!");
 }
