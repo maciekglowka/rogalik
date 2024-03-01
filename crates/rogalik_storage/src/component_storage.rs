@@ -3,6 +3,8 @@ use std::{
     cell::{Ref, RefCell},
     collections::HashSet
 };
+#[cfg(feature = "yaml")]
+use serde::{Serialize, Deserialize};
 
 use super::Storage;
 use super::component::Component;
@@ -16,6 +18,7 @@ pub trait ComponentStorage: Storage {
     fn remove_untyped(&self, entity: Entity) -> Option<Box<dyn Component>>;
 }
 
+#[cfg_attr(feature = "yaml", derive(Serialize, Deserialize))]
 pub struct ComponentCell<T: Component> {
     pub inner: RefCell<ComponentSet<T>>
 }
@@ -32,6 +35,7 @@ impl<T: Component + 'static> ComponentStorage for ComponentCell<T> {
     }
 }
 
+#[cfg_attr(feature = "yaml", derive(Serialize, Deserialize))]
 pub struct ComponentSet<T: Component> {
     dense: Vec<Entity>,
     sparse: Vec<IdSize>,

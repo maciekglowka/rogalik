@@ -8,6 +8,8 @@ mod entity;
 mod errors;
 mod resource;
 mod world;
+#[cfg(feature = "yaml")]
+mod yaml;
 
 pub use component::Component;
 pub use entity::Entity;
