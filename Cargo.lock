@@ -1149,7 +1149,9 @@ checksum = "26072860ba924cbfa98ea39c8c19b4dd6a4a25423dbdf219c1eca91aa0cf6964"
 name = "playground"
 version = "0.1.0"
 dependencies = [
+ "rogalik_math",
  "rogalik_storage",
+ "serde",
 ]
 
 [[package]]
@@ -1330,6 +1332,7 @@ name = "rogalik_math"
 version = "0.1.0"
 dependencies = [
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -1347,7 +1350,9 @@ dependencies = [
 name = "rogalik_storage"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "rogalik_events",
+ "serde",
 ]
 
 [[package]]

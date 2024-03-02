@@ -11,5 +11,5 @@ serialize = ["dep:serde", "dep:bincode"]
 [dependencies] 
 rogalik_events = { path = "../rogalik_events" }
 
-bincode = { version = "1.3", optional = true }
-serde = { version = "1.0", features = ["derive"], optional = true }
+bincode = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
