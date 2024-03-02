@@ -9,7 +9,7 @@ use serde::{Serialize, Deserialize};
 use super::Storage;
 use super::component::Component;
 use super::entity::{Entity, IdSize};
-use super::errors::EntityError;
+use super::errors::WorldError;
 
 const GUARD_ID: IdSize = IdSize::MAX;
 
@@ -53,7 +53,7 @@ impl<T: Component> ComponentSet<T> {
             true => Some(index)
         }
     }
-    pub fn insert(&mut self, entity: Entity, entry: T) -> Result<(), EntityError> {
+    pub fn insert(&mut self, entity: Entity, entry: T) -> Result<(), WorldError> {
         // On conflict do nothing
         let index = entity.id as usize;
         if index >= self.sparse.len() {
@@ -61,7 +61,7 @@ impl<T: Component> ComponentSet<T> {
             self.sparse.resize(index + 1, GUARD_ID);
         } else if self.sparse[index] != GUARD_ID {
             // already assigned
-            return Err(EntityError);
+            return Err(WorldError::EntityError);
         }
         self.sparse[index] = self.dense.len() as IdSize;
 

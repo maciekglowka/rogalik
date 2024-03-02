@@ -10,14 +10,9 @@ use crate::{Storage, WorldEvent};
 use crate::component::Component;
 use crate::component_storage::{ComponentSet, ComponentCell, ComponentStorage};
 use crate::entity::{Entity, EntityStorage};
-use crate::errors::EntityError;
+use crate::errors::WorldError;
 use crate::resource::ResourceCell;
 
-#[cfg(feature = "serialize")]
-use serde::{
-    Serialize,
-    de::DeserializeOwned
-};
 #[cfg(feature = "serialize")]
 use crate::serialize::StorageRegistry;
 
@@ -94,13 +89,13 @@ impl World {
         &mut self,
         entity: Entity,
         component: T
-    ) -> Result<(), EntityError> {
+    ) -> Result<(), WorldError> {
         let type_id = TypeId::of::<T>();
         if !self.component_storage.contains_key(&type_id) {
             self.insert_component_storage::<T>()
         }
         let res = self.get_component_set_mut()
-            .ok_or(EntityError)?
+            .ok_or(WorldError::EntityError)?
             .insert(entity, component);
         if res.is_ok() { self.publish(WorldEvent::ComponentSpawned(entity, type_id)) }
         res
