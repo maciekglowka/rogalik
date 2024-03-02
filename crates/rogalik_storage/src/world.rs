@@ -19,14 +19,16 @@ use serde::{
     de::DeserializeOwned
 };
 #[cfg(feature = "serialize")]
-use crate::serialize::ComponentRegistry;
+use crate::serialize::StorageRegistry;
 
 pub struct World {
-    component_storage: HashMap<TypeId, Box<dyn ComponentStorage>>,
-    entity_storage: EntityStorage,
-    resource_storage: HashMap<TypeId, Box<dyn Storage>>,
+    pub(crate) component_storage: HashMap<TypeId, Box<dyn ComponentStorage>>,
+    pub(crate) entity_storage: EntityStorage,
+    pub(crate)resource_storage: HashMap<TypeId, Box<dyn Storage>>,
     #[cfg(feature = "serialize")]
-    component_registry: ComponentRegistry
+    pub(crate) component_registry: StorageRegistry<Box<dyn ComponentStorage>>,
+    #[cfg(feature = "serialize")]
+    pub(crate) resource_registry: StorageRegistry<Box<dyn Storage>>
 }
 impl World {
     pub fn new() -> Self {
@@ -35,7 +37,9 @@ impl World {
             resource_storage: HashMap::new(),
             entity_storage: EntityStorage::new(),
             #[cfg(feature = "serialize")]
-            component_registry: ComponentRegistry::new()
+            component_registry: StorageRegistry::<Box<dyn ComponentStorage>>::new(),
+            #[cfg(feature = "serialize")]
+            resource_registry: StorageRegistry::<Box<dyn Storage>>::new()
         };
         let events = EventBus::<WorldEvent>::new();
         world.insert_resource(events);
@@ -149,42 +153,6 @@ impl World {
 
     pub fn query<T: 'static + Component>(&self) -> QueryBuilder {
         QueryBuilder::new::<T>(self)
-    }
-
-    // yaml
-
-    #[cfg(feature = "serialize")]
-    pub fn register_serializable_component<T>(&mut self, tag: &str)
-    where T: Component + DeserializeOwned + Serialize + 'static {
-        self.component_registry.register::<T>(tag);
-    }
-
-    #[cfg(feature = "serialize")]
-    pub fn serialize_components(&self) -> Vec<u8> {
-        let mut map = HashMap::new();
-        for (type_id, val) in self.component_storage.iter() {
-            let Some(f) = self.component_registry.serializers.get(type_id)
-                else { continue };
-            let Some(tag) = self.component_registry.tags.get(type_id)
-                else { continue };
-            let s = f(val);
-            map.insert(tag.to_string(), s);
-        }
-        bincode::serialize(&map)
-            .expect("Can't serialize component map!")
-    }
-    #[cfg(feature = "serialize")]
-    pub fn deserialize_components(&mut self, data: &[u8]) {
-        let map: HashMap<String, &[u8]> = bincode::deserialize(data)
-            .expect("Can't deserialize component map!");
-        for (tag, value) in map.iter() {
-            let Some(type_id) = self.component_registry.type_ids.get(tag)
-                else { continue };
-            let Some(f) = self.component_registry.deserializers.get(type_id)
-                else { continue };
-            let c = f(value);
-            self.component_storage.insert(*type_id, c);
-        }
     }
 }
 
