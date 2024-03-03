@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 
+#[cfg(feature = "serialize")]
+use serde::{Serialize, Deserialize, Deserializer, Serializer};
+
 use super::ResourceId;
 
 pub struct Time {
@@ -66,8 +69,11 @@ impl Timer {
 }
 
 #[derive(Clone, Copy)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Instant {
     #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(feature = "serialize", serde(serialize_with="serialize_instant"))]
+    #[cfg_attr(feature = "serialize", serde(deserialize_with="deserialize_instant"))]
     inner: std::time::Instant,
     #[cfg(target_arch = "wasm32")]
     inner: f64
@@ -97,4 +103,23 @@ impl Instant {
             .expect("Can't get performance!")
             .now()
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "serialize")]
+fn deserialize_instant<'de, D>(deserializer: D) -> Result<std::time::Instant, D::Error>
+where D: Deserializer<'de> {
+    let duration = std::time::Duration::deserialize(deserializer)?;
+    let now = std::time::Instant::now();
+    Ok(now.checked_sub(duration)
+        .ok_or(serde::de::Error::custom("Invalid instant"))?
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "serialize")]
+fn serialize_instant<S>(instant: &std::time::Instant, serializer: S) -> Result<S::Ok, S::Error>
+where S: Serializer {
+    let duration = instant.elapsed();
+    duration.serialize(serializer)
 }

@@ -1,9 +1,13 @@
+#[cfg(feature = "serialize")]
+use serde::{Serialize, Deserialize};
+
 use rogalik_math::vectors::Vector2f;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub struct ResourceId(pub usize);
 
 #[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Color(pub u8, pub u8, pub u8, pub u8);
 impl Color {
     pub fn as_f32(&self) -> [f32; 4] {
