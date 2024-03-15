@@ -6,18 +6,24 @@ use std::{
 
 use rogalik_events::EventBus;
 
-use super::{Storage, WorldEvent};
-use super::component::Component;
-use super::component_storage::{ComponentSet, ComponentCell, ComponentStorage};
-use super::entity::{Entity, EntityStorage};
-use super::errors::EntityError;
-use super::resource::ResourceCell;
+use crate::{Storage, WorldEvent};
+use crate::component::Component;
+use crate::component_storage::{ComponentSet, ComponentCell, ComponentStorage};
+use crate::entity::{Entity, EntityStorage};
+use crate::errors::WorldError;
+use crate::resource::ResourceCell;
+
+#[cfg(feature = "serialize")]
+use crate::serialize::StorageRegistry;
 
 pub struct World {
-    component_storage: HashMap<TypeId, Box<dyn ComponentStorage>>,
-    entity_storage: EntityStorage,
-    resource_storage: HashMap<TypeId, Box<dyn Storage>>,
-    // pub events: EventBus<WorldEvent>
+    pub(crate) component_storage: HashMap<TypeId, Box<dyn ComponentStorage>>,
+    pub(crate) entity_storage: EntityStorage,
+    pub(crate)resource_storage: HashMap<TypeId, Box<dyn Storage>>,
+    #[cfg(feature = "serialize")]
+    pub(crate) component_registry: StorageRegistry<Box<dyn ComponentStorage>>,
+    #[cfg(feature = "serialize")]
+    pub(crate) resource_registry: StorageRegistry<Box<dyn Storage>>
 }
 impl World {
     pub fn new() -> Self {
@@ -25,6 +31,10 @@ impl World {
             component_storage: HashMap::new(),
             resource_storage: HashMap::new(),
             entity_storage: EntityStorage::new(),
+            #[cfg(feature = "serialize")]
+            component_registry: StorageRegistry::<Box<dyn ComponentStorage>>::new(),
+            #[cfg(feature = "serialize")]
+            resource_registry: StorageRegistry::<Box<dyn Storage>>::new()
         };
         let events = EventBus::<WorldEvent>::new();
         world.insert_resource(events);
@@ -79,13 +89,13 @@ impl World {
         &mut self,
         entity: Entity,
         component: T
-    ) -> Result<(), EntityError> {
+    ) -> Result<(), WorldError> {
         let type_id = TypeId::of::<T>();
         if !self.component_storage.contains_key(&type_id) {
             self.insert_component_storage::<T>()
         }
         let res = self.get_component_set_mut()
-            .ok_or(EntityError)?
+            .ok_or(WorldError::EntityError)?
             .insert(entity, component);
         if res.is_ok() { self.publish(WorldEvent::ComponentSpawned(entity, type_id)) }
         res

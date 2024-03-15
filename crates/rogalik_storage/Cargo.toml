@@ -5,5 +5,11 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+serialize = ["dep:serde", "dep:bincode"]
+
 [dependencies] 
 rogalik_events = { path = "../rogalik_events" }
+
+bincode = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }

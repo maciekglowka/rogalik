@@ -2,9 +2,12 @@ use std::{
     any::Any,
     cell::RefCell
 };
+#[cfg(feature = "serialize")]
+use serde::{Serialize, Deserialize};
 
 use super::Storage;
 
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct ResourceCell<T: 'static> {
     pub inner: RefCell<T>
 }

@@ -3,10 +3,14 @@ use std::{
     ops::{Add, AddAssign, Div, Mul, Sub, SubAssign}
 };
 
+#[cfg(feature = "serialize")]
+use serde::{Serialize, Deserialize};
+
 pub type Vector2i = Vector2<i32>;
 pub type Vector2f = Vector2<f32>;
 
 #[derive(Copy, Clone, Debug, Default, Ord, PartialOrd, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Vector2<T: Num + Copy> {
     pub x: T,
     pub y: T

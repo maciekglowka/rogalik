@@ -7,6 +7,8 @@ mod component_storage;
 mod entity;
 mod errors;
 mod resource;
+#[cfg(feature = "serialize")]
+mod serialize;
 mod world;
 
 pub use component::Component;
