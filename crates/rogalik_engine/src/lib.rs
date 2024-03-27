@@ -20,6 +20,7 @@ pub mod traits;
 mod wasm;
 
 pub use errors::EngineError;
+pub use log;
 pub use traits::{Game, GraphicsContext};
 pub use structs::{ResourceId, Params2d, Color};
 pub use time::Instant;
@@ -243,6 +244,7 @@ where
                         context.input.handle_mouse_move(*position, &context.inner_size);
                     },
                     WindowEvent::Touch(winit::event::Touch { phase, location, id, .. }) => {
+                        log::info!("Engine touch: {}, {:?}", id , phase);
                         context.input.handle_touch(*id, *phase, *location, &context.inner_size);
                     },
                     WindowEvent::CloseRequested => close_requested = true,

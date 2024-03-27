@@ -48,7 +48,8 @@ impl InputContext {
         self.keys_released = HashSet::new();
         self.mouse_buttons_pressed = HashSet::new();
         self.mouse_buttons_released = HashSet::new();
-        self.touches.retain(|_, t| t.phase != TouchPhase::Ended && t.phase != TouchPhase::Cancelled);
+        // self.touches.retain(|_, t| t.phase != TouchPhase::Ended && t.phase != TouchPhase::Cancelled);
+        self.touches = HashMap::new();
     }
     fn calculate_position(&self, position: PhysicalPosition<f64>, window_size: &PhysicalSize<u32>) -> Vector2f {
         Vector2f::new(
