@@ -1,51 +1,46 @@
+#[cfg(target_os = "android")]
+pub use winit::platform::android::activity::AndroidApp;
 use winit::{
+    dpi::{LogicalSize, PhysicalSize},
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
-    dpi::{LogicalSize, PhysicalSize}
 };
-#[cfg(target_os = "android")]
-pub use winit::platform::android::activity::AndroidApp;
 
 #[cfg(target_os = "android")]
 mod android;
 
-pub mod errors;
 pub mod input;
-pub mod structs;
 mod time;
 pub mod traits;
 
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
-pub use errors::EngineError;
 pub use log;
-pub use traits::{Game, GraphicsContext};
-pub use structs::{ResourceId, Params2d, Color};
+pub use rogalik_common::{Color, GraphicsContext, Params2d, ResourceId};
 pub use time::Instant;
+pub use traits::Game;
 
-pub struct Context<G> {
-    pub graphics: G,
+pub struct Context {
+    pub graphics: rogalik_wgpu::WgpuContext,
     pub input: input::InputContext,
     pub time: time::Time,
     pub window: Window,
     inner_size: PhysicalSize<u32>,
     scale_factor: f64,
-    pub os_path: Option<String>
+    pub os_path: Option<String>,
 }
-impl<G: GraphicsContext> Context<G> {
+impl Context {
     pub fn get_physical_size(&self) -> rogalik_math::vectors::Vector2f {
         rogalik_math::vectors::vector2::Vector2f::new(
-            self.inner_size.width as f32, self.inner_size.height as f32
+            self.inner_size.width as f32,
+            self.inner_size.height as f32,
         )
     }
     pub fn get_logical_size(&self) -> rogalik_math::vectors::Vector2f {
-        let size: LogicalSize<f32> = self.inner_size
-            .to_logical(self.scale_factor);
-        rogalik_math::vectors::vector2::Vector2f::new(
-            size.width, size.height
-        )
+        let size: LogicalSize<f32> = self.inner_size.to_logical(self.scale_factor);
+        rogalik_math::vectors::vector2::Vector2f::new(size.width, size.height)
     }
 }
 
@@ -71,18 +66,16 @@ impl EngineBuilder {
         self.logical_size = Some((w, h));
         self
     }
-    pub fn build<G, T>(&self, game: T) -> Engine<G, T>
+    pub fn build<T>(&self, game: T) -> Engine<T>
     where
-        G: GraphicsContext + 'static,
-        T: Game<G> + 'static
+        T: Game + 'static,
     {
         // set logging
         #[cfg(not(target_os = "android"))]
         env_logger::init();
-        
+
         // set window
-        let event_loop = EventLoop::new()
-            .expect("Can't create the event loop!");
+        let event_loop = EventLoop::new().expect("Can't create the event loop!");
         let mut window_builder = WindowBuilder::new();
 
         if let Some(title) = &self.title {
@@ -95,8 +88,9 @@ impl EngineBuilder {
             let window_size = LogicalSize::new(size.0, size.1);
             window_builder = window_builder.with_inner_size(window_size);
         }
-        
-        let window = window_builder.build(&event_loop)
+
+        let window = window_builder
+            .build(&event_loop)
             .expect("Can't create window!");
 
         let graphics = GraphicsContext::new();
@@ -107,10 +101,12 @@ impl EngineBuilder {
             inner_size: window.inner_size(),
             scale_factor: window.scale_factor(),
             window,
-            os_path: None
+            os_path: None,
         };
         Engine {
-            event_loop, game, context
+            event_loop,
+            game,
+            context,
         }
     }
 
@@ -118,12 +114,11 @@ impl EngineBuilder {
     pub fn build_wasm<G, T>(&self, game: T) -> Engine<G, T>
     where
         G: GraphicsContext + 'static,
-        T: Game<G> + 'static
+        T: Game<G> + 'static,
     {
         wasm::configure_handlers();
         log::info!("Logging configured");
-        let event_loop = EventLoop::new()
-            .expect("Can't create the event loop!");
+        let event_loop = EventLoop::new().expect("Can't create the event loop!");
         let window = wasm::get_window(&event_loop);
         log::info!("Created WASM window");
         log::info!("{:?}", window.inner_size());
@@ -135,10 +130,12 @@ impl EngineBuilder {
             inner_size: window.inner_size(),
             scale_factor: window.scale_factor(),
             window,
-            os_path: None
+            os_path: None,
         };
         Engine {
-            event_loop, game, context
+            event_loop,
+            game,
+            context,
         }
     }
 
@@ -146,17 +143,19 @@ impl EngineBuilder {
     pub fn build_android<G, T>(&self, game: T, app: AndroidApp) -> Engine<G, T>
     where
         G: GraphicsContext + 'static,
-        T: Game<G> + 'static
+        T: Game<G> + 'static,
     {
-        use winit::platform::android::EventLoopBuilderExtAndroid;
         use winit::event_loop::EventLoopBuilder;
+        use winit::platform::android::EventLoopBuilderExtAndroid;
 
-        android_logger::init_once(android_logger::Config::default()
-            .with_max_level(log::LevelFilter::Info)
-            .with_tag("Rogalik")
+        android_logger::init_once(
+            android_logger::Config::default()
+                .with_max_level(log::LevelFilter::Info)
+                .with_tag("Rogalik"),
         );
 
-        let os_path = app.internal_data_path()
+        let os_path = app
+            .internal_data_path()
             .map_or(None, |a| a.to_str().map(|a| a.to_string()));
 
         // set window
@@ -170,14 +169,15 @@ impl EngineBuilder {
         if let Some(title) = &self.title {
             window_builder = window_builder.with_title(title);
         }
-        
-        let window = window_builder.build(&event_loop)
+
+        let window = window_builder
+            .build(&event_loop)
             .expect("Can't create window!");
-    
+
         log::info!("Creating graphics context");
         let graphics = GraphicsContext::new();
         log::info!("Graphics created");
-        
+
         android::hide_ui();
 
         let context = Context {
@@ -187,42 +187,37 @@ impl EngineBuilder {
             inner_size: window.inner_size(),
             scale_factor: window.scale_factor(),
             window,
-            os_path
+            os_path,
         };
         log::info!("Creating Engine");
         Engine {
-            event_loop, game, context
+            event_loop,
+            game,
+            context,
         }
     }
 }
 
-pub struct Engine<G, T>
+pub struct Engine<T>
 where
-    G: GraphicsContext + 'static,
-    T: Game<G> + 'static
+    T: Game + 'static,
 {
     event_loop: EventLoop<()>,
-    context: Context<G>,
-    game: T
+    context: Context,
+    game: T,
 }
-impl<G, T> Engine<G, T>
+impl<T> Engine<T>
 where
-    G: GraphicsContext + 'static,
-    T: Game<G> + 'static
+    T: Game + 'static,
 {
     pub fn run(self) {
-        pollster::block_on(run::<G, T>(self.event_loop, self.game, self.context));
+        pollster::block_on(run::<T>(self.event_loop, self.game, self.context));
     }
 }
 
-async fn run<G, T> (
-    event_loop: EventLoop<()>,
-    mut game: T,
-    mut context: Context<G>
-) 
+async fn run<T>(event_loop: EventLoop<()>, mut game: T, mut context: Context)
 where
-    G: GraphicsContext + 'static,
-    T: Game<G> + 'static
+    T: Game + 'static,
 {
     game.setup(&mut context);
     let mut close_requested = false;
@@ -231,22 +226,31 @@ where
         match event {
             Event::WindowEvent {
                 window_id,
-                ref event
+                ref event,
             } if window_id == context.window.id() => {
                 match event {
                     WindowEvent::KeyboardInput { event, .. } => {
                         context.input.handle_keyboard(event);
-                    },
+                    }
                     WindowEvent::MouseInput { button, state, .. } => {
                         context.input.handle_mouse_button(button, state);
                     }
                     WindowEvent::CursorMoved { position, .. } => {
-                        context.input.handle_mouse_move(*position, &context.inner_size);
-                    },
-                    WindowEvent::Touch(winit::event::Touch { phase, location, id, .. }) => {
-                        log::info!("Engine touch: {}, {:?}", id , phase);
-                        context.input.handle_touch(*id, *phase, *location, &context.inner_size);
-                    },
+                        context
+                            .input
+                            .handle_mouse_move(*position, &context.inner_size);
+                    }
+                    WindowEvent::Touch(winit::event::Touch {
+                        phase,
+                        location,
+                        id,
+                        ..
+                    }) => {
+                        log::info!("Engine touch: {}, {:?}", id, phase);
+                        context
+                            .input
+                            .handle_touch(*id, *phase, *location, &context.inner_size);
+                    }
                     WindowEvent::CloseRequested => close_requested = true,
                     WindowEvent::Resized(physical_size) => {
                         if !context.graphics.has_context() {
@@ -255,12 +259,14 @@ where
                         log::info!("Resized: {:?}", physical_size);
                         context.inner_size = *physical_size;
                         // context.scale_factor = context.window.scale_factor();
-                        context.graphics.resize(physical_size.width, physical_size.height);
+                        context
+                            .graphics
+                            .resize(physical_size.width, physical_size.height);
                         game.resize(&mut context);
                     }
                     WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                         context.scale_factor = *scale_factor;
-                    },
+                    }
                     WindowEvent::RedrawRequested => {
                         // state.update();
                         // let start = std::time::Instant::now();
@@ -275,15 +281,15 @@ where
                         //     Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
                         //     Err(e) => eprintln!("{:?}", e)
                         // }
-                    },
+                    }
                     _ => {}
                 }
-            },
+            }
             Event::Resumed => {
                 context.graphics.create_context(&context.window);
                 game.resume(&mut context);
                 game.resize(&mut context);
-            },
+            }
             Event::AboutToWait => {
                 if !close_requested {
                     context.window.request_redraw();

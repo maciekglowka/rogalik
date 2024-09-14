@@ -12,7 +12,9 @@ crate-type = ["cdylib", "rlib"]
 serialize = ["dep:serde"]
 
 [dependencies]
+rogalik_common = { path = "../rogalik_common" }
 rogalik_math = { path = "../rogalik_math" }
+rogalik_wgpu = { path = "../rogalik_wgpu" }
 
 cfg-if = "1"
 log = { workspace = true }

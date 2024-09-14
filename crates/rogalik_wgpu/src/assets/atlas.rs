@@ -1,7 +1,7 @@
-use rogalik_math::vectors::{Vector2f, Vector2i};
+use rogalik_math::vectors::Vector2f;
 
 use crate::structs::Vertex;
-use rogalik_engine::{Params2d, ResourceId};
+use rogalik_common::{Params2d, ResourceId};
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct SpriteAtlas {
@@ -41,7 +41,6 @@ impl SpriteAtlas {
     pub fn get_sprite(
         &self,
         index: usize,
-        camera_id: ResourceId,
         position: Vector2f,
         size: Vector2f,
         params: Params2d,

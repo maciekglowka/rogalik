@@ -1,5 +1,5 @@
 #[cfg(feature = "serialize")]
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 pub type IdSize = u16;
 
@@ -7,18 +7,23 @@ pub type IdSize = u16;
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Entity {
     pub id: IdSize,
-    pub version: IdSize
+    pub version: IdSize,
 }
 
+#[derive(Default)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct EntityStorage {
     entities: Vec<Entity>,
     next_recycled: Option<IdSize>,
-    last_recycled: Option<IdSize>
+    last_recycled: Option<IdSize>,
 }
 impl EntityStorage {
     pub fn new() -> Self {
-        EntityStorage { entities: Vec::new(), next_recycled: None, last_recycled: None }
+        EntityStorage {
+            entities: Vec::new(),
+            next_recycled: None,
+            last_recycled: None,
+        }
     }
     pub fn spawn(&mut self) -> Entity {
         if let Some(entitiy) = self.recycle() {
@@ -44,7 +49,10 @@ impl EntityStorage {
     }
     fn spawn_new(&mut self) -> Entity {
         let id = self.entities.len();
-        let entity = Entity { id: id as IdSize, version: 0};
+        let entity = Entity {
+            id: id as IdSize,
+            version: 0,
+        };
         self.entities.push(entity);
         entity
     }
@@ -126,7 +134,7 @@ mod tests {
         for _ in 0..count {
             store.spawn();
         }
-        
+
         for i in 0..3 {
             store.despawn(Entity { id: 2, version: i });
             let new = store.spawn();

@@ -1,0 +1,13 @@
+[package]
+name = "rogalik_common"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+serialize = ["dep:serde"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+serde = { workspace = true, optional = true }
+rogalik_math = { path = "../rogalik_math" }
+winit = { workspace = true }

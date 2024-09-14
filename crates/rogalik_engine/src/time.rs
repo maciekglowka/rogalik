@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
 #[cfg(feature = "serialize")]
-use serde::{Serialize, Deserialize, Deserializer, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::ResourceId;
+use rogalik_common::ResourceId;
 
 pub struct Time {
     delta: f32,
     timers: HashMap<ResourceId, Timer>,
     next_timer_id: usize,
-    frame_start: Instant
+    frame_start: Instant,
 }
 impl Time {
     pub fn new() -> Self {
@@ -17,7 +17,7 @@ impl Time {
             delta: 1.0,
             timers: HashMap::default(),
             next_timer_id: 0,
-            frame_start: Instant::init()
+            frame_start: Instant::init(),
         }
     }
     pub fn update(&mut self) {
@@ -48,11 +48,15 @@ impl Time {
 pub struct Timer {
     tick: f32,
     state: f32,
-    finished: bool
+    finished: bool,
 }
 impl Timer {
     fn new(tick: f32) -> Self {
-        Timer { state: 0., tick: tick, finished: false }
+        Timer {
+            state: 0.,
+            tick: tick,
+            finished: false,
+        }
     }
     fn update(&mut self, delta: f32) {
         self.state += delta;
@@ -72,11 +76,11 @@ impl Timer {
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Instant {
     #[cfg(not(target_arch = "wasm32"))]
-    #[cfg_attr(feature = "serialize", serde(serialize_with="serialize_instant"))]
-    #[cfg_attr(feature = "serialize", serde(deserialize_with="deserialize_instant"))]
+    #[cfg_attr(feature = "serialize", serde(serialize_with = "serialize_instant"))]
+    #[cfg_attr(feature = "serialize", serde(deserialize_with = "deserialize_instant"))]
     inner: std::time::Instant,
     #[cfg(target_arch = "wasm32")]
-    inner: f64
+    inner: f64,
 }
 impl Instant {
     pub fn init() -> Self {
@@ -84,7 +88,7 @@ impl Instant {
             #[cfg(not(target_arch = "wasm32"))]
             inner: std::time::Instant::now(),
             #[cfg(target_arch = "wasm32")]
-            inner: Instant::web_value()
+            inner: Instant::web_value(),
         }
     }
     #[cfg(not(target_arch = "wasm32"))]
@@ -108,18 +112,22 @@ impl Instant {
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "serialize")]
 fn deserialize_instant<'de, D>(deserializer: D) -> Result<std::time::Instant, D::Error>
-where D: Deserializer<'de> {
+where
+    D: Deserializer<'de>,
+{
     let duration = std::time::Duration::deserialize(deserializer)?;
     let now = std::time::Instant::now();
-    Ok(now.checked_sub(duration)
-        .ok_or(serde::de::Error::custom("Invalid instant"))?
-    )
+    Ok(now
+        .checked_sub(duration)
+        .ok_or(serde::de::Error::custom("Invalid instant"))?)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "serialize")]
 fn serialize_instant<S>(instant: &std::time::Instant, serializer: S) -> Result<S::Ok, S::Error>
-where S: Serializer {
+where
+    S: Serializer,
+{
     let duration = instant.elapsed();
     duration.serialize(serializer)
 }

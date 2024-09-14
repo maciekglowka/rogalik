@@ -1,6 +1,6 @@
 use winit::window::Window;
 
-use rogalik_engine::{GraphicsContext, ResourceId, Params2d, EngineError};
+use rogalik_common::{EngineError, GraphicsContext, Params2d, ResourceId};
 use rogalik_math::vectors::Vector2f;
 
 mod assets;
@@ -21,7 +21,7 @@ pub struct WgpuContext {
     current_camera_id: ResourceId,
     cameras: Vec<camera::Camera2D>,
     clear_color: wgpu::Color,
-    surface_state: Option<SurfaceState>
+    surface_state: Option<SurfaceState>,
 }
 impl GraphicsContext for WgpuContext {
     fn new() -> Self {
@@ -30,18 +30,14 @@ impl GraphicsContext for WgpuContext {
             current_camera_id: ResourceId::default(),
             cameras: Vec::new(),
             clear_color: wgpu::Color::BLACK,
-            surface_state: None
+            surface_state: None,
         }
     }
     fn has_context(&self) -> bool {
         self.surface_state.is_some()
     }
     fn create_context(&mut self, window: &Window) {
-        self.surface_state = create_surface_state(
-            window,
-            &self.assets,
-            self.clear_color
-        );
+        self.surface_state = create_surface_state(window, &self.assets, self.clear_color);
         if self.surface_state.is_some() {
             for camera in self.cameras.iter_mut() {
                 camera.resize_viewport(
@@ -51,10 +47,13 @@ impl GraphicsContext for WgpuContext {
             }
         }
     }
-    fn set_clear_color(&mut self, color: rogalik_engine::Color) {
+    fn set_clear_color(&mut self, color: rogalik_common::Color) {
         let col = color.as_srgb();
-        self.clear_color = wgpu::Color { 
-            r: col[0] as f64, g: col[1] as f64, b: col[2] as f64, a: col[3] as f64 
+        self.clear_color = wgpu::Color {
+            r: col[0] as f64,
+            g: col[1] as f64,
+            b: col[2] as f64,
+            a: col[3] as f64,
         };
         if let Some(state) = &mut self.surface_state {
             state.renderer2d.set_clear_color(self.clear_color);
@@ -75,29 +74,40 @@ impl GraphicsContext for WgpuContext {
     }
     fn render(&mut self) {
         if let Some(state) = &mut self.surface_state {
-            state.renderer2d.render(
-                &state.surface,
-                &state.device,
-                &state.queue,
-                &self.cameras
-            );
+            state
+                .renderer2d
+                .render(&state.surface, &state.device, &state.queue, &self.cameras);
         }
     }
-    fn load_sprite_atlas(&mut self, name: &str, bytes: &[u8], rows: usize, cols: usize, padding: Option<(f32, f32)>) {
+    fn load_sprite_atlas(
+        &mut self,
+        name: &str,
+        bytes: &[u8],
+        rows: usize,
+        cols: usize,
+        padding: Option<(f32, f32)>,
+    ) {
         self.assets.load_atlas(name, bytes, rows, cols, padding);
     }
-    fn load_font(&mut self, name: &str, bytes: &[u8], rows: usize, cols: usize, padding: Option<(f32, f32)>) {
+    fn load_font(
+        &mut self,
+        name: &str,
+        bytes: &[u8],
+        rows: usize,
+        cols: usize,
+        padding: Option<(f32, f32)>,
+    ) {
         self.assets.load_font(name, bytes, rows, cols, padding);
     }
     fn draw_atlas_sprite(
-            &mut self,
-            atlas: &str,
-            index: usize,
-            position: rogalik_math::vectors::Vector2f,
-            z_index: i32,
-            size: rogalik_math::vectors::Vector2f,
-            params: Params2d
-        ) -> Result<(), EngineError> {
+        &mut self,
+        atlas: &str,
+        index: usize,
+        position: rogalik_math::vectors::Vector2f,
+        z_index: i32,
+        size: rogalik_math::vectors::Vector2f,
+        params: Params2d,
+    ) -> Result<(), EngineError> {
         if let Some(state) = &mut self.surface_state {
             state.renderer2d.draw_atlas_sprite(
                 &self.assets,
@@ -107,21 +117,21 @@ impl GraphicsContext for WgpuContext {
                 position,
                 z_index,
                 size,
-                params
+                params,
             )
         } else {
             Err(EngineError::GraphicsNotReady)
         }
     }
     fn draw_text(
-            &mut self,
-            font: &str,
-            text: &str,
-            position: Vector2f,
-            z_index: i32,
-            size: f32,
-            params: Params2d
-        ) -> Result<(), EngineError> {
+        &mut self,
+        font: &str,
+        text: &str,
+        position: Vector2f,
+        z_index: i32,
+        size: f32,
+        params: Params2d,
+    ) -> Result<(), EngineError> {
         if let Some(state) = &mut self.surface_state {
             state.renderer2d.draw_text(
                 &self.assets,
@@ -131,7 +141,7 @@ impl GraphicsContext for WgpuContext {
                 position,
                 z_index,
                 size,
-                params
+                params,
             )
         } else {
             Err(EngineError::GraphicsNotReady)
@@ -148,7 +158,7 @@ impl GraphicsContext for WgpuContext {
         let id = ResourceId(self.cameras.len());
         let (w, h) = match &self.surface_state {
             Some(s) => (s.config.width, s.config.height),
-            None => (0, 0)
+            None => (0, 0),
         };
         let camera = camera::Camera2D::new(w as f32, h as f32, scale, target);
         self.cameras.push(camera);
@@ -157,13 +167,13 @@ impl GraphicsContext for WgpuContext {
     fn set_camera(&mut self, id: ResourceId) {
         self.current_camera_id = id;
     }
-    fn get_current_camera(&self) -> &dyn rogalik_engine::traits::Camera {
+    fn get_current_camera(&self) -> &dyn rogalik_common::Camera {
         &self.cameras[self.current_camera_id.0]
     }
-    fn get_camera(&self, id: ResourceId) -> Option<&dyn rogalik_engine::traits::Camera>{
+    fn get_camera(&self, id: ResourceId) -> Option<&dyn rogalik_common::Camera> {
         Some(self.cameras.get(id.0)?)
     }
-    fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut dyn rogalik_engine::traits::Camera> {
+    fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut dyn rogalik_common::Camera> {
         Some(self.cameras.get_mut(id.0)?)
     }
 }
@@ -171,7 +181,7 @@ impl GraphicsContext for WgpuContext {
 fn create_surface_state(
     window: &Window,
     assets: &assets::AssetStore,
-    clear_color: wgpu::Color
+    clear_color: wgpu::Color,
 ) -> Option<SurfaceState> {
     let size = window.inner_size();
 
@@ -182,41 +192,48 @@ fn create_surface_state(
     log::debug!("Creating WGPU instance");
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends: wgpu::Backends::all(),
-        dx12_shader_compiler: Default::default()
+        dx12_shader_compiler: Default::default(),
     });
     log::debug!("Creating WGPU surface");
     let surface = unsafe { instance.create_surface(window) }.unwrap();
     log::debug!("Creating WGPU adapter");
-    let adapter = pollster::block_on(instance.request_adapter(
-            &wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::default(),
-                compatible_surface: Some(&surface),
-                force_fallback_adapter: false,
-            }
-        )).expect("Request for adapter failed!");
+    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+        power_preference: wgpu::PowerPreference::default(),
+        compatible_surface: Some(&surface),
+        force_fallback_adapter: false,
+    }))
+    .expect("Request for adapter failed!");
     log::debug!("Creating WGPU device");
     let (device, queue) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                features: wgpu::Features::empty(),
-                limits: if cfg!(target_arch = "wasm32") {
-                    wgpu::Limits::downlevel_webgl2_defaults()
-                } else {
-                    wgpu::Limits::default()
-                },
-                label: None
+        &wgpu::DeviceDescriptor {
+            features: wgpu::Features::empty(),
+            limits: if cfg!(target_arch = "wasm32") {
+                wgpu::Limits::downlevel_webgl2_defaults()
+            } else {
+                wgpu::Limits::default()
             },
-            None
-        )).expect("Could not create the device!");
+            label: None,
+        },
+        None,
+    ))
+    .expect("Could not create the device!");
 
     log::debug!("Config WGPU surface");
     let surface_caps = surface.get_capabilities(&adapter);
-    let surface_format = surface_caps.formats.iter()
+    let surface_format = surface_caps
+        .formats
+        .iter()
         .copied()
         .find(|f| f.is_srgb())
         .unwrap_or(surface_caps.formats[0]);
 
-    let present_mode = if surface_caps.present_modes.contains(&wgpu::PresentMode::Fifo)
-    || surface_caps.present_modes.contains(&wgpu::PresentMode::FifoRelaxed) {
+    let present_mode = if surface_caps
+        .present_modes
+        .contains(&wgpu::PresentMode::Fifo)
+        || surface_caps
+            .present_modes
+            .contains(&wgpu::PresentMode::FifoRelaxed)
+    {
         wgpu::PresentMode::AutoVsync
     } else {
         surface_caps.present_modes[0]
@@ -229,24 +246,19 @@ fn create_surface_state(
         height: size.height,
         present_mode,
         alpha_mode: surface_caps.alpha_modes[0],
-        view_formats: vec![]
+        view_formats: vec![],
     };
     surface.configure(&device, &config);
 
     log::debug!("Creating Renderer2d");
-    let renderer2d = renderer2d::Renderer2d::new(
-        assets,
-        &device,
-        &queue,
-        &surface_format,
-        clear_color
-    );
+    let renderer2d =
+        renderer2d::Renderer2d::new(assets, &device, &queue, &surface_format, clear_color);
 
-    Some(SurfaceState { 
+    Some(SurfaceState {
         surface,
         device,
         queue,
         config,
-        renderer2d
+        renderer2d,
     })
 }

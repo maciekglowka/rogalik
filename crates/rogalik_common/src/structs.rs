@@ -1,5 +1,5 @@
 #[cfg(feature = "serialize")]
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use rogalik_math::vectors::Vector2f;
 
@@ -24,14 +24,13 @@ impl Color {
             srgb_single(f[0]),
             srgb_single(f[1]),
             srgb_single(f[2]),
-            f[3]
-        ] 
+            f[3],
+        ]
     }
-
 }
 impl Default for Color {
     fn default() -> Self {
-        Self (255, 255, 255, 255)
+        Self(255, 255, 255, 255)
     }
 }
 
@@ -48,4 +47,9 @@ pub struct Params2d {
 #[inline(always)]
 fn srgb_single(v: f32) -> f32 {
     ((v + 0.055) / 1.055).powf(2.4)
+}
+
+pub enum EngineError {
+    ResourceNotFound,
+    GraphicsNotReady,
 }

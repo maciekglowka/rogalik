@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rogalik_engine::ResourceId;
+use rogalik_common::ResourceId;
 
 pub mod atlas;
 pub mod font;
@@ -10,13 +10,13 @@ pub mod texture;
 pub struct AssetStore {
     atlases: HashMap<String, atlas::SpriteAtlas>,
     fonts: HashMap<String, font::Font>,
-    textures: Vec<texture::TextureData>
+    textures: Vec<texture::TextureData>,
 }
 impl AssetStore {
     pub fn new() -> Self {
         Self::default()
     }
-    fn load_texture(&mut self, bytes: &[u8]) -> ResourceId  {
+    fn load_texture(&mut self, bytes: &[u8]) -> ResourceId {
         let id = ResourceId(self.textures.len());
         let texture = texture::TextureData::from_bytes(bytes);
         self.textures.push(texture);
@@ -34,7 +34,7 @@ impl AssetStore {
         bytes: &[u8],
         rows: usize,
         cols: usize,
-        padding: Option<(f32, f32)>
+        padding: Option<(f32, f32)>,
     ) {
         let texture_id = self.load_texture(bytes);
         let atlas = atlas::SpriteAtlas::new(
@@ -42,7 +42,7 @@ impl AssetStore {
             self.textures[texture_id.0].dim,
             rows,
             cols,
-            padding
+            padding,
         );
         self.atlases.insert(name.to_string(), atlas);
     }
@@ -52,7 +52,7 @@ impl AssetStore {
         bytes: &[u8],
         rows: usize,
         cols: usize,
-        padding: Option<(f32, f32)>
+        padding: Option<(f32, f32)>,
     ) {
         let texture_id = self.load_texture(bytes);
         let font = font::Font::new(
@@ -60,7 +60,7 @@ impl AssetStore {
             self.textures[texture_id.0].dim,
             rows,
             cols,
-            padding
+            padding,
         );
         self.fonts.insert(name.to_string(), font);
     }

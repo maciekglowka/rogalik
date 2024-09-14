@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use rogalik_engine::traits::Camera;
+use rogalik_common::Camera;
 use rogalik_math::vectors::Vector2f;
 
 const Z_RANGE: f32 = 100.;
@@ -38,7 +38,7 @@ impl Camera2D {
             scale,
             target,
             vw,
-            vh
+            vh,
         }
     }
     pub fn get_bind_group(&self, device: &wgpu::Device) -> wgpu::BindGroup {
@@ -61,55 +61,41 @@ impl Camera2D {
             [2. / (r - l), 0., 0., 0.],
             [0., 2. / (b - t), 0., 0.],
             [0., 0., 1. / (f - n), 0.],
-            [-(r + l)/(r - l), -(b + t)/(b - t), -n / (f - n), 1.]
+            [-(r + l) / (r - l), -(b + t) / (b - t), -n / (f - n), 1.],
         ]
     }
-    fn create_bind_group(
-        device: &wgpu::Device,
-        matrix: [[f32; 4]; 4]
-    ) -> wgpu::BindGroup {
-        device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &get_camera_bind_group_layout(device),
-                label: Some("Camera Bind Group"),
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: get_camera_buffer(device, matrix)
-                            .as_entire_binding()
-                    }
-                ]
-            }
-        )
+    fn create_bind_group(device: &wgpu::Device, matrix: [[f32; 4]; 4]) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &get_camera_bind_group_layout(device),
+            label: Some("Camera Bind Group"),
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: get_camera_buffer(device, matrix).as_entire_binding(),
+            }],
+        })
     }
 }
 
 pub fn get_camera_buffer(device: &wgpu::Device, matrix: [[f32; 4]; 4]) -> wgpu::Buffer {
-    device.create_buffer_init(
-        &wgpu::util::BufferInitDescriptor {
-            label: Some("Camera Buffer"),
-            contents: bytemuck::cast_slice(&[matrix]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST
-        }
-    )
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Camera Buffer"),
+        contents: bytemuck::cast_slice(&[matrix]),
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+    })
 }
 
 pub fn get_camera_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-    device.create_bind_group_layout(
-        &wgpu::BindGroupLayoutDescriptor { 
-            label: Some("Camera Bind Group Layou"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None
-                    },
-                    count: None
-                }
-            ]
-        }
-    )
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("Camera Bind Group Layou"),
+        entries: &[wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::VERTEX,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }],
+    })
 }

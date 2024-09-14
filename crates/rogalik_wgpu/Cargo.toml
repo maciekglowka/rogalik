@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rogalik_engine = { path = "../rogalik_engine" }
+rogalik_common = { path = "../rogalik_common" }
 rogalik_math = { path = "../rogalik_math" }
 
 bytemuck = { version = "1.12", features = ["derive"] }

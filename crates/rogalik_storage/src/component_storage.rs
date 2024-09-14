@@ -1,29 +1,31 @@
+#[cfg(feature = "serialize")]
+use serde::{Deserialize, Serialize};
 use std::{
     any::Any,
     cell::{Ref, RefCell},
-    collections::HashSet
+    collections::HashSet,
 };
-#[cfg(feature = "serialize")]
-use serde::{Serialize, Deserialize};
 
-use super::Storage;
 use super::component::Component;
 use super::entity::{Entity, IdSize};
 use super::errors::WorldError;
+use super::Storage;
 
 const GUARD_ID: IdSize = IdSize::MAX;
 
 pub trait ComponentStorage: Storage {
-    fn get_as_component(&self, entity: Entity) ->  Option<Box<Ref<dyn Component>>>;
+    fn get_as_component(&self, entity: Entity) -> Option<Box<Ref<dyn Component>>>;
     fn remove_untyped(&self, entity: Entity) -> Option<Box<dyn Component>>;
 }
 
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct ComponentCell<T: Component> {
-    pub inner: RefCell<ComponentSet<T>>
+    pub inner: RefCell<ComponentSet<T>>,
 }
 impl<T: Component + 'static> Storage for ComponentCell<T> {
-    fn as_any(&self) -> &dyn Any { self }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 impl<T: Component + 'static> ComponentStorage for ComponentCell<T> {
     fn get_as_component(&self, entity: Entity) -> Option<Box<Ref<dyn Component>>> {
@@ -39,18 +41,22 @@ impl<T: Component + 'static> ComponentStorage for ComponentCell<T> {
 pub struct ComponentSet<T: Component> {
     dense: Vec<Entity>,
     sparse: Vec<IdSize>,
-    entries: Vec<T>
+    entries: Vec<T>,
 }
 impl<T: Component> ComponentSet<T> {
     pub fn new() -> Self {
-        ComponentSet { dense: Vec::new(), sparse:Vec::new (), entries: Vec::new() }
+        ComponentSet {
+            dense: Vec::new(),
+            sparse: Vec::new(),
+            entries: Vec::new(),
+        }
     }
     fn get_dense_index(&self, entity: Entity) -> Option<usize> {
         let index = *(self.sparse.get(entity.id as usize)?) as usize;
         // verify if the entity version is not mismatch
         match *self.dense.get(index)? == entity {
             false => None,
-            true => Some(index)
+            true => Some(index),
         }
     }
     pub fn insert(&mut self, entity: Entity, entry: T) -> Result<(), WorldError> {
@@ -98,15 +104,16 @@ impl<T: Component> ComponentSet<T> {
         HashSet::from_iter(self.dense.iter().map(|e| *e))
     }
     pub fn get(&self, entity: Entity) -> Option<&T> {
-        Some(self.entries.get(
-            self.get_dense_index(entity)?
-        )?)
+        Some(self.entries.get(self.get_dense_index(entity)?)?)
     }
     pub fn get_mut(&mut self, entity: Entity) -> Option<&mut T> {
         let idx = self.get_dense_index(entity)?;
         Some(self.entries.get_mut(idx)?)
     }
-    pub fn get_many<'a, N: Iterator<Item=&'a Entity>>(&'a self, n: N) -> impl Iterator<Item=&'a T> {
+    pub fn get_many<'a, N: Iterator<Item = &'a Entity>>(
+        &'a self,
+        n: N,
+    ) -> impl Iterator<Item = &'a T> {
         n.filter_map(|e| self.get(*e))
     }
 }
@@ -135,9 +142,12 @@ mod tests {
         let count = 10;
         let mut set = ComponentSet::<String>::new();
         for i in 0..count {
-            let _ =set.insert(
-                Entity { id: i * 4, version: 0 },
-                format!("ENTRY_{}", i * 4)
+            let _ = set.insert(
+                Entity {
+                    id: i * 4,
+                    version: 0,
+                },
+                format!("ENTRY_{}", i * 4),
             );
         }
         let entry: String = "TESTED".into();
@@ -156,18 +166,24 @@ mod tests {
         let count = 10;
         let mut set = ComponentSet::<String>::new();
         for i in 0..count {
-            let _ =set.insert(
-                Entity { id: i * 4, version: 0 },
-                format!("ENTRY_{}", i * 4)
+            let _ = set.insert(
+                Entity {
+                    id: i * 4,
+                    version: 0,
+                },
+                format!("ENTRY_{}", i * 4),
             );
         }
-        let removed_entity = Entity { id: 4, version: 0};
+        let removed_entity = Entity { id: 4, version: 0 };
         let removed = set.remove(removed_entity);
         assert!(removed == Some("ENTRY_4".into()));
         assert!(count as usize - 1 == set.dense.len());
         assert!(count as usize - 1 == set.entries.len());
         for i in 0..count {
-            let entity = Entity { id: i * 4, version: 0};
+            let entity = Entity {
+                id: i * 4,
+                version: 0,
+            };
             if removed_entity == entity {
                 assert!(set.get(entity).is_none());
             } else {
@@ -180,18 +196,27 @@ mod tests {
         let count = 10;
         let mut set = ComponentSet::<String>::new();
         for i in 0..count {
-            let _ =set.insert(
-                Entity { id: i * 4, version: 0 },
-                format!("ENTRY_{}", i * 4)
+            let _ = set.insert(
+                Entity {
+                    id: i * 4,
+                    version: 0,
+                },
+                format!("ENTRY_{}", i * 4),
             );
         }
-        let removed_entity = Entity { id: 4 * 9, version: 0};
+        let removed_entity = Entity {
+            id: 4 * 9,
+            version: 0,
+        };
         let removed = set.remove(removed_entity);
         assert!(removed == Some("ENTRY_36".into()));
         assert!(count as usize - 1 == set.dense.len());
         assert!(count as usize - 1 == set.entries.len());
         for i in 0..count {
-            let entity = Entity { id: i * 4, version: 0};
+            let entity = Entity {
+                id: i * 4,
+                version: 0,
+            };
             if entity == removed_entity {
                 assert!(set.get(entity).is_none());
             } else {
