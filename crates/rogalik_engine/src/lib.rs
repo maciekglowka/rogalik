@@ -2,15 +2,15 @@
 pub use winit::platform::android::activity::AndroidApp;
 use winit::{
     dpi::{LogicalSize, PhysicalSize},
-    event::{Event, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
-    window::{Window, WindowBuilder},
+    event_loop::EventLoop,
+    window::WindowAttributes,
 };
 
 #[cfg(target_os = "android")]
 mod android;
-
+mod app;
 pub mod input;
+mod scenes;
 mod time;
 pub mod traits;
 
@@ -20,13 +20,12 @@ mod wasm;
 pub use log;
 pub use rogalik_common::{Color, GraphicsContext, Params2d, ResourceId};
 pub use time::Instant;
-pub use traits::Game;
+pub use traits::{Game, Scene, SceneResult};
 
 pub struct Context {
     pub graphics: rogalik_wgpu::WgpuContext,
     pub input: input::InputContext,
     pub time: time::Time,
-    pub window: Window,
     inner_size: PhysicalSize<u32>,
     scale_factor: f64,
     pub os_path: Option<String>,
@@ -66,7 +65,7 @@ impl EngineBuilder {
         self.logical_size = Some((w, h));
         self
     }
-    pub fn build<T>(&self, game: T) -> Engine<T>
+    pub fn build<T>(&self, game: T, scene: Box<dyn traits::Scene<Game = T>>) -> Engine<T>
     where
         T: Game + 'static,
     {
@@ -75,39 +74,34 @@ impl EngineBuilder {
         env_logger::init();
 
         // set window
-        let event_loop = EventLoop::new().expect("Can't create the event loop!");
-        let mut window_builder = WindowBuilder::new();
+        let event_loop = app::get_event_loop();
+        // let event_loop = EventLoop::new().expect("Can't create the event loop!");
+        // let mut window_builder = WindowBuilder::new();
+        let mut window_attributes = WindowAttributes::default();
 
         if let Some(title) = &self.title {
-            window_builder = window_builder.with_title(title);
+            window_attributes = window_attributes.with_title(title);
         }
         if let Some(size) = self.physical_size {
             let window_size = PhysicalSize::new(size.0, size.1);
-            window_builder = window_builder.with_inner_size(window_size);
+            window_attributes = window_attributes.with_inner_size(window_size);
         } else if let Some(size) = self.logical_size {
             let window_size = LogicalSize::new(size.0, size.1);
-            window_builder = window_builder.with_inner_size(window_size);
+            window_attributes = window_attributes.with_inner_size(window_size);
         }
-
-        let window = window_builder
-            .build(&event_loop)
-            .expect("Can't create window!");
 
         let graphics = GraphicsContext::new();
         let context = Context {
             graphics,
             input: input::InputContext::new(),
             time: time::Time::new(),
-            inner_size: window.inner_size(),
-            scale_factor: window.scale_factor(),
-            window,
+            inner_size: PhysicalSize::default(),
+            scale_factor: 1.,
             os_path: None,
         };
-        Engine {
-            event_loop,
-            game,
-            context,
-        }
+        let mut app = app::App::new(game, context, window_attributes);
+        app.scene_manager.push(scene);
+        Engine { event_loop, app }
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -202,102 +196,22 @@ pub struct Engine<T>
 where
     T: Game + 'static,
 {
+    app: app::App<T>,
     event_loop: EventLoop<()>,
-    context: Context,
-    game: T,
 }
 impl<T> Engine<T>
 where
     T: Game + 'static,
 {
     pub fn run(self) {
-        pollster::block_on(run::<T>(self.event_loop, self.game, self.context));
+        pollster::block_on(run::<T>(self.event_loop, self.app));
     }
 }
 
-async fn run<T>(event_loop: EventLoop<()>, mut game: T, mut context: Context)
+async fn run<T>(event_loop: EventLoop<()>, mut app: app::App<T>)
 where
     T: Game + 'static,
 {
-    game.setup(&mut context);
-    let mut close_requested = false;
-
-    let _ = event_loop.run(move |event, event_loop| {
-        match event {
-            Event::WindowEvent {
-                window_id,
-                ref event,
-            } if window_id == context.window.id() => {
-                match event {
-                    WindowEvent::KeyboardInput { event, .. } => {
-                        context.input.handle_keyboard(event);
-                    }
-                    WindowEvent::MouseInput { button, state, .. } => {
-                        context.input.handle_mouse_button(button, state);
-                    }
-                    WindowEvent::CursorMoved { position, .. } => {
-                        context
-                            .input
-                            .handle_mouse_move(*position, &context.inner_size);
-                    }
-                    WindowEvent::Touch(winit::event::Touch {
-                        phase,
-                        location,
-                        id,
-                        ..
-                    }) => {
-                        log::info!("Engine touch: {}, {:?}", id, phase);
-                        context
-                            .input
-                            .handle_touch(*id, *phase, *location, &context.inner_size);
-                    }
-                    WindowEvent::CloseRequested => close_requested = true,
-                    WindowEvent::Resized(physical_size) => {
-                        if !context.graphics.has_context() {
-                            context.graphics.create_context(&context.window);
-                        }
-                        log::info!("Resized: {:?}", physical_size);
-                        context.inner_size = *physical_size;
-                        // context.scale_factor = context.window.scale_factor();
-                        context
-                            .graphics
-                            .resize(physical_size.width, physical_size.height);
-                        game.resize(&mut context);
-                    }
-                    WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
-                        context.scale_factor = *scale_factor;
-                    }
-                    WindowEvent::RedrawRequested => {
-                        // state.update();
-                        // let start = std::time::Instant::now();
-                        context.time.update();
-                        game.update(&mut context);
-                        context.graphics.render();
-                        context.input.clear();
-                        // println!("{} {}", 1. / start.elapsed().as_secs_f32(), start.elapsed().as_secs_f32());
-                        // match gpu_state.render(&pass) {
-                        //     Ok(_) => {},
-                        //     Err(wgpu::SurfaceError::Lost) => gpu_state.resize(window.inner_size()),
-                        //     Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                        //     Err(e) => eprintln!("{:?}", e)
-                        // }
-                    }
-                    _ => {}
-                }
-            }
-            Event::Resumed => {
-                context.graphics.create_context(&context.window);
-                game.resume(&mut context);
-                game.resize(&mut context);
-            }
-            Event::AboutToWait => {
-                if !close_requested {
-                    context.window.request_redraw();
-                } else {
-                    event_loop.exit();
-                }
-            }
-            _ => {}
-        }
-    });
+    app.game.setup(&mut app.context);
+    let _ = event_loop.run_app(&mut app);
 }
