@@ -5,7 +5,6 @@ use winit::window::{Window, WindowAttributes, WindowId};
 
 use crate::{
     scenes::{update_scenes, SceneManager},
-    traits::SceneResult,
     Context, Game,
 };
 use rogalik_common::GraphicsContext;
