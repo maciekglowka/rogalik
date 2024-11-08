@@ -6,9 +6,9 @@ use rogalik_common::{Params2d, ResourceId};
 #[derive(Clone, Copy, Debug, Default)]
 pub struct SpriteAtlas {
     pub texture_id: ResourceId,
-    rows: usize,
+    // rows: usize,
     cols: usize,
-    padding: Option<(f32, f32)>,
+    // padding: Option<(f32, f32)>,
     pub u_step: f32,
     pub v_step: f32,
     u_size: f32,
@@ -27,9 +27,9 @@ impl SpriteAtlas {
         let (sp_w, sp_h) = sprite_pixel_size(texture_size.0, texture_size.1, rows, cols, padding);
         Self {
             texture_id,
-            rows,
+            // rows,
             cols,
-            padding,
+            // padding,
             u_step: 1.0 / cols as f32,
             v_step: 1.0 / rows as f32,
             u_size: sp_w / texture_size.0 as f32,
