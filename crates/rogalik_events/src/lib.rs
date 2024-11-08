@@ -4,8 +4,11 @@ use std::{
     sync::Mutex,
 };
 
+// mod bus;
+
 // at the moment not thread safe
 
+#[derive(Default)]
 pub struct SubscriberHandle<T: Copy> {
     queue: Weak<Mutex<Vec<T>>>,
     pub id: usize,
@@ -35,8 +38,8 @@ impl<'a, T: Copy> EventBus<T> {
     pub fn new() -> Self {
         Self::default()
     }
-    pub fn publish(&mut self, e: T) {
-        for (_, s) in self.subscribers.iter_mut() {
+    pub fn publish(&self, e: T) {
+        for (_, s) in self.subscribers.iter() {
             if let Ok(mut v) = s.lock() {
                 v.push(e);
             }
