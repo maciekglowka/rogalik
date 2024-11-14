@@ -1362,12 +1362,22 @@ checksum = "216080ab382b992234dda86873c18d4c48358f5cfcb70fd693d7f6f2131b628b"
 name = "rogalik"
 version = "0.2.1"
 dependencies = [
+ "rogalik_assets",
+ "rogalik_common",
  "rogalik_engine",
  "rogalik_events",
  "rogalik_math",
  "rogalik_persist",
  "rogalik_storage",
  "rogalik_wgpu",
+]
+
+[[package]]
+name = "rogalik_assets"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "rogalik_common",
 ]
 
 [[package]]
@@ -1392,6 +1402,7 @@ dependencies = [
  "log",
  "ndk-context",
  "pollster",
+ "rogalik_assets",
  "rogalik_common",
  "rogalik_math",
  "rogalik_wgpu",
@@ -1442,6 +1453,7 @@ dependencies = [
  "image",
  "log",
  "pollster",
+ "rogalik_assets",
  "rogalik_common",
  "rogalik_math",
  "wgpu",

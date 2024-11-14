@@ -1,6 +1,7 @@
+use std::sync::{Arc, Mutex};
 use winit::window::Window;
 
-use rogalik_common::{EngineError, GraphicsContext, Params2d, ResourceId};
+use rogalik_common::{EngineError, GraphicsContext, ResourceId, SpriteParams};
 use rogalik_math::vectors::Vector2f;
 
 mod assets;
@@ -17,22 +18,24 @@ struct SurfaceState {
 }
 
 pub struct WgpuContext {
-    assets: assets::AssetStore,
+    assets: assets::WgpuAssets,
     current_camera_id: ResourceId,
     cameras: Vec<camera::Camera2D>,
     clear_color: wgpu::Color,
     surface_state: Option<SurfaceState>,
 }
-impl GraphicsContext for WgpuContext {
-    fn new() -> Self {
+impl WgpuContext {
+    pub fn new(asset_store: Arc<Mutex<rogalik_assets::AssetStore>>) -> Self {
         Self {
-            assets: assets::AssetStore::new(),
+            assets: assets::WgpuAssets::new(asset_store),
             current_camera_id: ResourceId::default(),
             cameras: Vec::new(),
             clear_color: wgpu::Color::BLACK,
             surface_state: None,
         }
     }
+}
+impl GraphicsContext for WgpuContext {
     fn has_context(&self) -> bool {
         self.surface_state.is_some()
     }
@@ -79,15 +82,21 @@ impl GraphicsContext for WgpuContext {
                 .render(&state.surface, &state.device, &state.queue, &self.cameras);
         }
     }
-    fn load_sprite_atlas(
-        &mut self,
-        name: &str,
-        bytes: &[u8],
-        rows: usize,
-        cols: usize,
-        padding: Option<(f32, f32)>,
-    ) {
-        self.assets.load_atlas(name, bytes, rows, cols, padding);
+    // fn load_sprite_atlas(
+    //     &mut self,
+    //     name: &str,
+    //     bytes: &[u8],
+    //     rows: usize,
+    //     cols: usize,
+    //     padding: Option<(f32, f32)>,
+    // ) {
+    //     self.assets.load_atlas(name, bytes, rows, cols, padding);
+    // }
+    // fn add_texture(&mut self, name: &str, path: &str) -> impl rogalik_common::TextureBuilder {
+    //     assets::texture::WgpuTextureBuilder::new(name, path)
+    // }
+    fn load_material(&mut self, name: &str, params: rogalik_common::MaterialParams) {
+        self.assets.create_material(name, params);
     }
     fn load_font(
         &mut self,
@@ -106,7 +115,7 @@ impl GraphicsContext for WgpuContext {
         position: rogalik_math::vectors::Vector2f,
         z_index: i32,
         size: rogalik_math::vectors::Vector2f,
-        params: Params2d,
+        params: SpriteParams,
     ) -> Result<(), EngineError> {
         if let Some(state) = &mut self.surface_state {
             state.renderer2d.draw_atlas_sprite(
@@ -130,7 +139,7 @@ impl GraphicsContext for WgpuContext {
         position: Vector2f,
         z_index: i32,
         size: f32,
-        params: Params2d,
+        params: SpriteParams,
     ) -> Result<(), EngineError> {
         if let Some(state) = &mut self.surface_state {
             state.renderer2d.draw_text(
@@ -180,7 +189,7 @@ impl GraphicsContext for WgpuContext {
 
 fn create_surface_state(
     window: &Window,
-    assets: &assets::AssetStore,
+    assets: &assets::WgpuAssets,
     clear_color: wgpu::Color,
 ) -> Option<SurfaceState> {
     let size = window.inner_size();

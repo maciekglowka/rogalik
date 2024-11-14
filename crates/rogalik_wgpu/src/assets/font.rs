@@ -1,6 +1,6 @@
 use super::atlas::SpriteAtlas;
 use crate::structs::Vertex;
-use rogalik_common::{Params2d, ResourceId};
+use rogalik_common::{ResourceId, SpriteParams};
 use rogalik_math::vectors::Vector2f;
 
 #[derive(Clone, Copy, Debug)]
@@ -16,7 +16,7 @@ impl Font {
         cols: usize,
         padding: Option<(f32, f32)>,
     ) -> Self {
-        let atlas = SpriteAtlas::new(texture_id, texture_size, rows, cols, padding);
+        let atlas = SpriteAtlas::new(texture_size, rows, cols, padding);
         let (sp_w, sp_h) =
             super::atlas::sprite_pixel_size(texture_size.0, texture_size.1, rows, cols, padding);
         let character_size = Vector2f::new(sp_w, sp_h);
@@ -33,7 +33,7 @@ impl Font {
         text: &str,
         position: Vector2f,
         size: f32,
-        params: Params2d,
+        params: SpriteParams,
     ) -> Vec<([Vertex; 4], [u16; 6])> {
         // TODO take flip_h into account?
         let mut offset = Vector2f::new(0., 0.);

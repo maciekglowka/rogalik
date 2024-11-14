@@ -1,8 +1,8 @@
 // use std::cell::RefCell;
-use rogalik_common::{EngineError, Params2d, ResourceId};
+use rogalik_common::{EngineError, ResourceId, SpriteParams};
 use rogalik_math::vectors::Vector2f;
 
-use crate::assets::AssetStore;
+use crate::assets::WgpuAssets;
 use crate::camera;
 use crate::structs::Vertex;
 
@@ -17,7 +17,7 @@ pub struct Renderer2d {
 }
 impl Renderer2d {
     pub fn new(
-        assets: &AssetStore,
+        assets: &WgpuAssets,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         texture_format: &wgpu::TextureFormat,
@@ -25,19 +25,19 @@ impl Renderer2d {
     ) -> Self {
         let render_pass = sprite_pass::SpritePass::new(clear_color, device, texture_format);
 
-        let texture_bind_groups = assets
-            .get_textures()
-            .iter()
-            .map(|t| {
-                texture::get_texture_bind_group(t, device, queue, &render_pass.bind_group_layout)
-            })
-            .collect();
+        // let texture_bind_groups = assets
+        //     .get_textures()
+        //     .iter()
+        //     .map(|t| {
+        //         texture::get_texture_bind_group(t, device, queue, &render_pass.bind_group_layout)
+        //     })
+        //     .collect();
 
         Self {
             render_pass,
             vertex_queue: Vec::new(),
             triangle_queue: Vec::new(),
-            texture_bind_groups,
+            texture_bind_groups: Vec::new(),
         }
     }
     pub fn set_clear_color(&mut self, color: wgpu::Color) {
@@ -62,52 +62,52 @@ impl Renderer2d {
     }
     pub fn draw_atlas_sprite(
         &mut self,
-        assets: &AssetStore,
+        assets: &WgpuAssets,
         index: usize,
         atlas: &str,
         camera_id: ResourceId,
         position: Vector2f,
         z_index: i32,
         size: Vector2f,
-        params: Params2d,
+        params: SpriteParams,
     ) -> Result<(), EngineError> {
         // TODO handle errors
         let atlas = assets
             .get_atlas(atlas)
             .ok_or(EngineError::ResourceNotFound)?;
-        let bind_params = BindParams {
-            camera_id,
-            texture_id: atlas.texture_id,
-        };
+        // let bind_params = BindParams {
+        //     camera_id,
+        //     texture_id: atlas.texture_id,
+        // };
 
-        if let Some(_) = params.slice {
-            let s = atlas.get_sliced_sprite(index, position, size, params);
-            self.add_to_queue(&s.0, &s.1, z_index, bind_params);
-        } else {
-            let s = atlas.get_sprite(index, position, size, params);
-            self.add_to_queue(&s.0, &s.1, z_index, bind_params);
-        };
+        // if let Some(_) = params.slice {
+        //     let s = atlas.get_sliced_sprite(index, position, size, params);
+        //     self.add_to_queue(&s.0, &s.1, z_index, bind_params);
+        // } else {
+        //     let s = atlas.get_sprite(index, position, size, params);
+        //     self.add_to_queue(&s.0, &s.1, z_index, bind_params);
+        // };
         Ok(())
     }
     pub fn draw_text(
         &mut self,
-        assets: &AssetStore,
+        assets: &WgpuAssets,
         font: &str,
         text: &str,
         camera_id: ResourceId,
         position: Vector2f,
         z_index: i32,
         size: f32,
-        params: Params2d,
+        params: SpriteParams,
     ) -> Result<(), EngineError> {
         let font = assets.get_font(font).ok_or(EngineError::ResourceNotFound)?;
-        let bind_params = BindParams {
-            camera_id,
-            texture_id: font.atlas.texture_id,
-        };
-        for s in font.get_sprites(text, position, size, params) {
-            self.add_to_queue(&s.0, &s.1, z_index, bind_params);
-        }
+        // let bind_params = BindParams {
+        //     camera_id,
+        //     texture_id: font.atlas.texture_id,
+        // };
+        // for s in font.get_sprites(text, position, size, params) {
+        //     self.add_to_queue(&s.0, &s.1, z_index, bind_params);
+        // }
         Ok(())
     }
     pub fn render(

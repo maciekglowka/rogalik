@@ -1,5 +1,8 @@
 mod structs;
 mod traits;
 
-pub use structs::{Color, EngineError, Params2d, ResourceId};
+pub use structs::{
+    Color, EngineError, MaterialParams, ResourceId, SpriteAtlas, SpriteParams, TextureFiltering,
+    TextureRepeat,
+};
 pub use traits::{Camera, GraphicsContext};

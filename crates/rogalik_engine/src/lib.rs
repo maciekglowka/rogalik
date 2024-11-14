@@ -1,3 +1,5 @@
+use rogalik_wgpu::WgpuContext;
+use std::sync::{Arc, Mutex};
 #[cfg(target_os = "android")]
 pub use winit::platform::android::activity::AndroidApp;
 use winit::{
@@ -18,11 +20,13 @@ pub mod traits;
 mod wasm;
 
 pub use log;
-pub use rogalik_common::{Color, GraphicsContext, Params2d, ResourceId};
 pub use time::Instant;
 pub use traits::{Game, Scene, SceneResult};
 
+use rogalik_assets::{AssetStore, AssetStoreTrait};
+
 pub struct Context {
+    pub assets: Arc<Mutex<rogalik_assets::AssetStore>>,
     pub graphics: rogalik_wgpu::WgpuContext,
     pub input: input::InputContext,
     pub time: time::Time,
@@ -90,8 +94,10 @@ impl EngineBuilder {
             window_attributes = window_attributes.with_inner_size(window_size);
         }
 
-        let graphics = GraphicsContext::new();
+        let assets = Arc::new(Mutex::new(AssetStore::default()));
+        let graphics = WgpuContext::new(assets.clone());
         let context = Context {
+            assets,
             graphics,
             input: input::InputContext::new(),
             time: time::Time::new(),
@@ -105,10 +111,9 @@ impl EngineBuilder {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub fn build_wasm<G, T>(&self, game: T) -> Engine<G, T>
+    pub fn build_wasm<T>(&self, game: T, scene: Box<dyn traits::Scene<Game = T>>) -> Engine<T>
     where
-        G: GraphicsContext + 'static,
-        T: Game<G> + 'static,
+        T: Game + 'static,
     {
         wasm::configure_handlers();
         log::info!("Logging configured");

@@ -1,23 +1,15 @@
 use rogalik_math::vectors::Vector2f;
 use winit::window::Window;
 
-use crate::structs::{Color, EngineError, Params2d, ResourceId};
+use crate::structs::{Color, EngineError, ResourceId, SpriteParams};
 
 pub trait GraphicsContext {
-    fn new() -> Self;
     fn create_context(&mut self, window: &Window);
     fn has_context(&self) -> bool;
     fn set_clear_color(&mut self, color: Color);
     fn resize(&mut self, w: u32, h: u32);
     fn render(&mut self);
-    fn load_sprite_atlas(
-        &mut self,
-        name: &str,
-        bytes: &[u8],
-        rows: usize,
-        cols: usize,
-        padding: Option<(f32, f32)>,
-    );
+    fn load_material(&mut self, name: &str, params: crate::MaterialParams);
     fn load_font(
         &mut self,
         name: &str,
@@ -33,7 +25,7 @@ pub trait GraphicsContext {
         position: Vector2f,
         z_index: i32,
         size: Vector2f,
-        params: Params2d,
+        params: SpriteParams,
     ) -> Result<(), EngineError>;
     fn draw_text(
         &mut self,
@@ -42,7 +34,7 @@ pub trait GraphicsContext {
         position: Vector2f,
         z_index: i32,
         size: f32,
-        params: Params2d,
+        params: SpriteParams,
     ) -> Result<(), EngineError>;
     fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f;
     fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId;

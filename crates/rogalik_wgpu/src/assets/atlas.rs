@@ -1,14 +1,11 @@
 use rogalik_math::vectors::Vector2f;
 
 use crate::structs::Vertex;
-use rogalik_common::{Params2d, ResourceId};
+use rogalik_common::SpriteParams;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct SpriteAtlas {
-    pub texture_id: ResourceId,
-    // rows: usize,
     cols: usize,
-    // padding: Option<(f32, f32)>,
     pub u_step: f32,
     pub v_step: f32,
     u_size: f32,
@@ -18,7 +15,6 @@ pub struct SpriteAtlas {
 }
 impl SpriteAtlas {
     pub fn new(
-        texture_id: ResourceId,
         texture_size: (u32, u32),
         rows: usize,
         cols: usize,
@@ -26,10 +22,7 @@ impl SpriteAtlas {
     ) -> Self {
         let (sp_w, sp_h) = sprite_pixel_size(texture_size.0, texture_size.1, rows, cols, padding);
         Self {
-            texture_id,
-            // rows,
             cols,
-            // padding,
             u_step: 1.0 / cols as f32,
             v_step: 1.0 / rows as f32,
             u_size: sp_w / texture_size.0 as f32,
@@ -43,7 +36,7 @@ impl SpriteAtlas {
         index: usize,
         position: Vector2f,
         size: Vector2f,
-        params: Params2d,
+        params: SpriteParams,
     ) -> ([Vertex; 4], [u16; 6]) {
         let row = index / self.cols;
         let col = index % self.cols;
@@ -105,22 +98,6 @@ impl SpriteAtlas {
             let cx = position.x + 0.5 * size.x;
             let cy = position.y + 0.5 * size.y;
             rotate_verts(&mut vertices, rotate, cx, cy);
-            // let c = rotate.cos();
-            // let s = rotate.sin();
-
-            // for i in 0..4 {
-            //     vertices[i].position[0] -= cx;
-            //     vertices[i].position[1] -= cy;
-
-            //     let x = vertices[i].position[0];
-            //     vertices[i].position[0] = vertices[i].position[0] * c
-            //         - vertices[i].position[1] * s;
-            //     vertices[i].position[1] = x * s
-            //         + vertices[i].position[1] * c;
-
-            //     vertices[i].position[0] += cx;
-            //     vertices[i].position[1] += cy;
-            // }
         }
         let indices = [0, 1, 2, 0, 2, 3];
         (vertices, indices)
@@ -131,7 +108,7 @@ impl SpriteAtlas {
         index: usize,
         position: Vector2f,
         size: Vector2f,
-        params: Params2d,
+        params: SpriteParams,
     ) -> ([Vertex; 16], [u16; 54]) {
         let row = index / self.cols;
         let col = index % self.cols;
