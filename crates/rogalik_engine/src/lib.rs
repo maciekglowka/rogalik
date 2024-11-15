@@ -79,8 +79,6 @@ impl EngineBuilder {
 
         // set window
         let event_loop = app::get_event_loop();
-        // let event_loop = EventLoop::new().expect("Can't create the event loop!");
-        // let mut window_builder = WindowBuilder::new();
         let mut window_attributes = WindowAttributes::default();
 
         if let Some(title) = &self.title {

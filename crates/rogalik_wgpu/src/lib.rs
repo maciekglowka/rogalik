@@ -5,7 +5,6 @@ use rogalik_common::{EngineError, GraphicsContext, ResourceId, SpriteParams};
 use rogalik_math::vectors::Vector2f;
 
 mod assets;
-mod camera;
 mod renderer2d;
 mod structs;
 
@@ -20,7 +19,6 @@ struct SurfaceState {
 pub struct WgpuContext {
     assets: assets::WgpuAssets,
     current_camera_id: ResourceId,
-    cameras: Vec<camera::Camera2D>,
     clear_color: wgpu::Color,
     surface_state: Option<SurfaceState>,
 }
@@ -29,7 +27,6 @@ impl WgpuContext {
         Self {
             assets: assets::WgpuAssets::new(asset_store),
             current_camera_id: ResourceId::default(),
-            cameras: Vec::new(),
             clear_color: wgpu::Color::BLACK,
             surface_state: None,
         }
@@ -42,7 +39,7 @@ impl GraphicsContext for WgpuContext {
     fn create_context(&mut self, window: &Window) {
         self.surface_state = create_surface_state(window, &self.assets, self.clear_color);
         if self.surface_state.is_some() {
-            for camera in self.cameras.iter_mut() {
+            for camera in self.assets.cameras.values_mut() {
                 camera.resize_viewport(
                     self.surface_state.as_ref().unwrap().config.width as f32,
                     self.surface_state.as_ref().unwrap().config.height as f32,
@@ -70,33 +67,25 @@ impl GraphicsContext for WgpuContext {
                 state.surface.configure(&state.device, &state.config);
             }
 
-            for camera in self.cameras.iter_mut() {
+            for camera in self.assets.cameras.values_mut() {
                 camera.resize_viewport(width as f32, height as f32);
             }
         }
     }
     fn render(&mut self) {
-        if let Some(state) = &mut self.surface_state {
-            state
-                .renderer2d
-                .render(&state.surface, &state.device, &state.queue, &self.cameras);
-        }
+        // if let Some(state) = &mut self.surface_state {
+        //     state
+        //         .renderer2d
+        //         .render(&state.surface, &state.device, &state.queue, &self.cameras);
+        // }
     }
-    // fn load_sprite_atlas(
-    //     &mut self,
-    //     name: &str,
-    //     bytes: &[u8],
-    //     rows: usize,
-    //     cols: usize,
-    //     padding: Option<(f32, f32)>,
-    // ) {
-    //     self.assets.load_atlas(name, bytes, rows, cols, padding);
-    // }
-    // fn add_texture(&mut self, name: &str, path: &str) -> impl rogalik_common::TextureBuilder {
-    //     assets::texture::WgpuTextureBuilder::new(name, path)
-    // }
     fn load_material(&mut self, name: &str, params: rogalik_common::MaterialParams) {
         self.assets.create_material(name, params);
+        // TODO id self.surface_state build bind_group
+    }
+    fn load_shader(&mut self, kind: rogalik_common::ShaderKind, path: &str) -> ResourceId {
+        // TODO id self.surface_state build pipeline
+        self.assets.create_shader(kind, path)
     }
     fn load_font(
         &mut self,

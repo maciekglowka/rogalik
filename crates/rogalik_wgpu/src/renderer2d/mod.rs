@@ -1,4 +1,3 @@
-// use std::cell::RefCell;
 use rogalik_common::{EngineError, ResourceId, SpriteParams};
 use rogalik_math::vectors::Vector2f;
 
@@ -10,10 +9,8 @@ mod sprite_pass;
 mod texture;
 
 pub struct Renderer2d {
-    render_pass: sprite_pass::SpritePass,
-    vertex_queue: Vec<Vertex>,
-    triangle_queue: Vec<Triangle>,
-    texture_bind_groups: Vec<wgpu::BindGroup>,
+    sprite_pass: sprite_pass::SpritePass,
+    // post_processing_passes: Vec
 }
 impl Renderer2d {
     pub fn new(

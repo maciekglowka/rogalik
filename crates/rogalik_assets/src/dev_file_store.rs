@@ -5,7 +5,7 @@ use std::{
     path::Path,
 };
 
-use rogalik_common::ResourceId;
+use rogalik_common::{EngineError, ResourceId};
 
 use super::{Asset, AssetState, AssetStoreTrait, ROOT_VAR};
 
@@ -25,21 +25,33 @@ impl Default for DevFileStore {
         }
     }
 }
+impl DevFileStore {
+    fn bump_id(&mut self) {
+        self.next_id = self.next_id.next();
+    }
+}
 impl AssetStoreTrait for DevFileStore {
-    fn load(&mut self, path: &str) -> Option<ResourceId> {
+    fn from_bytes(&mut self, data: &[u8]) -> ResourceId {
+        let id = self.next_id;
+        self.assets.insert(id, Asset::new(data));
+        self.bump_id();
+        id
+    }
+    fn load(&mut self, path: &str) -> Result<ResourceId, EngineError> {
         let id = self.next_id;
 
         let abs_path = Path::new(&self.root).join(path);
-        let mut file = File::open(&abs_path).ok()?;
+        let mut file = File::open(&abs_path).map_err(|_| EngineError::ResourceNotFound)?;
         let mut data = Vec::new();
-        file.read(&mut data).ok()?;
+        file.read(&mut data)
+            .map_err(|_| EngineError::ResourceNotFound)?;
 
-        let meta = fs::metadata(&abs_path.as_path()).ok()?;
+        let meta = fs::metadata(&abs_path.as_path()).map_err(|_| EngineError::ResourceNotFound)?;
         let modified = meta
             .modified()
-            .ok()?
+            .map_err(|_| EngineError::ResourceNotFound)?
             .duration_since(std::time::SystemTime::UNIX_EPOCH)
-            .ok()?
+            .map_err(|_| EngineError::ResourceNotFound)?
             .as_secs();
 
         self.assets.insert(id, Asset::new(&data));
@@ -50,9 +62,9 @@ impl AssetStoreTrait for DevFileStore {
                 modified,
             },
         );
-        self.next_id = id.next();
+        self.bump_id();
         log::debug!("Loaded asset from: {}", path);
-        Some(id)
+        Ok(id)
     }
     fn get(&self, asset_id: ResourceId) -> Option<&Asset> {
         self.assets.get(&asset_id)

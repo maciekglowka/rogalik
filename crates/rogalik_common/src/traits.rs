@@ -1,7 +1,7 @@
 use rogalik_math::vectors::Vector2f;
 use winit::window::Window;
 
-use crate::structs::{Color, EngineError, ResourceId, SpriteParams};
+use crate::structs::{Color, EngineError, ResourceId, ShaderKind, SpriteParams};
 
 pub trait GraphicsContext {
     fn create_context(&mut self, window: &Window);
@@ -10,6 +10,7 @@ pub trait GraphicsContext {
     fn resize(&mut self, w: u32, h: u32);
     fn render(&mut self);
     fn load_material(&mut self, name: &str, params: crate::MaterialParams);
+    fn load_shader(&mut self, kind: ShaderKind, path: &str) -> ResourceId;
     fn load_font(
         &mut self,
         name: &str,

@@ -1,4 +1,4 @@
-use rogalik_common::ResourceId;
+use rogalik_common::{EngineError, ResourceId};
 
 mod dev_file_store;
 mod embedded_store;
@@ -25,6 +25,7 @@ pub enum AssetState {
 }
 
 pub trait AssetStoreTrait: Default {
-    fn load(&mut self, path: &str) -> Option<ResourceId>;
+    fn from_bytes(&mut self, data: &[u8]) -> ResourceId;
+    fn load(&mut self, path: &str) -> Result<ResourceId, EngineError>;
     fn get(&self, asset_id: ResourceId) -> Option<&Asset>;
 }

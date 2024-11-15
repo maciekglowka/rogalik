@@ -54,23 +54,26 @@ fn srgb_single(v: f32) -> f32 {
     ((v + 0.055) / 1.055).powf(2.4)
 }
 
+#[derive(Debug)]
 pub enum EngineError {
+    InvalidResource,
     ResourceNotFound,
+    GraphicsInternalError,
     GraphicsNotReady,
 }
 
 #[derive(Clone, Copy, Default)]
 pub struct MaterialParams<'a> {
-    pub atlas: Option<SpriteAtlas>,
-    pub diffuse: &'a str,
-    pub normal: Option<&'a str>,
-    pub shader: Option<&'a str>,
+    pub atlas: Option<AtlasParams>,
+    pub diffuse_path: &'a str,
+    pub normal_path: Option<&'a str>,
+    pub shader: Option<ResourceId>,
     pub repeat: TextureRepeat,
     pub filtering: TextureFiltering,
 }
 
 #[derive(Clone, Copy)]
-pub struct SpriteAtlas {
+pub struct AtlasParams {
     pub cols: usize,
     pub rows: usize,
     pub padding: Option<(f32, f32)>,
@@ -89,4 +92,10 @@ pub enum TextureFiltering {
     #[default]
     Nearest,
     Linear,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+pub enum ShaderKind {
+    Sprite,
+    // Postprocessing
 }

@@ -4,78 +4,110 @@ use std::{
 };
 
 use rogalik_assets::{AssetStore, AssetStoreTrait};
-use rogalik_common::{MaterialParams, ResourceId, TextureFiltering, TextureRepeat};
+use rogalik_common::{
+    EngineError, MaterialParams, ResourceId, ShaderKind, TextureFiltering, TextureRepeat,
+};
 
 pub mod atlas;
+mod bind_groups;
+pub mod camera;
 pub mod font;
-pub mod texture;
+pub mod material;
+pub mod shader;
 
-#[derive(Default)]
 pub struct WgpuAssets {
     asset_store: Arc<Mutex<AssetStore>>,
-    atlases: HashMap<String, atlas::SpriteAtlas>,
-    fonts: HashMap<String, font::Font>,
-    // materials: HashMap<String, Material>,
-    shader_pipelines: HashMap<ResourceId, wgpu::RenderPipeline>,
-    texture_bind_groups: HashMap<ResourceId, wgpu::BindGroup>,
+    bind_group_layouts: HashMap<bind_groups::BindGroupKind, wgpu::BindGroupLayout>,
+    pub cameras: HashMap<ResourceId, camera::Camera2D>,
+    default_shader: ResourceId,
+    // fonts: HashMap<String, font::Font>,
+    pipeline_layouts: HashMap<ShaderKind, wgpu::PipelineLayout>,
+    materials: HashMap<String, material::Material>,
+    shaders: HashMap<ResourceId, shader::Shader>, // key == asset_id
 }
 impl WgpuAssets {
     pub fn new(asset_store: Arc<Mutex<AssetStore>>) -> Self {
+        let default_shader = asset_store
+            .lock()
+            .expect("Can't acquire the asset store!")
+            .from_bytes(include_bytes!("sprite_shader.wgsl"));
         Self {
             asset_store,
-            ..Default::default()
+            bind_group_layouts: HashMap::new(),
+            cameras: HashMap::new(),
+            default_shader,
+            materials: HashMap::new(),
+            pipeline_layouts: HashMap::new(),
+            shaders: HashMap::new(),
         }
     }
-    fn create_texture(
+    pub fn create_wgpu_data(
         &mut self,
-        texture_id: ResourceId,
-        filtering: TextureFiltering,
-        repeat: TextureRepeat,
-    ) {
-        if self.texture_bind_groups.contains_key(&texture_id) {
-            return;
-        }
-        self.set_texture_data(texture_id, filtering, repeat);
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        texture_format: &wgpu::TextureFormat,
+    ) -> Result<(), EngineError> {
+        self.create_bind_group_layouts(device);
+        self.create_pipeline_layouts(device)?;
+        Ok(())
     }
-    fn set_texture_data(
-        &mut self,
-        texture_id: ResourceId,
-        filtering: TextureFiltering,
-        repeat: TextureRepeat,
-    ) {
-        if let Ok(lock) = self.asset_store.lock() {
-            let asset = lock.get(texture_id).expect("Invalid texture id!");
-            // let texture = texture::TextureData::from_bytes(&asset.data, filtering, repeat);
-            // self.textures.insert(texture_id, texture);
-        }
+    fn create_bind_group_layouts(&mut self, device: &wgpu::Device) {
+        self.bind_group_layouts = bind_groups::get_bind_group_layouts(device);
     }
+    fn create_pipeline_layouts(&mut self, device: &wgpu::Device) -> Result<(), EngineError> {
+        self.pipeline_layouts = shader::get_pipeline_layouts(&self.bind_group_layouts, device)?;
+        Ok(())
+    }
+    // pub fn build_wgpu_data(
+    //     &mut self,
+    //     device: &wgpu::Device,
+    //     queue: &wgpu::Queue,
+    //     bind_group_layout: &wgpu::BindGroupLayout,
+    // ) {
+    //     let mut store = self
+    //         .asset_store
+    //         .lock()
+    //         .expect("Can't aqcuire the asset store!");
+    //     for (name, material) in self.materials.iter_mut() {
+    //         if material
+    //             .build_wgpu_data(&mut store, device, queue, bind_group_layout)
+    //             .is_err()
+    //         {
+    //             log::error!("Can't create material data for {}!", name);
+    //         }
+    //     }
+    // }
     // pub fn get_texture(&self, id: ResourceId) -> Option<&texture::TextureData> {
     //     self.texture_bind_groups.get(&id)
     // }
     // pub fn get_textures(&self) -> &HashMap<ResourceId, texture::TextureData> {
     //     &self.texture_bind_groups
     // }
+    pub fn create_shader(&mut self, kind: ShaderKind, path: &str) -> ResourceId {
+        let shader_id = self.load_asset(path);
+        let shader = shader::Shader::new(kind, shader_id);
+        self.shaders.insert(shader_id, shader);
+        shader_id
+    }
     pub fn create_material(&mut self, name: &str, params: MaterialParams) {
-        let diffuse = self
-            .asset_store
-            .lock()
-            .expect("Can't aqcuire the asset store!")
-            .load(params.diffuse)
-            .expect(&format!("Can't load {}!", params.diffuse));
-        // self.create_texture(material.color, material.filtering, material.repeat);
-        // TODO create normal texture
-        // TODO create shader
+        // let mut store = self
+        //     .asset_store
+        //     .lock()
+        //     .expect("Can't aqcuire the asset store!");
 
-        // if let Some(atlas_data) = material.atlas {
-        //     let atlas = atlas::SpriteAtlas::new(
-        //         self.textures[&material.color].dim,
-        //         atlas_data.rows,
-        //         atlas_data.cols,
-        //         atlas_data.padding,
-        //     );
-        //     self.atlases.insert(name.to_string(), atlas);
-        // }
-        // self.materials.insert(name.to_string(), material);
+        // let diffuse_id = store
+        //     .load(params.diffuse_path)
+        //     .expect(&format!("Can't load {}!", params.diffuse_path));
+        let diffuse_id = self.load_asset(params.diffuse_path);
+
+        let shader_id = if let Some(id) = params.shader {
+            id
+        } else {
+            self.default_shader
+        };
+
+        let material = material::Material::new(diffuse_id, shader_id, params);
+        self.materials.insert(name.to_string(), material);
     }
     pub fn load_font(
         &mut self,
@@ -98,10 +130,17 @@ impl WgpuAssets {
     // pub fn get_material(&self, name: &str) -> Option<&Material> {
     //     self.materials.get(name)
     // }
-    pub fn get_atlas(&self, name: &str) -> Option<&atlas::SpriteAtlas> {
-        self.atlases.get(name)
-    }
-    pub fn get_font(&self, name: &str) -> Option<&font::Font> {
-        self.fonts.get(name)
+    // pub fn get_atlas(&self, name: &str) -> Option<&atlas::SpriteAtlas> {
+    //     self.atlases.get(name)
+    // }
+    // pub fn get_font(&self, name: &str) -> Option<&font::Font> {
+    //     self.fonts.get(name)
+    // }
+    fn load_asset(&self, path: &str) -> ResourceId {
+        let mut store = self
+            .asset_store
+            .lock()
+            .expect("Can't acquire the asset store!");
+        store.load(path).expect(&format!("Can't load {}!", path))
     }
 }
