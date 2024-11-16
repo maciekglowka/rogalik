@@ -8,4 +8,5 @@ pub use rogalik_wgpu as wgpu;
 pub mod prelude {
     pub use rogalik_common::*;
     pub use rogalik_engine::{Context, EngineBuilder, Game, Scene, SceneResult};
+    pub use rogalik_math::vectors::{Vector2f, Vector2i};
 }

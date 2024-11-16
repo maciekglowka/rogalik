@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 
-use rogalik_assets::{Asset, AssetStore, AssetStoreTrait};
-use rogalik_common::{
-    AtlasParams, EngineError, MaterialParams, ResourceId, ShaderKind, TextureFiltering,
-    TextureRepeat,
-};
+use rogalik_assets::{AssetStore, AssetStoreTrait};
+use rogalik_common::{EngineError, ResourceId, ShaderKind};
 
 use super::bind_groups::BindGroupKind;
+use crate::structs::Vertex;
 
 pub fn get_pipeline_layouts(
     bind_group_layous: &HashMap<BindGroupKind, wgpu::BindGroupLayout>,
@@ -20,8 +18,8 @@ pub fn get_pipeline_layouts(
 
 pub struct Shader {
     asset_id: ResourceId,
-    kind: ShaderKind,
-    pipeline: Option<wgpu::RenderPipeline>,
+    pub kind: ShaderKind,
+    pub pipeline: Option<wgpu::RenderPipeline>,
 }
 impl Shader {
     pub fn new(kind: ShaderKind, asset_id: ResourceId) -> Self {
@@ -35,7 +33,7 @@ impl Shader {
         &mut self,
         asset_store: &mut AssetStore,
         device: &wgpu::Device,
-        queue: &wgpu::Queue,
+        texture_format: &wgpu::TextureFormat,
         pipeline_layout: &wgpu::PipelineLayout,
     ) -> Result<(), EngineError> {
         let asset = asset_store
@@ -43,7 +41,7 @@ impl Shader {
             .ok_or(EngineError::ResourceNotFound)?;
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some(&self.name),
+            label: Some(&format!("Shader {:?}", self.asset_id)),
             source: wgpu::ShaderSource::Wgsl(
                 std::str::from_utf8(&asset.data)
                     .map_err(|_| EngineError::InvalidResource)?
@@ -51,40 +49,42 @@ impl Shader {
             ),
         });
 
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Sprite pipeline"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                buffers: &[Vertex::layout()],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: *texture_format,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
+        self.pipeline = Some(
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("Sprite pipeline"),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: "vs_main",
+                    buffers: &[Vertex::layout()],
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: "fs_main",
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: *texture_format,
+                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: Some(wgpu::Face::Back),
+                    unclipped_depth: false,
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    conservative: false,
+                },
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState {
+                    count: 1,
+                    mask: !0,
+                    alpha_to_coverage_enabled: false,
+                },
+                multiview: None,
             }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
-                unclipped_depth: false,
-                polygon_mode: wgpu::PolygonMode::Fill,
-                conservative: false,
-            },
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-            multiview: None,
-        });
+        );
         Ok(())
     }
 }

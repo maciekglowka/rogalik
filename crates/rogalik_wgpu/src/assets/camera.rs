@@ -41,8 +41,12 @@ impl Camera2D {
             vh,
         }
     }
-    pub fn get_bind_group(&self, device: &wgpu::Device) -> wgpu::BindGroup {
-        Camera2D::create_bind_group(device, self.get_matrix())
+    pub fn get_bind_group(
+        &self,
+        device: &wgpu::Device,
+        layout: &wgpu::BindGroupLayout,
+    ) -> wgpu::BindGroup {
+        Camera2D::create_bind_group(device, layout, self.get_matrix())
     }
     pub fn resize_viewport(&mut self, vw: f32, vh: f32) {
         self.vw = vw;
@@ -64,9 +68,13 @@ impl Camera2D {
             [-(r + l) / (r - l), -(b + t) / (b - t), -n / (f - n), 1.],
         ]
     }
-    fn create_bind_group(device: &wgpu::Device, matrix: [[f32; 4]; 4]) -> wgpu::BindGroup {
+    fn create_bind_group(
+        device: &wgpu::Device,
+        layout: &wgpu::BindGroupLayout,
+        matrix: [[f32; 4]; 4],
+    ) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &get_camera_bind_group_layout(device),
+            layout,
             label: Some("Camera Bind Group"),
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,

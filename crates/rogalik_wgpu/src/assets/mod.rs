@@ -3,13 +3,15 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use camera::Camera2D;
 use rogalik_assets::{AssetStore, AssetStoreTrait};
 use rogalik_common::{
     EngineError, MaterialParams, ResourceId, ShaderKind, TextureFiltering, TextureRepeat,
 };
+use rogalik_math::vectors::Vector2f;
 
 pub mod atlas;
-mod bind_groups;
+pub mod bind_groups;
 pub mod camera;
 pub mod font;
 pub mod material;
@@ -17,28 +19,34 @@ pub mod shader;
 
 pub struct WgpuAssets {
     asset_store: Arc<Mutex<AssetStore>>,
-    bind_group_layouts: HashMap<bind_groups::BindGroupKind, wgpu::BindGroupLayout>,
-    pub cameras: HashMap<ResourceId, camera::Camera2D>,
+    pub bind_group_layouts: HashMap<bind_groups::BindGroupKind, wgpu::BindGroupLayout>,
+    cameras: Vec<camera::Camera2D>,
     default_shader: ResourceId,
     // fonts: HashMap<String, font::Font>,
-    pipeline_layouts: HashMap<ShaderKind, wgpu::PipelineLayout>,
-    materials: HashMap<String, material::Material>,
-    shaders: HashMap<ResourceId, shader::Shader>, // key == asset_id
+    pub pipeline_layouts: HashMap<ShaderKind, wgpu::PipelineLayout>,
+    material_names: HashMap<String, ResourceId>, // lookup
+    materials: Vec<material::Material>,
+    shaders: Vec<shader::Shader>, // pub materials: HashMap<ResourceId, material::Material>, // key == diffuse_asset_id
+                                  // pub shaders: HashMap<ResourceId, shader::Shader>, // key == asset_id
 }
 impl WgpuAssets {
     pub fn new(asset_store: Arc<Mutex<AssetStore>>) -> Self {
-        let default_shader = asset_store
+        let default_shader = ResourceId(0);
+        let shader_asset_id = asset_store
             .lock()
             .expect("Can't acquire the asset store!")
             .from_bytes(include_bytes!("sprite_shader.wgsl"));
+        let shader = shader::Shader::new(ShaderKind::Sprite, shader_asset_id);
+
         Self {
             asset_store,
             bind_group_layouts: HashMap::new(),
-            cameras: HashMap::new(),
+            cameras: Vec::new(),
             default_shader,
-            materials: HashMap::new(),
+            material_names: HashMap::new(),
+            materials: Vec::new(),
             pipeline_layouts: HashMap::new(),
-            shaders: HashMap::new(),
+            shaders: vec![shader],
         }
     }
     pub fn create_wgpu_data(
@@ -49,6 +57,27 @@ impl WgpuAssets {
     ) -> Result<(), EngineError> {
         self.create_bind_group_layouts(device);
         self.create_pipeline_layouts(device)?;
+        let mut store = self
+            .asset_store
+            .lock()
+            .expect("Can't acquire the asset store!");
+
+        let material_layout = self
+            .bind_group_layouts
+            .get(&bind_groups::BindGroupKind::Sprite)
+            .ok_or(EngineError::GraphicsInternalError)?;
+
+        for material in self.materials.iter_mut() {
+            material.create_wgpu_data(&mut store, device, queue, material_layout)?;
+        }
+
+        for shader in self.shaders.iter_mut() {
+            let layout = self
+                .pipeline_layouts
+                .get(&shader.kind)
+                .ok_or(EngineError::GraphicsInternalError)?;
+            shader.create_wgpu_data(&mut store, device, texture_format, layout)?;
+        }
         Ok(())
     }
     fn create_bind_group_layouts(&mut self, device: &wgpu::Device) {
@@ -58,46 +87,14 @@ impl WgpuAssets {
         self.pipeline_layouts = shader::get_pipeline_layouts(&self.bind_group_layouts, device)?;
         Ok(())
     }
-    // pub fn build_wgpu_data(
-    //     &mut self,
-    //     device: &wgpu::Device,
-    //     queue: &wgpu::Queue,
-    //     bind_group_layout: &wgpu::BindGroupLayout,
-    // ) {
-    //     let mut store = self
-    //         .asset_store
-    //         .lock()
-    //         .expect("Can't aqcuire the asset store!");
-    //     for (name, material) in self.materials.iter_mut() {
-    //         if material
-    //             .build_wgpu_data(&mut store, device, queue, bind_group_layout)
-    //             .is_err()
-    //         {
-    //             log::error!("Can't create material data for {}!", name);
-    //         }
-    //     }
-    // }
-    // pub fn get_texture(&self, id: ResourceId) -> Option<&texture::TextureData> {
-    //     self.texture_bind_groups.get(&id)
-    // }
-    // pub fn get_textures(&self) -> &HashMap<ResourceId, texture::TextureData> {
-    //     &self.texture_bind_groups
-    // }
     pub fn create_shader(&mut self, kind: ShaderKind, path: &str) -> ResourceId {
-        let shader_id = self.load_asset(path);
-        let shader = shader::Shader::new(kind, shader_id);
-        self.shaders.insert(shader_id, shader);
+        let asset_id = self.load_asset(path);
+        let shader = shader::Shader::new(kind, asset_id);
+        let shader_id = self.get_next_shader_id();
+        self.shaders.push(shader);
         shader_id
     }
     pub fn create_material(&mut self, name: &str, params: MaterialParams) {
-        // let mut store = self
-        //     .asset_store
-        //     .lock()
-        //     .expect("Can't aqcuire the asset store!");
-
-        // let diffuse_id = store
-        //     .load(params.diffuse_path)
-        //     .expect(&format!("Can't load {}!", params.diffuse_path));
         let diffuse_id = self.load_asset(params.diffuse_path);
 
         let shader_id = if let Some(id) = params.shader {
@@ -107,7 +104,15 @@ impl WgpuAssets {
         };
 
         let material = material::Material::new(diffuse_id, shader_id, params);
-        self.materials.insert(name.to_string(), material);
+        let material_id = self.get_next_material_id();
+        self.material_names.insert(name.to_string(), material_id);
+        self.materials.push(material);
+    }
+    pub fn create_camera(&mut self, w: f32, h: f32, scale: f32, target: Vector2f) -> ResourceId {
+        let id = self.get_next_camera_id();
+        let camera = camera::Camera2D::new(w as f32, h as f32, scale, target);
+        self.cameras.push(camera);
+        id
     }
     pub fn load_font(
         &mut self,
@@ -127,12 +132,27 @@ impl WgpuAssets {
         // );
         // self.fonts.insert(name.to_string(), font);
     }
-    // pub fn get_material(&self, name: &str) -> Option<&Material> {
-    //     self.materials.get(name)
-    // }
-    // pub fn get_atlas(&self, name: &str) -> Option<&atlas::SpriteAtlas> {
-    //     self.atlases.get(name)
-    // }
+    pub fn get_material_id(&self, name: &str) -> Option<&ResourceId> {
+        self.material_names.get(name)
+    }
+    pub fn get_material(&self, id: ResourceId) -> Option<&material::Material> {
+        self.materials.get(id.0)
+    }
+    pub fn get_shader(&self, id: ResourceId) -> Option<&shader::Shader> {
+        self.shaders.get(id.0)
+    }
+    pub fn get_camera(&self, id: ResourceId) -> Option<&camera::Camera2D> {
+        self.cameras.get(id.0)
+    }
+    pub fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut camera::Camera2D> {
+        self.cameras.get_mut(id.0)
+    }
+    pub fn iter_cameras(&self) -> impl Iterator<Item = &camera::Camera2D> {
+        self.cameras.iter()
+    }
+    pub fn iter_cameras_mut(&mut self) -> impl Iterator<Item = &mut camera::Camera2D> {
+        self.cameras.iter_mut()
+    }
     // pub fn get_font(&self, name: &str) -> Option<&font::Font> {
     //     self.fonts.get(name)
     // }
@@ -142,5 +162,14 @@ impl WgpuAssets {
             .lock()
             .expect("Can't acquire the asset store!");
         store.load(path).expect(&format!("Can't load {}!", path))
+    }
+    fn get_next_shader_id(&self) -> ResourceId {
+        ResourceId(self.shaders.len())
+    }
+    fn get_next_material_id(&self) -> ResourceId {
+        ResourceId(self.materials.len())
+    }
+    fn get_next_camera_id(&self) -> ResourceId {
+        ResourceId(self.cameras.len())
     }
 }

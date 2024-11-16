@@ -7,14 +7,15 @@ use rogalik_common::{
 
 use super::atlas::SpriteAtlas;
 
+#[derive(Debug)]
 pub struct Material {
     address_mode: wgpu::AddressMode,
-    atlas: Option<SpriteAtlas>,
+    pub atlas: Option<SpriteAtlas>,
     atlas_params: Option<AtlasParams>,
-    bind_group: Option<wgpu::BindGroup>,
+    pub bind_group: Option<wgpu::BindGroup>,
     diffuse_asset_id: ResourceId,
     filter_mode: wgpu::FilterMode,
-    shader_id: ResourceId,
+    pub shader_id: ResourceId,
 }
 impl Material {
     pub fn new(

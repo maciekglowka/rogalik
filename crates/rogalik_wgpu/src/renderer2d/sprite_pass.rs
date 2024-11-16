@@ -1,121 +1,100 @@
+use rogalik_common::EngineError;
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
-use crate::camera;
-use crate::structs::Vertex;
-// use super::texture::Texture2d;
-use super::Triangle;
+use crate::assets::WgpuAssets;
+use crate::structs::{BindParams, Triangle, Vertex};
 
 pub struct SpritePass {
-    clear_color: wgpu::Color,
+    pub clear_color: wgpu::Color,
     vertex_queue: Vec<Vertex>,
     triangle_queue: Vec<Triangle>,
     // pipeline: wgpu::RenderPipeline,
     // pub bind_group_layout: wgpu::BindGroupLayout,
 }
 impl SpritePass {
-    pub fn new(
-        clear_color: wgpu::Color,
-        // device: &wgpu::Device,
-        // texture_format: &wgpu::TextureFormat,
-    ) -> Self {
-        // let shader = device.create_shader_module(wgpu::include_wgsl!("sprite_shader.wgsl"));
-
-        // let bind_group_layout = get_bind_group_layout(device);
-
-        // let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        //     label: Some("Sprite Pipeline Layout"),
-        //     bind_group_layouts: &[
-        //         &bind_group_layout,
-        //         &camera::get_camera_bind_group_layout(device),
-        //     ],
-        //     push_constant_ranges: &[],
-        // });
-        // let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        //     label: Some("Sprite pipeline"),
-        //     layout: Some(&pipeline_layout),
-        //     vertex: wgpu::VertexState {
-        //         module: &shader,
-        //         entry_point: "vs_main",
-        //         buffers: &[Vertex::layout()],
-        //     },
-        //     fragment: Some(wgpu::FragmentState {
-        //         module: &shader,
-        //         entry_point: "fs_main",
-        //         targets: &[Some(wgpu::ColorTargetState {
-        //             format: *texture_format,
-        //             blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-        //             write_mask: wgpu::ColorWrites::ALL,
-        //         })],
-        //     }),
-        //     primitive: wgpu::PrimitiveState {
-        //         topology: wgpu::PrimitiveTopology::TriangleList,
-        //         strip_index_format: None,
-        //         front_face: wgpu::FrontFace::Ccw,
-        //         cull_mode: Some(wgpu::Face::Back),
-        //         unclipped_depth: false,
-        //         polygon_mode: wgpu::PolygonMode::Fill,
-        //         conservative: false,
-        //     },
-        //     depth_stencil: None,
-        //     multisample: wgpu::MultisampleState {
-        //         count: 1,
-        //         mask: !0,
-        //         alpha_to_coverage_enabled: false,
-        //     },
-        //     multiview: None,
-        // });
-
+    pub fn new(clear_color: wgpu::Color) -> Self {
         Self {
             clear_color,
             vertex_queue: Vec::new(),
             triangle_queue: Vec::new(),
-            // pipeline,
-            // bind_group_layout,
         }
     }
-    pub fn get_bind_group_layout(&self) -> &wgpu::BindGroupLayout {
-        &self.bind_group_layout
+    pub fn add_to_queue(
+        &mut self,
+        vertices: &[Vertex],
+        indices: &[u16],
+        z_index: i32,
+        params: BindParams,
+    ) {
+        // TODO add error if indices are not divisible by 3
+        let offset = self.vertex_queue.len() as u16;
+        self.vertex_queue.extend(vertices);
+        self.triangle_queue
+            .extend(indices.chunks(3).map(|v| Triangle {
+                indices: [v[0] + offset, v[1] + offset, v[2] + offset],
+                z_index,
+                params,
+            }))
     }
     pub fn render(
         &mut self,
-        cameras: &Vec<camera::Camera2D>,
-        textures: &Vec<wgpu::BindGroup>,
-        verts: &Vec<Vertex>,
-        tris: &mut Vec<Triangle>,
+        assets: &WgpuAssets,
         surface: &wgpu::Surface,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-    ) -> Result<(), wgpu::SurfaceError> {
-        if tris.len() == 0 {
+    ) -> Result<(), EngineError> {
+        if self.triangle_queue.len() == 0 {
+            self.vertex_queue.clear();
             return Ok(());
         };
+
+        // create on the fly as camera's position might have changed
         let mut camera_bind_groups = HashMap::new();
-        for (i, camera) in cameras.iter().enumerate() {
-            camera_bind_groups.insert(i, camera.get_bind_group(device));
+        for (i, camera) in assets.iter_cameras().enumerate() {
+            camera_bind_groups.insert(
+                i,
+                camera.get_bind_group(
+                    device,
+                    assets
+                        .bind_group_layouts
+                        .get(&crate::assets::bind_groups::BindGroupKind::Camera)
+                        .ok_or(EngineError::GraphicsInternalError)?,
+                ),
+            );
         }
 
-        let output = surface.get_current_texture()?;
+        let output = surface
+            .get_current_texture()
+            .map_err(|_| EngineError::GraphicsNotReady)?;
+
         let view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Sprite vertex buffer"),
-            contents: bytemuck::cast_slice(&verts),
+            contents: bytemuck::cast_slice(&self.vertex_queue),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
         // let start = std::time::Instant::now();
-        tris.sort_by(|a, b| {
+        self.triangle_queue.sort_by(|a, b| {
             a.z_index
                 .cmp(&b.z_index)
+                .then(a.params.shader_id.cmp(&b.params.shader_id))
+                .then(a.params.material_id.cmp(&b.params.material_id))
                 .then(a.params.camera_id.cmp(&b.params.camera_id))
-                .then(a.params.texture_id.cmp(&b.params.texture_id))
         });
-        // println!("Sort: {:?}", start.elapsed());
+        // log::debug!("Triangle sort: {:?}", start.elapsed());
 
-        let indices = tris.iter().map(|t| t.indices).flatten().collect::<Vec<_>>();
+        let indices = self
+            .triangle_queue
+            .iter()
+            .map(|t| t.indices)
+            .flatten()
+            .collect::<Vec<_>>();
+
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Sprite index buffer"),
             contents: bytemuck::cast_slice(&indices),
@@ -139,29 +118,58 @@ impl SpritePass {
                 depth_stencil_attachment: None,
             });
 
-            pass.set_pipeline(&self.pipeline);
             let mut offset = 0;
             let mut batch_start = 0;
-            let mut current_params = tris[0].params;
+            let mut current_params = self.triangle_queue[0].params;
 
-            pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-            pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-            pass.set_bind_group(0, &textures[current_params.texture_id.0], &[]);
+            let pipeline = assets
+                .get_shader(current_params.shader_id)
+                .ok_or(EngineError::GraphicsInternalError)?
+                .pipeline
+                .as_ref()
+                .ok_or(EngineError::GraphicsNotReady)?;
+            pass.set_pipeline(pipeline);
+
+            let bind_group = assets
+                .get_material(current_params.material_id)
+                .ok_or(EngineError::GraphicsInternalError)?
+                .bind_group
+                .as_ref()
+                .ok_or(EngineError::GraphicsNotReady)?;
+            pass.set_bind_group(0, bind_group, &[]);
             pass.set_bind_group(
                 1,
                 camera_bind_groups.get(&current_params.camera_id.0).unwrap(),
                 &[],
             );
 
-            for tri in tris {
+            pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+            pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+
+            for tri in self.triangle_queue.iter() {
                 let end = offset + 3 as u32;
 
                 if current_params != tri.params {
                     // draw the previous batch first
                     pass.draw_indexed(batch_start..offset, 0, 0..1);
                     // counter += 1;
-                    if current_params.texture_id != tri.params.texture_id {
-                        pass.set_bind_group(0, &textures[tri.params.texture_id.0], &[]);
+                    if current_params.shader_id != tri.params.shader_id {
+                        let pipeline = assets
+                            .get_shader(tri.params.shader_id)
+                            .ok_or(EngineError::GraphicsInternalError)?
+                            .pipeline
+                            .as_ref()
+                            .ok_or(EngineError::GraphicsNotReady)?;
+                        pass.set_pipeline(pipeline);
+                    }
+                    if current_params.material_id != tri.params.material_id {
+                        let bind_group = assets
+                            .get_material(tri.params.material_id)
+                            .ok_or(EngineError::GraphicsInternalError)?
+                            .bind_group
+                            .as_ref()
+                            .ok_or(EngineError::GraphicsNotReady)?;
+                        pass.set_bind_group(0, bind_group, &[]);
                     }
                     if current_params.camera_id != tri.params.camera_id {
                         pass.set_bind_group(1, &camera_bind_groups[&tri.params.camera_id.0], &[]);
@@ -177,6 +185,9 @@ impl SpritePass {
         // let start = std::time::Instant::now();
         output.present();
         // println!("Present: {:?}, {}", start.elapsed(), counter);
+
+        self.vertex_queue.clear();
+        self.triangle_queue.clear();
         Ok(())
     }
 }

@@ -21,7 +21,7 @@ pub trait GraphicsContext {
     );
     fn draw_atlas_sprite(
         &mut self,
-        atlas: &str,
+        material: &str,
         index: usize,
         position: Vector2f,
         z_index: i32,

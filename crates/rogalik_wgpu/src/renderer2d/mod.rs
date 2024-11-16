@@ -2,11 +2,9 @@ use rogalik_common::{EngineError, ResourceId, SpriteParams};
 use rogalik_math::vectors::Vector2f;
 
 use crate::assets::WgpuAssets;
-use crate::camera;
-use crate::structs::Vertex;
+use crate::structs::{BindParams, Triangle, Vertex};
 
 mod sprite_pass;
-mod texture;
 
 pub struct Renderer2d {
     sprite_pass: sprite_pass::SpritePass,
@@ -20,70 +18,55 @@ impl Renderer2d {
         texture_format: &wgpu::TextureFormat,
         clear_color: wgpu::Color,
     ) -> Self {
-        let render_pass = sprite_pass::SpritePass::new(clear_color, device, texture_format);
-
-        // let texture_bind_groups = assets
-        //     .get_textures()
-        //     .iter()
-        //     .map(|t| {
-        //         texture::get_texture_bind_group(t, device, queue, &render_pass.bind_group_layout)
-        //     })
-        //     .collect();
-
-        Self {
-            render_pass,
-            vertex_queue: Vec::new(),
-            triangle_queue: Vec::new(),
-            texture_bind_groups: Vec::new(),
-        }
+        let sprite_pass = sprite_pass::SpritePass::new(clear_color);
+        Self { sprite_pass }
     }
     pub fn set_clear_color(&mut self, color: wgpu::Color) {
-        self.render_pass.clear_color = color;
+        self.sprite_pass.clear_color = color;
     }
-    fn add_to_queue(
-        &mut self,
-        vertices: &[Vertex],
-        indices: &[u16],
-        z_index: i32,
-        params: BindParams,
-    ) {
-        // TODO add error if indices are not divisible by 3
-        let offset = self.vertex_queue.len() as u16;
-        self.vertex_queue.extend(vertices);
-        self.triangle_queue
-            .extend(indices.chunks(3).map(|v| Triangle {
-                indices: [v[0] + offset, v[1] + offset, v[2] + offset],
-                z_index,
-                params,
-            }))
-    }
+
     pub fn draw_atlas_sprite(
         &mut self,
         assets: &WgpuAssets,
         index: usize,
-        atlas: &str,
+        material_name: &str,
         camera_id: ResourceId,
         position: Vector2f,
         z_index: i32,
         size: Vector2f,
         params: SpriteParams,
     ) -> Result<(), EngineError> {
-        // TODO handle errors
-        let atlas = assets
-            .get_atlas(atlas)
+        let &material_id = assets
+            .get_material_id(material_name)
             .ok_or(EngineError::ResourceNotFound)?;
-        // let bind_params = BindParams {
-        //     camera_id,
-        //     texture_id: atlas.texture_id,
-        // };
+        let material = assets
+            .get_material(material_id)
+            .ok_or(EngineError::ResourceNotFound)?;
 
-        // if let Some(_) = params.slice {
-        //     let s = atlas.get_sliced_sprite(index, position, size, params);
-        //     self.add_to_queue(&s.0, &s.1, z_index, bind_params);
-        // } else {
-        //     let s = atlas.get_sprite(index, position, size, params);
-        //     self.add_to_queue(&s.0, &s.1, z_index, bind_params);
-        // };
+        let bind_params = BindParams {
+            camera_id,
+            material_id,
+            shader_id: material.shader_id,
+        };
+
+        println!("{:?}", material);
+        println!("{:?}", bind_params);
+        if let Some(_) = params.slice {
+            let s = material
+                .atlas
+                .ok_or(EngineError::InvalidResource)?
+                .get_sliced_sprite(index, position, size, params);
+            self.sprite_pass
+                .add_to_queue(&s.0, &s.1, z_index, bind_params);
+        } else {
+            let s = material
+                .atlas
+                .ok_or(EngineError::InvalidResource)?
+                .get_sprite(index, position, size, params);
+            self.sprite_pass
+                .add_to_queue(&s.0, &s.1, z_index, bind_params);
+        };
+        println!("Drew");
         Ok(())
     }
     pub fn draw_text(
@@ -97,7 +80,7 @@ impl Renderer2d {
         size: f32,
         params: SpriteParams,
     ) -> Result<(), EngineError> {
-        let font = assets.get_font(font).ok_or(EngineError::ResourceNotFound)?;
+        // let font = assets.get_font(font).ok_or(EngineError::ResourceNotFound)?;
         // let bind_params = BindParams {
         //     camera_id,
         //     texture_id: font.atlas.texture_id,
@@ -109,34 +92,11 @@ impl Renderer2d {
     }
     pub fn render(
         &mut self,
+        assets: &WgpuAssets,
         surface: &wgpu::Surface,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        cameras: &Vec<camera::Camera2D>,
     ) {
-        let _ = self.render_pass.render(
-            cameras,
-            &self.texture_bind_groups,
-            &self.vertex_queue,
-            &mut self.triangle_queue,
-            surface,
-            device,
-            queue,
-        );
-        self.vertex_queue.clear();
-        self.triangle_queue.clear();
+        let _ = self.sprite_pass.render(assets, surface, device, queue);
     }
-}
-
-#[derive(Clone, Copy)]
-pub struct Triangle {
-    indices: [u16; 3],
-    z_index: i32,
-    params: BindParams,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct BindParams {
-    texture_id: ResourceId,
-    camera_id: ResourceId,
 }

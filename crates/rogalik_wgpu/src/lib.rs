@@ -37,9 +37,9 @@ impl GraphicsContext for WgpuContext {
         self.surface_state.is_some()
     }
     fn create_context(&mut self, window: &Window) {
-        self.surface_state = create_surface_state(window, &self.assets, self.clear_color);
+        self.surface_state = create_surface_state(window, &mut self.assets, self.clear_color);
         if self.surface_state.is_some() {
-            for camera in self.assets.cameras.values_mut() {
+            for camera in self.assets.iter_cameras_mut() {
                 camera.resize_viewport(
                     self.surface_state.as_ref().unwrap().config.width as f32,
                     self.surface_state.as_ref().unwrap().config.height as f32,
@@ -67,17 +67,17 @@ impl GraphicsContext for WgpuContext {
                 state.surface.configure(&state.device, &state.config);
             }
 
-            for camera in self.assets.cameras.values_mut() {
+            for camera in self.assets.iter_cameras_mut() {
                 camera.resize_viewport(width as f32, height as f32);
             }
         }
     }
     fn render(&mut self) {
-        // if let Some(state) = &mut self.surface_state {
-        //     state
-        //         .renderer2d
-        //         .render(&state.surface, &state.device, &state.queue, &self.cameras);
-        // }
+        if let Some(state) = &mut self.surface_state {
+            state
+                .renderer2d
+                .render(&self.assets, &state.surface, &state.device, &state.queue);
+        }
     }
     fn load_material(&mut self, name: &str, params: rogalik_common::MaterialParams) {
         self.assets.create_material(name, params);
@@ -146,39 +146,37 @@ impl GraphicsContext for WgpuContext {
         }
     }
     fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f {
-        if let Some(font) = self.assets.get_font(font) {
-            font.text_dimensions(text, size)
-        } else {
-            Vector2f::ZERO
-        }
+        // if let Some(font) = self.assets.get_font(font) {
+        //     font.text_dimensions(text, size)
+        // } else {
+        //     Vector2f::ZERO
+        // }
+        Vector2f::ZERO
     }
     fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId {
-        let id = ResourceId(self.cameras.len());
         let (w, h) = match &self.surface_state {
             Some(s) => (s.config.width, s.config.height),
             None => (0, 0),
         };
-        let camera = camera::Camera2D::new(w as f32, h as f32, scale, target);
-        self.cameras.push(camera);
-        id
+        self.assets.create_camera(w as f32, h as f32, scale, target)
     }
     fn set_camera(&mut self, id: ResourceId) {
         self.current_camera_id = id;
     }
     fn get_current_camera(&self) -> &dyn rogalik_common::Camera {
-        &self.cameras[self.current_camera_id.0]
+        self.assets.get_camera(self.current_camera_id).unwrap()
     }
     fn get_camera(&self, id: ResourceId) -> Option<&dyn rogalik_common::Camera> {
-        Some(self.cameras.get(id.0)?)
+        Some(self.assets.get_camera(id)?)
     }
     fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut dyn rogalik_common::Camera> {
-        Some(self.cameras.get_mut(id.0)?)
+        Some(self.assets.get_camera_mut(id)?)
     }
 }
 
 fn create_surface_state(
     window: &Window,
-    assets: &assets::WgpuAssets,
+    assets: &mut assets::WgpuAssets,
     clear_color: wgpu::Color,
 ) -> Option<SurfaceState> {
     let size = window.inner_size();
@@ -247,6 +245,8 @@ fn create_surface_state(
         view_formats: vec![],
     };
     surface.configure(&device, &config);
+
+    assets.create_wgpu_data(&device, &queue, &surface_format);
 
     log::debug!("Creating Renderer2d");
     let renderer2d =

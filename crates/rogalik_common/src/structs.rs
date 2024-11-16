@@ -72,7 +72,7 @@ pub struct MaterialParams<'a> {
     pub filtering: TextureFiltering,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct AtlasParams {
     pub cols: usize,
     pub rows: usize,

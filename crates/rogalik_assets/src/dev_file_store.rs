@@ -41,10 +41,7 @@ impl AssetStoreTrait for DevFileStore {
         let id = self.next_id;
 
         let abs_path = Path::new(&self.root).join(path);
-        let mut file = File::open(&abs_path).map_err(|_| EngineError::ResourceNotFound)?;
-        let mut data = Vec::new();
-        file.read(&mut data)
-            .map_err(|_| EngineError::ResourceNotFound)?;
+        let data = fs::read(&abs_path).map_err(|_| EngineError::ResourceNotFound)?;
 
         let meta = fs::metadata(&abs_path.as_path()).map_err(|_| EngineError::ResourceNotFound)?;
         let modified = meta
@@ -63,7 +60,7 @@ impl AssetStoreTrait for DevFileStore {
             },
         );
         self.bump_id();
-        log::debug!("Loaded asset from: {}", path);
+        log::debug!("Loaded asset from: {}. {} bytes.", path, data.len());
         Ok(id)
     }
     fn get(&self, asset_id: ResourceId) -> Option<&Asset> {

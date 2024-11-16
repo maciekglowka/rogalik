@@ -1,3 +1,5 @@
+use rogalik_common::ResourceId;
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
@@ -18,4 +20,18 @@ impl Vertex {
             attributes: &Self::ATTRS,
         }
     }
+}
+
+#[derive(Clone, Copy)]
+pub struct Triangle {
+    pub indices: [u16; 3],
+    pub z_index: i32,
+    pub params: BindParams,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BindParams {
+    pub shader_id: ResourceId,
+    pub material_id: ResourceId,
+    pub camera_id: ResourceId,
 }
