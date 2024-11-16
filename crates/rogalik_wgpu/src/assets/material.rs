@@ -13,7 +13,7 @@ pub struct Material {
     pub atlas: Option<SpriteAtlas>,
     atlas_params: Option<AtlasParams>,
     pub bind_group: Option<wgpu::BindGroup>,
-    diffuse_asset_id: ResourceId,
+    pub diffuse_asset_id: ResourceId,
     filter_mode: wgpu::FilterMode,
     pub shader_id: ResourceId,
 }

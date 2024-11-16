@@ -1,6 +1,7 @@
 use winit::application::ApplicationHandler;
-use winit::event::WindowEvent;
+use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::keyboard::PhysicalKey;
 use winit::window::{Window, WindowAttributes, WindowId};
 
 use crate::{
@@ -62,6 +63,20 @@ impl<T: Game> ApplicationHandler for App<T> {
         match event {
             WindowEvent::KeyboardInput { event, .. } => {
                 self.context.input.handle_keyboard(&event);
+
+                // reload assets
+                #[cfg(debug_assertions)]
+                if let PhysicalKey::Code(code) = event.physical_key {
+                    if let ElementState::Pressed = event.state {
+                        // TODO add CTRL or SHIFT modifier
+                        if code == winit::keyboard::KeyCode::F5 {
+                            if let Ok(mut store) = self.context.assets.lock() {
+                                store.reload_modified();
+                            }
+                            self.context.graphics.update_assets();
+                        }
+                    }
+                }
             }
             WindowEvent::MouseInput { button, state, .. } => {
                 self.context.input.handle_mouse_button(&button, &state);

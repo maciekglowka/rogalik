@@ -7,6 +7,7 @@ pub trait GraphicsContext {
     fn create_context(&mut self, window: &Window);
     fn has_context(&self) -> bool;
     fn update_time(&mut self, delta: f32);
+    fn update_assets(&mut self);
     fn set_clear_color(&mut self, color: Color);
     fn resize(&mut self, w: u32, h: u32);
     fn render(&mut self);

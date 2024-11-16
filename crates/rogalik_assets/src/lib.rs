@@ -19,6 +19,8 @@ impl Asset {
         }
     }
 }
+
+#[derive(PartialEq, Eq)]
 pub enum AssetState {
     Loaded,
     Updated,

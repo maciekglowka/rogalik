@@ -46,8 +46,6 @@ impl Renderer2d {
             shader_id: material.shader_id,
         };
 
-        println!("{:?}", material);
-        println!("{:?}", bind_params);
         if let Some(_) = params.slice {
             let s = material
                 .atlas
@@ -63,7 +61,6 @@ impl Renderer2d {
             self.sprite_pass
                 .add_to_queue(&s.0, &s.1, z_index, bind_params);
         };
-        println!("Drew");
         Ok(())
     }
     pub fn draw_text(

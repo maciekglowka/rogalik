@@ -58,6 +58,13 @@ impl GraphicsContext for WgpuContext {
         self.time += delta;
         self.time = self.time % MAX_TIME;
     }
+    fn update_assets(&mut self) {
+        if let Some(state) = &self.surface_state {
+            let _ = self
+                .assets
+                .update_assets(&state.device, &state.queue, &state.config.format);
+        }
+    }
     fn set_clear_color(&mut self, color: rogalik_common::Color) {
         let col = color.as_srgb();
         self.clear_color = wgpu::Color {
@@ -261,7 +268,7 @@ fn create_surface_state(
     };
     surface.configure(&device, &config);
 
-    assets.create_wgpu_data(&device, &queue, &surface_format);
+    let _ = assets.create_wgpu_data(&device, &queue, &surface_format);
 
     log::debug!("Creating Renderer2d");
     let renderer2d = renderer2d::Renderer2d::new(clear_color);

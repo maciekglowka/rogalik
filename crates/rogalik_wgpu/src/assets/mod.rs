@@ -4,7 +4,7 @@ use std::{
 };
 
 use camera::Camera2D;
-use rogalik_assets::{AssetStore, AssetStoreTrait};
+use rogalik_assets::{AssetState, AssetStore, AssetStoreTrait};
 use rogalik_common::{
     EngineError, MaterialParams, ResourceId, ShaderKind, TextureFiltering, TextureRepeat,
 };
@@ -78,6 +78,41 @@ impl WgpuAssets {
                 .ok_or(EngineError::GraphicsInternalError)?;
             shader.create_wgpu_data(&mut store, device, texture_format, layout)?;
         }
+        Ok(())
+    }
+    pub fn update_assets(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        texture_format: &wgpu::TextureFormat,
+    ) -> Result<(), EngineError> {
+        let mut store = self
+            .asset_store
+            .lock()
+            .expect("Can't acquire the asset store!");
+
+        let material_layout = self
+            .bind_group_layouts
+            .get(&bind_groups::BindGroupKind::Sprite)
+            .ok_or(EngineError::GraphicsInternalError)?;
+
+        for material in self.materials.iter_mut() {
+            if let Some(asset) = store.get(material.diffuse_asset_id) {
+                if asset.state == AssetState::Updated {
+                    let _ = material.create_wgpu_data(&mut store, device, queue, material_layout);
+                }
+            }
+            store.mark_read(material.diffuse_asset_id);
+        }
+
+        for shader in self.shaders.iter_mut() {
+            let layout = self
+                .pipeline_layouts
+                .get(&shader.kind)
+                .ok_or(EngineError::GraphicsInternalError)?;
+            shader.create_wgpu_data(&mut store, device, texture_format, layout)?;
+        }
+
         Ok(())
     }
     fn create_bind_group_layouts(&mut self, device: &wgpu::Device) {
