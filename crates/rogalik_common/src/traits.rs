@@ -6,6 +6,7 @@ use crate::structs::{Color, EngineError, ResourceId, ShaderKind, SpriteParams};
 pub trait GraphicsContext {
     fn create_context(&mut self, window: &Window);
     fn has_context(&self) -> bool;
+    fn update_time(&mut self, delta: f32);
     fn set_clear_color(&mut self, color: Color);
     fn resize(&mut self, w: u32, h: u32);
     fn render(&mut self);

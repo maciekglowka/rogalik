@@ -6,6 +6,7 @@ pub fn get_bind_group_layouts(
     HashMap::from_iter([
         (BindGroupKind::Camera, get_camera_bind_group_layout(device)),
         (BindGroupKind::Sprite, get_sprite_bind_group_layout(device)),
+        (BindGroupKind::Time, get_time_bind_group_layout(device)),
     ])
 }
 
@@ -13,15 +14,24 @@ pub fn get_bind_group_layouts(
 pub enum BindGroupKind {
     Camera,
     Sprite,
+    Time,
 }
-// impl BindGroupKind {
-//     pub fn get_bind_group_layout(&self, device: &wgpu::Device) -> wgpu::BindGroupLayout {
-//         match self {
-//             Self::Camera => get_camera_bind_group_layout(device),
-//             Self::Sprite => get_sprite_bind_group_layout(device),
-//         }
-//     }
-// }
+
+fn get_time_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("Time Bind Group Layou"),
+        entries: &[wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }],
+    })
+}
 
 fn get_camera_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

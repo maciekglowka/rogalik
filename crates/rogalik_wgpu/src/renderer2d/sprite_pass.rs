@@ -43,6 +43,7 @@ impl SpritePass {
         surface: &wgpu::Surface,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
+        time_bind_group: &wgpu::BindGroup,
     ) -> Result<(), EngineError> {
         if self.triangle_queue.len() == 0 {
             self.vertex_queue.clear();
@@ -137,11 +138,13 @@ impl SpritePass {
                 .as_ref()
                 .ok_or(EngineError::GraphicsNotReady)?;
             pass.set_bind_group(0, bind_group, &[]);
+
             pass.set_bind_group(
                 1,
                 camera_bind_groups.get(&current_params.camera_id.0).unwrap(),
                 &[],
             );
+            pass.set_bind_group(2, time_bind_group, &[]);
 
             pass.set_vertex_buffer(0, vertex_buffer.slice(..));
             pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);

@@ -1,7 +1,10 @@
+use wgpu::util::DeviceExt;
+
 use rogalik_common::{EngineError, ResourceId, SpriteParams};
 use rogalik_math::vectors::Vector2f;
 
 use crate::assets::WgpuAssets;
+use crate::create_surface_state;
 use crate::structs::{BindParams, Triangle, Vertex};
 
 mod sprite_pass;
@@ -11,13 +14,7 @@ pub struct Renderer2d {
     // post_processing_passes: Vec
 }
 impl Renderer2d {
-    pub fn new(
-        assets: &WgpuAssets,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        texture_format: &wgpu::TextureFormat,
-        clear_color: wgpu::Color,
-    ) -> Self {
+    pub fn new(clear_color: wgpu::Color) -> Self {
         let sprite_pass = sprite_pass::SpritePass::new(clear_color);
         Self { sprite_pass }
     }
@@ -93,10 +90,41 @@ impl Renderer2d {
     pub fn render(
         &mut self,
         assets: &WgpuAssets,
+        time: f32,
         surface: &wgpu::Surface,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-    ) {
-        let _ = self.sprite_pass.render(assets, surface, device, queue);
+    ) -> Result<(), EngineError> {
+        let time_bind_group = create_time_bind_group(
+            device,
+            assets
+                .bind_group_layouts
+                .get(&crate::assets::bind_groups::BindGroupKind::Time)
+                .ok_or(EngineError::GraphicsNotReady)?,
+            time,
+        );
+        self.sprite_pass
+            .render(assets, surface, device, queue, &time_bind_group)?;
+        Ok(())
     }
+}
+
+pub fn create_time_bind_group(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    time: f32,
+) -> wgpu::BindGroup {
+    let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Time Buffer"),
+        contents: bytemuck::cast_slice(&[time]),
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+    });
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        layout,
+        label: Some("Time Bind Group"),
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: buffer.as_entire_binding(),
+        }],
+    })
 }

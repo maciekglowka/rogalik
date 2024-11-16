@@ -105,6 +105,9 @@ impl<T: Game> ApplicationHandler for App<T> {
             WindowEvent::RedrawRequested => {
                 // let start = std::time::Instant::now();
                 self.context.time.update();
+                self.context
+                    .graphics
+                    .update_time(self.context.time.get_delta());
                 update_scenes(&mut self.scene_manager, &mut self.game, &mut self.context);
 
                 self.context.graphics.render();

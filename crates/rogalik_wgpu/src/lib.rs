@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    char::MAX,
+    sync::{Arc, Mutex},
+};
 use winit::window::Window;
 
 use rogalik_common::{EngineError, GraphicsContext, ResourceId, SpriteParams};
@@ -7,6 +10,8 @@ use rogalik_math::vectors::Vector2f;
 mod assets;
 mod renderer2d;
 mod structs;
+
+const MAX_TIME: f32 = 3600.;
 
 struct SurfaceState {
     surface: wgpu::Surface,
@@ -21,6 +26,7 @@ pub struct WgpuContext {
     current_camera_id: ResourceId,
     clear_color: wgpu::Color,
     surface_state: Option<SurfaceState>,
+    time: f32,
 }
 impl WgpuContext {
     pub fn new(asset_store: Arc<Mutex<rogalik_assets::AssetStore>>) -> Self {
@@ -29,6 +35,7 @@ impl WgpuContext {
             current_camera_id: ResourceId::default(),
             clear_color: wgpu::Color::BLACK,
             surface_state: None,
+            time: 0.,
         }
     }
 }
@@ -46,6 +53,10 @@ impl GraphicsContext for WgpuContext {
                 );
             }
         }
+    }
+    fn update_time(&mut self, delta: f32) {
+        self.time += delta;
+        self.time = self.time % MAX_TIME;
     }
     fn set_clear_color(&mut self, color: rogalik_common::Color) {
         let col = color.as_srgb();
@@ -74,9 +85,13 @@ impl GraphicsContext for WgpuContext {
     }
     fn render(&mut self) {
         if let Some(state) = &mut self.surface_state {
-            state
-                .renderer2d
-                .render(&self.assets, &state.surface, &state.device, &state.queue);
+            state.renderer2d.render(
+                &self.assets,
+                self.time,
+                &state.surface,
+                &state.device,
+                &state.queue,
+            );
         }
     }
     fn load_material(&mut self, name: &str, params: rogalik_common::MaterialParams) {
@@ -249,8 +264,7 @@ fn create_surface_state(
     assets.create_wgpu_data(&device, &queue, &surface_format);
 
     log::debug!("Creating Renderer2d");
-    let renderer2d =
-        renderer2d::Renderer2d::new(assets, &device, &queue, &surface_format, clear_color);
+    let renderer2d = renderer2d::Renderer2d::new(clear_color);
 
     Some(SurfaceState {
         surface,

@@ -103,6 +103,9 @@ fn get_sprite_shader_pipeline_layout(
                 bind_group_layous
                     .get(&BindGroupKind::Camera)
                     .ok_or(EngineError::GraphicsInternalError)?,
+                bind_group_layous
+                    .get(&BindGroupKind::Time)
+                    .ok_or(EngineError::GraphicsInternalError)?,
             ],
             push_constant_ranges: &[],
         }),
