@@ -5,6 +5,10 @@ pub fn get_bind_group_layouts(
 ) -> HashMap<BindGroupKind, wgpu::BindGroupLayout> {
     HashMap::from_iter([
         (BindGroupKind::Camera, get_camera_bind_group_layout(device)),
+        (
+            BindGroupKind::PostProcess,
+            get_post_process_bind_group_layout(device),
+        ),
         (BindGroupKind::Sprite, get_sprite_bind_group_layout(device)),
         (BindGroupKind::Time, get_time_bind_group_layout(device)),
     ])
@@ -13,6 +17,7 @@ pub fn get_bind_group_layouts(
 #[derive(Eq, PartialEq, Hash)]
 pub enum BindGroupKind {
     Camera,
+    PostProcess,
     Sprite,
     Time,
 }
@@ -70,5 +75,29 @@ fn get_sprite_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout 
             },
         ],
         label: Some("Sprite Bind Group Layout"),
+    })
+}
+
+fn get_post_process_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+        ],
+        label: Some("PostProcess Bind Group Layout"),
     })
 }

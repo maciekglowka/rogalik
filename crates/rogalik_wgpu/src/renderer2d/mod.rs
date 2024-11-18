@@ -4,22 +4,36 @@ use rogalik_common::{EngineError, ResourceId, SpriteParams};
 use rogalik_math::vectors::Vector2f;
 
 use crate::assets::WgpuAssets;
-use crate::create_surface_state;
 use crate::structs::{BindParams, Triangle, Vertex};
 
+mod postprocess_pass;
 mod sprite_pass;
 
 pub struct Renderer2d {
     sprite_pass: sprite_pass::SpritePass,
-    // post_processing_passes: Vec
+    post_process_passes: Vec<postprocess_pass::PostProcessPass>,
 }
 impl Renderer2d {
-    pub fn new(clear_color: wgpu::Color) -> Self {
-        let sprite_pass = sprite_pass::SpritePass::new(clear_color);
-        Self { sprite_pass }
+    pub fn new() -> Self {
+        let sprite_pass = sprite_pass::SpritePass::new(wgpu::Color::BLACK);
+        Self {
+            sprite_pass,
+            post_process_passes: Vec::new(),
+        }
     }
     pub fn set_clear_color(&mut self, color: wgpu::Color) {
         self.sprite_pass.clear_color = color;
+    }
+    pub fn create_wgpu_data(
+        &mut self,
+        assets: &WgpuAssets,
+        width: u32,
+        height: u32,
+        device: &wgpu::Device,
+    ) {
+        for pass in self.post_process_passes.iter_mut() {
+            let _ = pass.create_wgpu_data(assets, width, height, device);
+        }
     }
 
     pub fn draw_atlas_sprite(
@@ -100,8 +114,15 @@ impl Renderer2d {
                 .ok_or(EngineError::GraphicsNotReady)?,
             time,
         );
+        let output = surface
+            .get_current_texture()
+            .map_err(|_| EngineError::GraphicsNotReady)?;
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
         self.sprite_pass
-            .render(assets, surface, device, queue, &time_bind_group)?;
+            .render(assets, device, queue, &time_bind_group, &view)?;
+        output.present();
         Ok(())
     }
 }

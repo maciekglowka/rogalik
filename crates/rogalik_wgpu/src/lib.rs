@@ -18,13 +18,13 @@ struct SurfaceState {
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
-    renderer2d: renderer2d::Renderer2d,
 }
 
 pub struct WgpuContext {
     assets: assets::WgpuAssets,
     current_camera_id: ResourceId,
     clear_color: wgpu::Color,
+    renderer2d: renderer2d::Renderer2d,
     surface_state: Option<SurfaceState>,
     time: f32,
 }
@@ -34,6 +34,7 @@ impl WgpuContext {
             assets: assets::WgpuAssets::new(asset_store),
             current_camera_id: ResourceId::default(),
             clear_color: wgpu::Color::BLACK,
+            renderer2d: renderer2d::Renderer2d::new(),
             surface_state: None,
             time: 0.,
         }
@@ -44,13 +45,20 @@ impl GraphicsContext for WgpuContext {
         self.surface_state.is_some()
     }
     fn create_context(&mut self, window: &Window) {
-        self.surface_state = create_surface_state(window, &mut self.assets, self.clear_color);
-        if self.surface_state.is_some() {
+        self.surface_state = create_surface_state(window);
+        if let Some(state) = &self.surface_state {
+            let w = state.config.width;
+            let h = state.config.height;
+
+            let _ = self
+                .assets
+                .create_wgpu_data(&state.device, &state.queue, &state.config.format);
+            let _ = self
+                .renderer2d
+                .create_wgpu_data(&self.assets, w, h, &state.device);
+
             for camera in self.assets.iter_cameras_mut() {
-                camera.resize_viewport(
-                    self.surface_state.as_ref().unwrap().config.width as f32,
-                    self.surface_state.as_ref().unwrap().config.height as f32,
-                );
+                camera.resize_viewport(w as f32, h as f32);
             }
         }
     }
@@ -73,9 +81,7 @@ impl GraphicsContext for WgpuContext {
             b: col[2] as f64,
             a: col[3] as f64,
         };
-        if let Some(state) = &mut self.surface_state {
-            state.renderer2d.set_clear_color(self.clear_color);
-        };
+        self.renderer2d.set_clear_color(self.clear_color);
     }
     fn resize(&mut self, width: u32, height: u32) {
         if width > 0 && height > 0 {
@@ -83,6 +89,9 @@ impl GraphicsContext for WgpuContext {
                 state.config.width = width;
                 state.config.height = height;
                 state.surface.configure(&state.device, &state.config);
+                let _ =
+                    self.renderer2d
+                        .create_wgpu_data(&self.assets, width, height, &state.device);
             }
 
             for camera in self.assets.iter_cameras_mut() {
@@ -92,7 +101,7 @@ impl GraphicsContext for WgpuContext {
     }
     fn render(&mut self) {
         if let Some(state) = &mut self.surface_state {
-            state.renderer2d.render(
+            let _ = self.renderer2d.render(
                 &self.assets,
                 self.time,
                 &state.surface,
@@ -128,20 +137,16 @@ impl GraphicsContext for WgpuContext {
         size: rogalik_math::vectors::Vector2f,
         params: SpriteParams,
     ) -> Result<(), EngineError> {
-        if let Some(state) = &mut self.surface_state {
-            state.renderer2d.draw_atlas_sprite(
-                &self.assets,
-                index,
-                atlas,
-                self.current_camera_id,
-                position,
-                z_index,
-                size,
-                params,
-            )
-        } else {
-            Err(EngineError::GraphicsNotReady)
-        }
+        self.renderer2d.draw_atlas_sprite(
+            &self.assets,
+            index,
+            atlas,
+            self.current_camera_id,
+            position,
+            z_index,
+            size,
+            params,
+        )
     }
     fn draw_text(
         &mut self,
@@ -152,20 +157,16 @@ impl GraphicsContext for WgpuContext {
         size: f32,
         params: SpriteParams,
     ) -> Result<(), EngineError> {
-        if let Some(state) = &mut self.surface_state {
-            state.renderer2d.draw_text(
-                &self.assets,
-                font,
-                text,
-                self.current_camera_id,
-                position,
-                z_index,
-                size,
-                params,
-            )
-        } else {
-            Err(EngineError::GraphicsNotReady)
-        }
+        self.renderer2d.draw_text(
+            &self.assets,
+            font,
+            text,
+            self.current_camera_id,
+            position,
+            z_index,
+            size,
+            params,
+        )
     }
     fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f {
         // if let Some(font) = self.assets.get_font(font) {
@@ -196,11 +197,7 @@ impl GraphicsContext for WgpuContext {
     }
 }
 
-fn create_surface_state(
-    window: &Window,
-    assets: &mut assets::WgpuAssets,
-    clear_color: wgpu::Color,
-) -> Option<SurfaceState> {
+fn create_surface_state(window: &Window) -> Option<SurfaceState> {
     let size = window.inner_size();
 
     if size.width == 0 || size.height == 0 {
@@ -268,16 +265,10 @@ fn create_surface_state(
     };
     surface.configure(&device, &config);
 
-    let _ = assets.create_wgpu_data(&device, &queue, &surface_format);
-
-    log::debug!("Creating Renderer2d");
-    let renderer2d = renderer2d::Renderer2d::new(clear_color);
-
     Some(SurfaceState {
         surface,
         device,
         queue,
         config,
-        renderer2d,
     })
 }

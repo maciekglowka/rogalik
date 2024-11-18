@@ -40,10 +40,10 @@ impl SpritePass {
     pub fn render(
         &mut self,
         assets: &WgpuAssets,
-        surface: &wgpu::Surface,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         time_bind_group: &wgpu::BindGroup,
+        view: &wgpu::TextureView,
     ) -> Result<(), EngineError> {
         if self.triangle_queue.len() == 0 {
             self.vertex_queue.clear();
@@ -65,13 +65,13 @@ impl SpritePass {
             );
         }
 
-        let output = surface
-            .get_current_texture()
-            .map_err(|_| EngineError::GraphicsNotReady)?;
+        // let output = surface
+        //     .get_current_texture()
+        //     .map_err(|_| EngineError::GraphicsNotReady)?;
 
-        let view = output
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
+        // let view = output
+        //     .texture
+        //     .create_view(&wgpu::TextureViewDescriptor::default());
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Sprite vertex buffer"),
@@ -186,7 +186,7 @@ impl SpritePass {
         }
         queue.submit(std::iter::once(encoder.finish()));
         // let start = std::time::Instant::now();
-        output.present();
+        // output.present();
         // println!("Present: {:?}, {}", start.elapsed(), counter);
 
         self.vertex_queue.clear();

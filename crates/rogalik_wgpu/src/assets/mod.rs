@@ -72,11 +72,7 @@ impl WgpuAssets {
         }
 
         for shader in self.shaders.iter_mut() {
-            let layout = self
-                .pipeline_layouts
-                .get(&shader.kind)
-                .ok_or(EngineError::GraphicsInternalError)?;
-            shader.create_wgpu_data(&mut store, device, texture_format, layout)?;
+            shader.create_wgpu_data(&mut store, device, texture_format, &self.pipeline_layouts)?;
         }
         Ok(())
     }
@@ -106,11 +102,7 @@ impl WgpuAssets {
         }
 
         for shader in self.shaders.iter_mut() {
-            let layout = self
-                .pipeline_layouts
-                .get(&shader.kind)
-                .ok_or(EngineError::GraphicsInternalError)?;
-            shader.create_wgpu_data(&mut store, device, texture_format, layout)?;
+            shader.create_wgpu_data(&mut store, device, texture_format, &self.pipeline_layouts)?;
         }
 
         Ok(())

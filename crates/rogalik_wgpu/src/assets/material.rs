@@ -138,8 +138,8 @@ fn get_material_bind_group(
         address_mode_v: address_mode,
         address_mode_w: address_mode,
         mag_filter: filter_mode,
-        min_filter: filter_mode,
-        mipmap_filter: filter_mode,
+        min_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::FilterMode::Nearest,
         ..Default::default()
     });
     device.create_bind_group(&wgpu::BindGroupDescriptor {

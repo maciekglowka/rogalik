@@ -97,5 +97,5 @@ pub enum TextureFiltering {
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 pub enum ShaderKind {
     Sprite,
-    // Postprocessing
+    PostProcess,
 }
