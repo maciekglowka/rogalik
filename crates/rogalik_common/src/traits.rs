@@ -22,6 +22,7 @@ pub trait GraphicsContext {
         cols: usize,
         padding: Option<(f32, f32)>,
     );
+    fn add_post_process(&mut self, shader_id: ResourceId, filtering: crate::TextureFiltering);
     fn draw_atlas_sprite(
         &mut self,
         material: &str,

@@ -40,6 +40,7 @@ impl SpritePass {
     pub fn render(
         &mut self,
         assets: &WgpuAssets,
+        encoder: &mut wgpu::CommandEncoder,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         time_bind_group: &wgpu::BindGroup,
@@ -64,14 +65,6 @@ impl SpritePass {
                 ),
             );
         }
-
-        // let output = surface
-        //     .get_current_texture()
-        //     .map_err(|_| EngineError::GraphicsNotReady)?;
-
-        // let view = output
-        //     .texture
-        //     .create_view(&wgpu::TextureViewDescriptor::default());
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Sprite vertex buffer"),
@@ -102,9 +95,6 @@ impl SpritePass {
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Sprite Encoder"),
-        });
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Sprite Pass"),
@@ -185,7 +175,6 @@ impl SpritePass {
             }
             pass.draw_indexed(batch_start..offset, 0, 0..1);
         }
-        queue.submit(std::iter::once(encoder.finish()));
         // let start = std::time::Instant::now();
         // output.present();
         // println!("Present: {:?}, {}", start.elapsed(), counter);

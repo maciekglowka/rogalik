@@ -24,15 +24,31 @@ impl Renderer2d {
     pub fn set_clear_color(&mut self, color: wgpu::Color) {
         self.sprite_pass.clear_color = color;
     }
+    pub fn add_post_process(
+        &mut self,
+        shader_id: ResourceId,
+        filtering: rogalik_common::TextureFiltering,
+    ) {
+        let filter_mode = match filtering {
+            rogalik_common::TextureFiltering::Nearest => wgpu::FilterMode::Nearest,
+            rogalik_common::TextureFiltering::Linear => wgpu::FilterMode::Linear,
+        };
+        self.post_process_passes
+            .push(postprocess_pass::PostProcessPass::new(
+                shader_id,
+                filter_mode,
+            ));
+    }
     pub fn create_wgpu_data(
         &mut self,
         assets: &WgpuAssets,
         width: u32,
         height: u32,
         device: &wgpu::Device,
+        texture_format: wgpu::TextureFormat,
     ) {
         for pass in self.post_process_passes.iter_mut() {
-            let _ = pass.create_wgpu_data(assets, width, height, device);
+            let _ = pass.create_wgpu_data(assets, width, height, device, texture_format);
         }
     }
 
@@ -117,11 +133,41 @@ impl Renderer2d {
         let output = surface
             .get_current_texture()
             .map_err(|_| EngineError::GraphicsNotReady)?;
+
         let view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
-        self.sprite_pass
-            .render(assets, device, queue, &time_bind_group, &view)?;
+
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Renderer2D Encoder"),
+        });
+
+        let mut current_view = if let Some(pass) = self.post_process_passes.get(0) {
+            pass.get_view().ok_or(EngineError::GraphicsNotReady)?
+        } else {
+            &view
+        };
+
+        self.sprite_pass.render(
+            assets,
+            &mut encoder,
+            device,
+            queue,
+            &time_bind_group,
+            current_view,
+        )?;
+
+        let mut post_processes = self.post_process_passes.iter().peekable();
+        while let Some(pass) = post_processes.next() {
+            current_view = if let Some(next_pass) = post_processes.peek() {
+                next_pass.get_view().ok_or(EngineError::GraphicsNotReady)?
+            } else {
+                &view
+            };
+            pass.render(assets, &mut encoder, &current_view)?;
+        }
+
+        queue.submit(std::iter::once(encoder.finish()));
         output.present();
         Ok(())
     }

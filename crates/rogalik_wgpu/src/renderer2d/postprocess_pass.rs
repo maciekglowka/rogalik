@@ -1,9 +1,6 @@
 use rogalik_common::{EngineError, ResourceId};
-use std::collections::HashMap;
-use wgpu::util::DeviceExt;
 
 use crate::assets::{bind_groups::BindGroupKind, WgpuAssets};
-use crate::structs::{BindParams, Triangle, Vertex};
 
 pub struct PostProcessPass {
     pub shader_id: ResourceId,
@@ -29,25 +26,36 @@ impl PostProcessPass {
         encoder: &mut wgpu::CommandEncoder,
         output: &wgpu::TextureView,
     ) -> Result<(), EngineError> {
-        // let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-        //     label: Some("PostProcess"),
-        //     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-        //         view: &output,
-        //         resolve_target: None,
-        //         ops: wgpu::Operations {
-        //             load: wgpu::LoadOp::Load,
-        //             store: wgpu::StoreOp::Store,
-        //         },
-        //     })],
-        //     depth_stencil_attachment: None,
-        // });
-        // // pass.set_pipeline()
-        // pass.set_bind_group(
-        //     0,
-        //     &self.bind_group.ok_or(EngineError::GraphicsNotReady)?,
-        //     &[],
-        // );
-        // pass.draw(0..3, 0..1);
+        let shader = assets
+            .get_shader(self.shader_id)
+            .ok_or(EngineError::GraphicsInternalError)?;
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("PostProcess"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &output,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            ..Default::default()
+        });
+        pass.set_pipeline(
+            shader
+                .pipeline
+                .as_ref()
+                .ok_or(EngineError::GraphicsNotReady)?,
+        );
+        pass.set_bind_group(
+            0,
+            self.bind_group
+                .as_ref()
+                .ok_or(EngineError::GraphicsNotReady)?,
+            &[],
+        );
+        pass.draw(0..3, 0..1);
         Ok(())
     }
     pub fn create_wgpu_data(
@@ -56,8 +64,9 @@ impl PostProcessPass {
         w: u32,
         h: u32,
         device: &wgpu::Device,
+        texture_format: wgpu::TextureFormat,
     ) -> Result<(), EngineError> {
-        let view = Self::get_texture_view(w, h, device);
+        let view = Self::get_texture_view(w, h, device, texture_format);
         self.bind_group = Some(Self::get_bind_group(
             assets,
             &view,
@@ -94,7 +103,12 @@ impl PostProcessPass {
             ],
         }))
     }
-    fn get_texture_view(w: u32, h: u32, device: &wgpu::Device) -> wgpu::TextureView {
+    fn get_texture_view(
+        w: u32,
+        h: u32,
+        device: &wgpu::Device,
+        texture_format: wgpu::TextureFormat,
+    ) -> wgpu::TextureView {
         let size = wgpu::Extent3d {
             width: w,
             height: h,
@@ -106,7 +120,7 @@ impl PostProcessPass {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            format: texture_format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
             view_formats: &[],
         });

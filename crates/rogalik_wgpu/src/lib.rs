@@ -50,9 +50,13 @@ impl GraphicsContext for WgpuContext {
             let _ = self
                 .assets
                 .create_wgpu_data(&state.device, &state.queue, &state.config.format);
-            let _ = self
-                .renderer2d
-                .create_wgpu_data(&self.assets, w, h, &state.device);
+            let _ = self.renderer2d.create_wgpu_data(
+                &self.assets,
+                w,
+                h,
+                &state.device,
+                state.config.format,
+            );
 
             for camera in self.assets.iter_cameras_mut() {
                 camera.resize_viewport(w as f32, h as f32);
@@ -86,9 +90,13 @@ impl GraphicsContext for WgpuContext {
                 state.config.width = width;
                 state.config.height = height;
                 state.surface.configure(&state.device, &state.config);
-                let _ =
-                    self.renderer2d
-                        .create_wgpu_data(&self.assets, width, height, &state.device);
+                let _ = self.renderer2d.create_wgpu_data(
+                    &self.assets,
+                    width,
+                    height,
+                    &state.device,
+                    state.config.format,
+                );
             }
 
             for camera in self.assets.iter_cameras_mut() {
@@ -124,6 +132,13 @@ impl GraphicsContext for WgpuContext {
         padding: Option<(f32, f32)>,
     ) {
         self.assets.load_font(name, bytes, rows, cols, padding);
+    }
+    fn add_post_process(
+        &mut self,
+        shader_id: ResourceId,
+        filtering: rogalik_common::TextureFiltering,
+    ) {
+        self.renderer2d.add_post_process(shader_id, filtering);
     }
     fn draw_atlas_sprite(
         &mut self,
