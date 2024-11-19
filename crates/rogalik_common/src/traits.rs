@@ -1,10 +1,11 @@
 use rogalik_math::vectors::Vector2f;
+use std::sync::Arc;
 use winit::window::Window;
 
 use crate::structs::{Color, EngineError, ResourceId, ShaderKind, SpriteParams};
 
 pub trait GraphicsContext {
-    fn create_context(&mut self, window: &Window);
+    fn create_context(&mut self, window: Arc<Window>);
     fn has_context(&self) -> bool;
     fn update_time(&mut self, delta: f32);
     fn update_assets(&mut self);

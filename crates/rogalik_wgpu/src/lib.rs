@@ -1,7 +1,4 @@
-use std::{
-    char::MAX,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 use winit::window::Window;
 
 use rogalik_common::{EngineError, GraphicsContext, ResourceId, SpriteParams};
@@ -14,7 +11,7 @@ mod structs;
 const MAX_TIME: f32 = 3600.;
 
 struct SurfaceState {
-    surface: wgpu::Surface,
+    surface: wgpu::Surface<'static>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
@@ -44,7 +41,7 @@ impl GraphicsContext for WgpuContext {
     fn has_context(&self) -> bool {
         self.surface_state.is_some()
     }
-    fn create_context(&mut self, window: &Window) {
+    fn create_context(&mut self, window: Arc<Window>) {
         self.surface_state = create_surface_state(window);
         if let Some(state) = &self.surface_state {
             let w = state.config.width;
@@ -197,7 +194,7 @@ impl GraphicsContext for WgpuContext {
     }
 }
 
-fn create_surface_state(window: &Window) -> Option<SurfaceState> {
+fn create_surface_state(window: Arc<Window>) -> Option<SurfaceState> {
     let size = window.inner_size();
 
     if size.width == 0 || size.height == 0 {
@@ -207,10 +204,10 @@ fn create_surface_state(window: &Window) -> Option<SurfaceState> {
     log::debug!("Creating WGPU instance");
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends: wgpu::Backends::all(),
-        dx12_shader_compiler: Default::default(),
+        ..Default::default()
     });
     log::debug!("Creating WGPU surface");
-    let surface = unsafe { instance.create_surface(window) }.unwrap();
+    let surface = instance.create_surface(window).unwrap();
     log::debug!("Creating WGPU adapter");
     let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::default(),
@@ -221,13 +218,14 @@ fn create_surface_state(window: &Window) -> Option<SurfaceState> {
     log::debug!("Creating WGPU device");
     let (device, queue) = pollster::block_on(adapter.request_device(
         &wgpu::DeviceDescriptor {
-            features: wgpu::Features::empty(),
-            limits: if cfg!(target_arch = "wasm32") {
+            required_features: wgpu::Features::empty(),
+            required_limits: if cfg!(target_arch = "wasm32") {
                 wgpu::Limits::downlevel_webgl2_defaults()
             } else {
                 wgpu::Limits::default()
             },
             label: None,
+            memory_hints: Default::default(),
         },
         None,
     ))
@@ -262,6 +260,7 @@ fn create_surface_state(window: &Window) -> Option<SurfaceState> {
         present_mode,
         alpha_mode: surface_caps.alpha_modes[0],
         view_formats: vec![],
+        desired_maximum_frame_latency: 2,
     };
     surface.configure(&device, &config);
 

@@ -14,7 +14,7 @@ bytemuck = { version = "1.12", features = ["derive"] }
 log = { workspace = true }
 pollster = { workspace = true }
 
-wgpu = "0.17"
+wgpu = "23.0"
 winit = { workspace = true }
 
 

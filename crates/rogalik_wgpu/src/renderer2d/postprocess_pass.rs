@@ -23,6 +23,33 @@ impl PostProcessPass {
     pub fn get_view(&self) -> Option<&wgpu::TextureView> {
         self.view.as_ref()
     }
+    pub fn render(
+        &self,
+        assets: &WgpuAssets,
+        encoder: &mut wgpu::CommandEncoder,
+        output: &wgpu::TextureView,
+    ) -> Result<(), EngineError> {
+        // let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        //     label: Some("PostProcess"),
+        //     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+        //         view: &output,
+        //         resolve_target: None,
+        //         ops: wgpu::Operations {
+        //             load: wgpu::LoadOp::Load,
+        //             store: wgpu::StoreOp::Store,
+        //         },
+        //     })],
+        //     depth_stencil_attachment: None,
+        // });
+        // // pass.set_pipeline()
+        // pass.set_bind_group(
+        //     0,
+        //     &self.bind_group.ok_or(EngineError::GraphicsNotReady)?,
+        //     &[],
+        // );
+        // pass.draw(0..3, 0..1);
+        Ok(())
+    }
     pub fn create_wgpu_data(
         &mut self,
         assets: &WgpuAssets,
@@ -40,10 +67,6 @@ impl PostProcessPass {
         self.view = Some(view);
         Ok(())
     }
-    // pub fn render(
-
-    //     view: &wgpu::TextureView,
-    // )
     fn get_bind_group(
         assets: &WgpuAssets,
         view: &wgpu::TextureView,
