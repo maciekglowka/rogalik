@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rogalik_assets::{AssetStore, AssetStoreTrait};
+use rogalik_assets::{AssetContext, AssetStore};
 use rogalik_common::{EngineError, ResourceId, ShaderKind};
 
 use super::bind_groups::BindGroupKind;
@@ -53,7 +53,7 @@ impl Shader {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some(&format!("Shader {:?}", self.asset_id)),
             source: wgpu::ShaderSource::Wgsl(
-                std::str::from_utf8(&asset.data)
+                std::str::from_utf8(asset.data.get())
                     .map_err(|_| EngineError::InvalidResource)?
                     .into(),
             ),
@@ -198,10 +198,14 @@ fn get_post_process_pipeline_layout(
     Ok(
         device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Postprocess Pipeline Layout"),
-            bind_group_layouts: &[bind_group_layous
-                .get(&BindGroupKind::PostProcess)
-                .ok_or(EngineError::GraphicsInternalError)?],
-
+            bind_group_layouts: &[
+                bind_group_layous
+                    .get(&BindGroupKind::PostProcess)
+                    .ok_or(EngineError::GraphicsInternalError)?,
+                bind_group_layous
+                    .get(&BindGroupKind::Time)
+                    .ok_or(EngineError::GraphicsInternalError)?,
+            ],
             push_constant_ranges: &[],
         }),
     )

@@ -164,7 +164,7 @@ impl Renderer2d {
             } else {
                 &view
             };
-            pass.render(assets, &mut encoder, &current_view)?;
+            pass.render(assets, &mut encoder, &current_view, &time_bind_group)?;
         }
 
         queue.submit(std::iter::once(encoder.finish()));

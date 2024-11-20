@@ -1,6 +1,6 @@
 use image::{GenericImageView, ImageBuffer, Rgba};
 
-use rogalik_assets::{Asset, AssetStore, AssetStoreTrait};
+use rogalik_assets::{AssetContext, AssetStore};
 use rogalik_common::{
     AtlasParams, EngineError, MaterialParams, ResourceId, TextureFiltering, TextureRepeat,
 };
@@ -52,7 +52,7 @@ impl Material {
         let diffuse_asset = asset_store
             .get(self.diffuse_asset_id)
             .ok_or(EngineError::ResourceNotFound)?;
-        let diffuse_texture = TextureData::from_bytes(&diffuse_asset.data);
+        let diffuse_texture = TextureData::from_bytes(diffuse_asset.data.get());
 
         self.bind_group = Some(get_material_bind_group(
             &diffuse_texture,

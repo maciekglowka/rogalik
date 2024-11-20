@@ -23,7 +23,7 @@ pub use log;
 pub use time::Instant;
 pub use traits::{Game, Scene, SceneResult};
 
-use rogalik_assets::{AssetStore, AssetStoreTrait};
+use rogalik_assets::AssetStore;
 
 pub struct Context {
     pub assets: Arc<Mutex<rogalik_assets::AssetStore>>,

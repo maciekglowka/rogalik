@@ -3,11 +3,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use camera::Camera2D;
-use rogalik_assets::{AssetState, AssetStore, AssetStoreTrait};
-use rogalik_common::{
-    EngineError, MaterialParams, ResourceId, ShaderKind, TextureFiltering, TextureRepeat,
-};
+use rogalik_assets::{AssetContext, AssetState, AssetStore};
+use rogalik_common::{EngineError, MaterialParams, ResourceId, ShaderKind};
 use rogalik_math::vectors::Vector2f;
 
 pub mod atlas;
@@ -98,6 +95,7 @@ impl WgpuAssets {
                     let _ = material.create_wgpu_data(&mut store, device, queue, material_layout);
                 }
             }
+            #[cfg(debug_assertions)]
             store.mark_read(material.diffuse_asset_id);
         }
 

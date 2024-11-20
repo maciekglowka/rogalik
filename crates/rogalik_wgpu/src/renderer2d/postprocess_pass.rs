@@ -25,6 +25,7 @@ impl PostProcessPass {
         assets: &WgpuAssets,
         encoder: &mut wgpu::CommandEncoder,
         output: &wgpu::TextureView,
+        time_bind_group: &wgpu::BindGroup,
     ) -> Result<(), EngineError> {
         let shader = assets
             .get_shader(self.shader_id)
@@ -55,6 +56,7 @@ impl PostProcessPass {
                 .ok_or(EngineError::GraphicsNotReady)?,
             &[],
         );
+        pass.set_bind_group(1, time_bind_group, &[]);
         pass.draw(0..3, 0..1);
         Ok(())
     }

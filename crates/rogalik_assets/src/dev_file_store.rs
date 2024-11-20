@@ -7,7 +7,7 @@ use std::{
 
 use rogalik_common::{EngineError, ResourceId};
 
-use super::{Asset, AssetState, AssetStoreTrait, ROOT_VAR};
+use super::{Asset, AssetBytes, AssetContext, AssetState, ROOT_VAR};
 
 pub struct DevFileStore {
     next_id: ResourceId,
@@ -44,7 +44,7 @@ impl DevFileStore {
                 continue;
             };
             if let Ok(data) = fs::read(&meta.path) {
-                asset.data = data;
+                asset.data = AssetBytes::Owned(data);
                 asset.state = AssetState::Updated;
                 meta.modified = modified;
                 log::debug!("Reloaded {:?}", meta.path);
@@ -60,10 +60,10 @@ impl DevFileStore {
         self.next_id = self.next_id.next();
     }
 }
-impl AssetStoreTrait for DevFileStore {
-    fn from_bytes(&mut self, data: &[u8]) -> ResourceId {
+impl AssetContext for DevFileStore {
+    fn from_bytes(&mut self, data: &'static [u8]) -> ResourceId {
         let id = self.next_id;
-        self.assets.insert(id, Asset::new(data));
+        self.assets.insert(id, Asset::borrowed(data));
         self.bump_id();
         id
     }
@@ -76,7 +76,8 @@ impl AssetStoreTrait for DevFileStore {
         let meta = fs::metadata(&abs_path.as_path()).map_err(|_| EngineError::ResourceNotFound)?;
         let modified = get_modified_u64(&meta)?;
 
-        self.assets.insert(id, Asset::new(&data));
+        log::debug!("Loaded asset from: {}. {} bytes.", path, data.len());
+        self.assets.insert(id, Asset::owned(data));
         self.meta.insert(
             id,
             FileAssetMeta {
@@ -85,7 +86,6 @@ impl AssetStoreTrait for DevFileStore {
             },
         );
         self.bump_id();
-        log::debug!("Loaded asset from: {}. {} bytes.", path, data.len());
         Ok(id)
     }
     fn get(&self, asset_id: ResourceId) -> Option<&Asset> {
