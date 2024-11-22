@@ -1,16 +1,13 @@
-use std::{
-    fs::File,
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::{fs::File, io::Write, path::Path};
 
 const ASSET_FILE_NAME: &str = "included_assets.rs";
 
 fn main() {
     let out_dir = std::env::var("OUT_DIR").expect("OUT_DIR env var is not set!");
     let dest_path = Path::new(&out_dir).join(ASSET_FILE_NAME);
-    let asset_dir_var =
-        std::env::var("ROGALIK_ASSETS").expect("ROGALIK_ASSETS env variable is not set!");
+    let Ok(asset_dir_var) = std::env::var("ROGALIK_ASSETS") else {
+        return;
+    };
     let asset_dir = Path::new(&asset_dir_var);
     println!("cargo::rerun-if-changed={}", asset_dir.to_string_lossy());
 

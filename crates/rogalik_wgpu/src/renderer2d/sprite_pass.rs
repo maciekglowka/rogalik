@@ -43,7 +43,7 @@ impl SpritePass {
         encoder: &mut wgpu::CommandEncoder,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        time_bind_group: &wgpu::BindGroup,
+        global_bind_group: &wgpu::BindGroup,
         view: &wgpu::TextureView,
     ) -> Result<(), EngineError> {
         if self.triangle_queue.len() == 0 {
@@ -135,7 +135,7 @@ impl SpritePass {
                 camera_bind_groups.get(&current_params.camera_id.0).unwrap(),
                 &[],
             );
-            pass.set_bind_group(2, time_bind_group, &[]);
+            pass.set_bind_group(2, global_bind_group, &[]);
 
             pass.set_vertex_buffer(0, vertex_buffer.slice(..));
             pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);

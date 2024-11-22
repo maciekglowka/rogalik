@@ -180,6 +180,17 @@ impl GraphicsContext for WgpuContext {
             params,
         )
     }
+    fn set_ambient(&mut self, color: rogalik_common::Color) {
+        self.renderer2d.set_ambient(color);
+    }
+    fn add_light(
+        &mut self,
+        intensity: f32,
+        color: rogalik_common::Color,
+        position: Vector2f,
+    ) -> Result<(), EngineError> {
+        self.renderer2d.add_light(intensity, color, position)
+    }
     fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f {
         // if let Some(font) = self.assets.get_font(font) {
         //     font.text_dimensions(text, size)

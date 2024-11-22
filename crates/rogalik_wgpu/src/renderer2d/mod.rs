@@ -1,15 +1,17 @@
-use wgpu::util::DeviceExt;
-
-use rogalik_common::{EngineError, ResourceId, SpriteParams};
+use rogalik_common::{Color, EngineError, ResourceId, SpriteParams};
 use rogalik_math::vectors::Vector2f;
 
 use crate::assets::WgpuAssets;
-use crate::structs::{BindParams, Triangle, Vertex};
+use crate::structs::BindParams;
 
+mod globals;
 mod postprocess_pass;
 mod sprite_pass;
 
+const MAX_LIGHTS: u32 = 16;
+
 pub struct Renderer2d {
+    global: globals::GlobalUniform,
     sprite_pass: sprite_pass::SpritePass,
     post_process_passes: Vec<postprocess_pass::PostProcessPass>,
 }
@@ -17,6 +19,7 @@ impl Renderer2d {
     pub fn new() -> Self {
         let sprite_pass = sprite_pass::SpritePass::new(wgpu::Color::BLACK);
         Self {
+            global: globals::GlobalUniform::default(),
             sprite_pass,
             post_process_passes: Vec::new(),
         }
@@ -51,7 +54,6 @@ impl Renderer2d {
             let _ = pass.create_wgpu_data(assets, width, height, device, texture_format);
         }
     }
-
     pub fn draw_atlas_sprite(
         &mut self,
         assets: &WgpuAssets,
@@ -114,6 +116,17 @@ impl Renderer2d {
         // }
         Ok(())
     }
+    pub fn set_ambient(&mut self, color: Color) {
+        self.global.set_ambient(color);
+    }
+    pub fn add_light(
+        &mut self,
+        intensity: f32,
+        color: Color,
+        position: Vector2f,
+    ) -> Result<(), EngineError> {
+        self.global.add_light(intensity, color, position)
+    }
     pub fn render(
         &mut self,
         assets: &WgpuAssets,
@@ -122,13 +135,13 @@ impl Renderer2d {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> Result<(), EngineError> {
-        let time_bind_group = create_time_bind_group(
+        self.global.set_time(time);
+        let global_bind_group = self.global.get_bind_group(
             device,
             assets
                 .bind_group_layouts
-                .get(&crate::assets::bind_groups::BindGroupKind::Time)
-                .ok_or(EngineError::GraphicsNotReady)?,
-            time,
+                .get(&crate::assets::bind_groups::BindGroupKind::Global)
+                .ok_or(EngineError::GraphicsInternalError)?,
         );
         let output = surface
             .get_current_texture()
@@ -153,7 +166,7 @@ impl Renderer2d {
             &mut encoder,
             device,
             queue,
-            &time_bind_group,
+            &global_bind_group,
             current_view,
         )?;
 
@@ -164,31 +177,12 @@ impl Renderer2d {
             } else {
                 &view
             };
-            pass.render(assets, &mut encoder, &current_view, &time_bind_group)?;
+            pass.render(assets, &mut encoder, &current_view, &global_bind_group)?;
         }
 
         queue.submit(std::iter::once(encoder.finish()));
         output.present();
+        self.global.frame_end();
         Ok(())
     }
-}
-
-pub fn create_time_bind_group(
-    device: &wgpu::Device,
-    layout: &wgpu::BindGroupLayout,
-    time: f32,
-) -> wgpu::BindGroup {
-    let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Time Buffer"),
-        contents: bytemuck::cast_slice(&[time]),
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-    });
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-        layout,
-        label: Some("Time Bind Group"),
-        entries: &[wgpu::BindGroupEntry {
-            binding: 0,
-            resource: buffer.as_entire_binding(),
-        }],
-    })
 }

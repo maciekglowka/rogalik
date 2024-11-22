@@ -10,21 +10,21 @@ pub fn get_bind_group_layouts(
             get_post_process_bind_group_layout(device),
         ),
         (BindGroupKind::Sprite, get_sprite_bind_group_layout(device)),
-        (BindGroupKind::Time, get_time_bind_group_layout(device)),
+        (BindGroupKind::Global, get_global_bind_group_layout(device)),
     ])
 }
 
 #[derive(Eq, PartialEq, Hash)]
 pub enum BindGroupKind {
     Camera,
+    Global,
     PostProcess,
     Sprite,
-    Time,
 }
 
-fn get_time_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+fn get_global_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("Time Bind Group Layou"),
+        label: Some("Time Bind Group Layout"),
         entries: &[wgpu::BindGroupLayoutEntry {
             binding: 0,
             visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,

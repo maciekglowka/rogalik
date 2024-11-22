@@ -45,7 +45,7 @@ impl World {
     // events
 
     fn publish(&self, event: WorldEvent) {
-        if let Some(mut bus) = self.get_resource_mut::<EventBus<WorldEvent>>() {
+        if let Some(bus) = self.get_resource_mut::<EventBus<WorldEvent>>() {
             bus.publish(event);
         }
     }

@@ -41,6 +41,13 @@ pub trait GraphicsContext {
         size: f32,
         params: SpriteParams,
     ) -> Result<(), EngineError>;
+    fn add_light(
+        &mut self,
+        intensity: f32,
+        color: Color,
+        position: Vector2f,
+    ) -> Result<(), EngineError>;
+    fn set_ambient(&mut self, color: Color);
     fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f;
     fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId;
     fn set_camera(&mut self, id: ResourceId);

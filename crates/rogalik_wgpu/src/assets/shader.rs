@@ -183,7 +183,7 @@ fn get_sprite_shader_pipeline_layout(
                     .get(&BindGroupKind::Camera)
                     .ok_or(EngineError::GraphicsInternalError)?,
                 bind_group_layous
-                    .get(&BindGroupKind::Time)
+                    .get(&BindGroupKind::Global)
                     .ok_or(EngineError::GraphicsInternalError)?,
             ],
             push_constant_ranges: &[],
@@ -203,7 +203,7 @@ fn get_post_process_pipeline_layout(
                     .get(&BindGroupKind::PostProcess)
                     .ok_or(EngineError::GraphicsInternalError)?,
                 bind_group_layous
-                    .get(&BindGroupKind::Time)
+                    .get(&BindGroupKind::Global)
                     .ok_or(EngineError::GraphicsInternalError)?,
             ],
             push_constant_ranges: &[],
