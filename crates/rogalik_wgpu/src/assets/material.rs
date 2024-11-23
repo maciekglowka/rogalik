@@ -14,12 +14,14 @@ pub struct Material {
     atlas_params: Option<AtlasParams>,
     pub bind_group: Option<wgpu::BindGroup>,
     pub diffuse_asset_id: ResourceId,
+    pub normal_asset_id: ResourceId,
     filter_mode: wgpu::FilterMode,
     pub shader_id: ResourceId,
 }
 impl Material {
     pub fn new(
         diffuse_asset_id: ResourceId,
+        normal_asset_id: ResourceId,
         shader_id: ResourceId,
         material_params: MaterialParams,
     ) -> Self {
@@ -37,6 +39,7 @@ impl Material {
             atlas_params: material_params.atlas,
             bind_group: None,
             diffuse_asset_id,
+            normal_asset_id,
             shader_id,
             address_mode,
             filter_mode,
@@ -54,8 +57,14 @@ impl Material {
             .ok_or(EngineError::ResourceNotFound)?;
         let diffuse_texture = TextureData::from_bytes(diffuse_asset.data.get());
 
+        let normal_asset = asset_store
+            .get(self.normal_asset_id)
+            .ok_or(EngineError::ResourceNotFound)?;
+        let normal_texture = TextureData::from_bytes(normal_asset.data.get());
+
         self.bind_group = Some(get_material_bind_group(
             &diffuse_texture,
+            &normal_texture,
             device,
             queue,
             bind_group_layout,
@@ -88,18 +97,28 @@ impl TextureData {
 
         Self { dim, buffer: rgba }
     }
-    pub fn to_wgpu_texture(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::Texture {
+    pub fn to_wgpu_texture(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        is_data: bool,
+    ) -> wgpu::Texture {
         let size = wgpu::Extent3d {
             width: self.dim.0,
             height: self.dim.1,
             depth_or_array_layers: 1,
+        };
+        let format = if is_data {
+            wgpu::TextureFormat::Rgba8Unorm
+        } else {
+            wgpu::TextureFormat::Rgba8UnormSrgb
         };
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             label: Some("Texture"),
             view_formats: &[],
@@ -125,13 +144,14 @@ impl TextureData {
 
 fn get_material_bind_group(
     diffuse_data: &TextureData,
+    normal_data: &TextureData,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     bind_group_layout: &wgpu::BindGroupLayout,
     address_mode: wgpu::AddressMode,
     filter_mode: wgpu::FilterMode,
 ) -> wgpu::BindGroup {
-    let diffuse_texture = diffuse_data.to_wgpu_texture(device, queue);
+    let diffuse_texture = diffuse_data.to_wgpu_texture(device, queue, false);
     let diff_tex_view = diffuse_texture.create_view(&wgpu::TextureViewDescriptor::default());
     let diff_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
         address_mode_u: address_mode,
@@ -142,6 +162,19 @@ fn get_material_bind_group(
         mipmap_filter: wgpu::FilterMode::Nearest,
         ..Default::default()
     });
+
+    let normal_texture = normal_data.to_wgpu_texture(device, queue, true);
+    let normal_tex_view = normal_texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let normal_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        address_mode_u: address_mode,
+        address_mode_v: address_mode,
+        address_mode_w: address_mode,
+        mag_filter: filter_mode,
+        min_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        ..Default::default()
+    });
+
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         layout: bind_group_layout,
         entries: &[
@@ -152,6 +185,14 @@ fn get_material_bind_group(
             wgpu::BindGroupEntry {
                 binding: 1,
                 resource: wgpu::BindingResource::Sampler(&diff_sampler),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::TextureView(&normal_tex_view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 3,
+                resource: wgpu::BindingResource::Sampler(&normal_sampler),
             },
         ],
         label: Some("Sprite Diffuse Bind Group"),

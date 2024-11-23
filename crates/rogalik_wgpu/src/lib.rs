@@ -7,6 +7,7 @@ use rogalik_math::vectors::Vector2f;
 mod assets;
 mod renderer2d;
 mod structs;
+mod utils;
 
 const MAX_TIME: f32 = 3600.;
 
@@ -75,13 +76,14 @@ impl GraphicsContext for WgpuContext {
         }
     }
     fn set_clear_color(&mut self, color: rogalik_common::Color) {
-        let col = color.as_srgb();
-        self.clear_color = wgpu::Color {
-            r: col[0] as f64,
-            g: col[1] as f64,
-            b: col[2] as f64,
-            a: col[3] as f64,
-        };
+        // let col = color.as_srgb();
+        // self.clear_color = wgpu::Color {
+        //     r: col[0] as f64,
+        //     g: col[1] as f64,
+        //     b: col[2] as f64,
+        //     a: col[3] as f64,
+        // };
+        self.clear_color = utils::color_to_wgpu(color);
         self.renderer2d.set_clear_color(self.clear_color);
     }
     fn resize(&mut self, width: u32, height: u32) {

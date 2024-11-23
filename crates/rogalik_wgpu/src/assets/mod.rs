@@ -19,6 +19,7 @@ pub struct WgpuAssets {
     pub bind_group_layouts: HashMap<bind_groups::BindGroupKind, wgpu::BindGroupLayout>,
     cameras: Vec<camera::Camera2D>,
     default_shader: ResourceId,
+    default_normal: ResourceId,
     // fonts: HashMap<String, font::Font>,
     pub pipeline_layouts: HashMap<ShaderKind, wgpu::PipelineLayout>,
     material_names: HashMap<String, ResourceId>, // lookup
@@ -28,6 +29,8 @@ pub struct WgpuAssets {
 }
 impl WgpuAssets {
     pub fn new(asset_store: Arc<Mutex<AssetStore>>) -> Self {
+        // load defaults
+        // TODO refactor and move to a separate fn
         let default_shader = ResourceId(0);
         let shader_asset_id = asset_store
             .lock()
@@ -35,11 +38,17 @@ impl WgpuAssets {
             .from_bytes(include_bytes!("sprite_shader.wgsl"));
         let shader = shader::Shader::new(ShaderKind::Sprite, shader_asset_id);
 
+        let default_normal = asset_store
+            .lock()
+            .expect("Can't acquire the asset store!")
+            .from_bytes(include_bytes!("default_normal.png"));
+
         Self {
             asset_store,
             bind_group_layouts: HashMap::new(),
             cameras: Vec::new(),
             default_shader,
+            default_normal,
             material_names: HashMap::new(),
             materials: Vec::new(),
             pipeline_layouts: HashMap::new(),
@@ -121,6 +130,11 @@ impl WgpuAssets {
     }
     pub fn create_material(&mut self, name: &str, params: MaterialParams) {
         let diffuse_id = self.load_asset(params.diffuse_path);
+        let normal_id = if let Some(normal_path) = params.normal_path {
+            self.load_asset(normal_path)
+        } else {
+            self.default_normal
+        };
 
         let shader_id = if let Some(id) = params.shader {
             id
@@ -128,7 +142,7 @@ impl WgpuAssets {
             self.default_shader
         };
 
-        let material = material::Material::new(diffuse_id, shader_id, params);
+        let material = material::Material::new(diffuse_id, normal_id, shader_id, params);
         let material_id = self.get_next_material_id();
         self.material_names.insert(name.to_string(), material_id);
         self.materials.push(material);

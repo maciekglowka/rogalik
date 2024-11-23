@@ -27,6 +27,17 @@ impl Renderer2d {
     pub fn set_clear_color(&mut self, color: wgpu::Color) {
         self.sprite_pass.clear_color = color;
     }
+    pub fn set_ambient(&mut self, color: Color) {
+        self.global.set_ambient(color);
+    }
+    pub fn add_light(
+        &mut self,
+        intensity: f32,
+        color: Color,
+        position: Vector2f,
+    ) -> Result<(), EngineError> {
+        self.global.add_light(intensity, color, position)
+    }
     pub fn add_post_process(
         &mut self,
         shader_id: ResourceId,
@@ -115,17 +126,6 @@ impl Renderer2d {
         //     self.add_to_queue(&s.0, &s.1, z_index, bind_params);
         // }
         Ok(())
-    }
-    pub fn set_ambient(&mut self, color: Color) {
-        self.global.set_ambient(color);
-    }
-    pub fn add_light(
-        &mut self,
-        intensity: f32,
-        color: Color,
-        position: Vector2f,
-    ) -> Result<(), EngineError> {
-        self.global.add_light(intensity, color, position)
     }
     pub fn render(
         &mut self,

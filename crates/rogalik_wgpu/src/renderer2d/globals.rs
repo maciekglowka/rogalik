@@ -59,8 +59,8 @@ impl GlobalUniform {
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct PointLight {
-    intensity: f32,
     position: [f32; 3],
+    intensity: f32,
     color: [f32; 4],
 }
 impl PointLight {
