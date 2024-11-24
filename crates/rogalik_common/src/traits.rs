@@ -12,6 +12,7 @@ pub trait GraphicsContext {
     fn set_clear_color(&mut self, color: Color);
     fn resize(&mut self, w: u32, h: u32);
     fn render(&mut self);
+    fn set_rendering_resolution(&mut self, w: u32, h: u32);
     fn load_material(&mut self, name: &str, params: crate::MaterialParams);
     fn load_shader(&mut self, kind: ShaderKind, path: &str) -> ResourceId;
     fn load_font(

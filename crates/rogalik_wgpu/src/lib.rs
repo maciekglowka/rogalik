@@ -23,6 +23,7 @@ pub struct WgpuContext {
     current_camera_id: ResourceId,
     clear_color: wgpu::Color,
     renderer2d: renderer2d::Renderer2d,
+    rendering_resolution: Option<(u32, u32)>,
     surface_state: Option<SurfaceState>,
     time: f32,
 }
@@ -33,8 +34,21 @@ impl WgpuContext {
             current_camera_id: ResourceId::default(),
             clear_color: wgpu::Color::BLACK,
             renderer2d: renderer2d::Renderer2d::new(),
+            rendering_resolution: None,
             surface_state: None,
             time: 0.,
+        }
+    }
+    fn resize_cameras(&mut self) {
+        let (w, h) = if let Some((w, h)) = self.rendering_resolution {
+            (w, h)
+        } else if let Some(state) = &self.surface_state {
+            (state.config.width, state.config.height)
+        } else {
+            return;
+        };
+        for camera in self.assets.iter_cameras_mut() {
+            camera.resize_viewport(w as f32, h as f32);
         }
     }
 }
@@ -58,10 +72,7 @@ impl GraphicsContext for WgpuContext {
                 &state.device,
                 state.config.format,
             );
-
-            for camera in self.assets.iter_cameras_mut() {
-                camera.resize_viewport(w as f32, h as f32);
-            }
+            self.resize_cameras();
         }
     }
     fn update_time(&mut self, delta: f32) {
@@ -100,10 +111,7 @@ impl GraphicsContext for WgpuContext {
                     state.config.format,
                 );
             }
-
-            for camera in self.assets.iter_cameras_mut() {
-                camera.resize_viewport(width as f32, height as f32);
-            }
+            self.resize_cameras();
         }
     }
     fn render(&mut self) {
@@ -117,12 +125,29 @@ impl GraphicsContext for WgpuContext {
             );
         }
     }
+    fn set_rendering_resolution(&mut self, w: u32, h: u32) {
+        self.rendering_resolution = Some((w, h));
+        if self
+            .renderer2d
+            .set_rendering_resolution(&self.assets, w, h)
+            .is_ok()
+        {
+            if let Some(state) = &self.surface_state {
+                let _ = self.renderer2d.create_upscale_pass(
+                    &self.assets,
+                    &state.device,
+                    state.config.format,
+                );
+            }
+        }
+        self.resize_cameras();
+    }
     fn load_material(&mut self, name: &str, params: rogalik_common::MaterialParams) {
         self.assets.create_material(name, params);
-        // TODO id self.surface_state build bind_group
+        // TODO if self.surface_state build bind_group
     }
     fn load_shader(&mut self, kind: rogalik_common::ShaderKind, path: &str) -> ResourceId {
-        // TODO id self.surface_state build pipeline
+        // TODO if self.surface_state build pipeline
         self.assets.create_shader(kind, path)
     }
     fn load_font(

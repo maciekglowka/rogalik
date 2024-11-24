@@ -5,10 +5,11 @@ use wgpu::util::DeviceExt;
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, bytemuck::NoUninit, bytemuck::Zeroable)]
 pub struct GlobalUniform {
-    ambient: [f32; 4],
-    _padding: [f32; 2],
     time: f32,
     light_count: u32,
+    _padding_0: f32,
+    _padding_1: f32,
+    ambient: [f32; 4],
     lights: [PointLight; super::MAX_LIGHTS as usize],
 }
 impl GlobalUniform {

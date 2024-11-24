@@ -1,10 +1,14 @@
 use rogalik_common::{EngineError, ResourceId};
 
+#[cfg(debug_assertions)]
 mod dev_file_store;
+
+#[cfg(not(debug_assertions))]
 mod embedded_store;
 
 #[cfg(debug_assertions)]
 pub use dev_file_store::DevFileStore as AssetStore;
+
 #[cfg(not(debug_assertions))]
 pub use embedded_store::EmbeddedStore as AssetStore;
 

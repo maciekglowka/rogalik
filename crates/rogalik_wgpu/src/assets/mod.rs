@@ -17,6 +17,7 @@ pub mod shader;
 pub struct WgpuAssets {
     asset_store: Arc<Mutex<AssetStore>>,
     pub bind_group_layouts: HashMap<bind_groups::BindGroupKind, wgpu::BindGroupLayout>,
+    pub(crate) built_in_shaders: HashMap<&'static str, ResourceId>,
     cameras: Vec<camera::Camera2D>,
     default_shader: ResourceId,
     default_normal: ResourceId,
@@ -29,31 +30,40 @@ pub struct WgpuAssets {
 }
 impl WgpuAssets {
     pub fn new(asset_store: Arc<Mutex<AssetStore>>) -> Self {
-        // load defaults
-        // TODO refactor and move to a separate fn
-        let default_shader = ResourceId(0);
-        let shader_asset_id = asset_store
-            .lock()
-            .expect("Can't acquire the asset store!")
-            .from_bytes(include_bytes!("sprite_shader.wgsl"));
-        let shader = shader::Shader::new(ShaderKind::Sprite, shader_asset_id);
-
-        let default_normal = asset_store
-            .lock()
-            .expect("Can't acquire the asset store!")
-            .from_bytes(include_bytes!("default_normal.png"));
-
-        Self {
-            asset_store,
+        let mut assets = Self {
+            // perhaps this clone could be avoided?
+            asset_store: asset_store.clone(),
             bind_group_layouts: HashMap::new(),
+            built_in_shaders: HashMap::new(),
             cameras: Vec::new(),
-            default_shader,
-            default_normal,
+            default_shader: ResourceId::default(),
+            default_normal: ResourceId::default(),
             material_names: HashMap::new(),
             materials: Vec::new(),
             pipeline_layouts: HashMap::new(),
-            shaders: vec![shader],
-        }
+            shaders: Vec::new(),
+        };
+        assets.load_built_ins(asset_store);
+        assets
+    }
+    /// Only (and immediately) to be called in a constructor
+    fn load_built_ins(&mut self, asset_store: Arc<Mutex<AssetStore>>) {
+        let mut store = asset_store.lock().expect("Can't acquire the asset store!");
+
+        let unlit_asset_id = store.from_bytes(include_bytes!("include/sprite_unlit.wgsl"));
+        let unlit_shader = shader::Shader::new(ShaderKind::Sprite, unlit_asset_id);
+        self.default_shader = ResourceId(self.shaders.len());
+        self.shaders.push(unlit_shader);
+        self.built_in_shaders
+            .insert("SpriteUnlit", self.default_shader);
+
+        let upscale_asset_id = store.from_bytes(include_bytes!("include/sprite_pass_upscale.wgsl"));
+        let upscale_shader = shader::Shader::new(ShaderKind::PostProcess, upscale_asset_id);
+        let upscale_id = ResourceId(self.shaders.len());
+        self.shaders.push(upscale_shader);
+        self.built_in_shaders.insert("SpriteUpscale", upscale_id);
+
+        self.default_normal = store.from_bytes(include_bytes!("include/default_normal.png"));
     }
     pub fn create_wgpu_data(
         &mut self,
@@ -101,7 +111,11 @@ impl WgpuAssets {
         for material in self.materials.iter_mut() {
             if let Some(asset) = store.get(material.diffuse_asset_id) {
                 if asset.state == AssetState::Updated {
-                    let _ = material.create_wgpu_data(&mut store, device, queue, material_layout);
+                    if let Err(_) =
+                        material.create_wgpu_data(&mut store, device, queue, material_layout)
+                    {
+                        log::debug!("Material reload failed!");
+                    }
                 }
             }
             #[cfg(debug_assertions)]
@@ -109,7 +123,13 @@ impl WgpuAssets {
         }
 
         for shader in self.shaders.iter_mut() {
-            shader.create_wgpu_data(&mut store, device, texture_format, &self.pipeline_layouts)?;
+            if let Err(_) =
+                shader.create_wgpu_data(&mut store, device, texture_format, &self.pipeline_layouts)
+            {
+                log::debug!("Shader reload failed!");
+            }
+            #[cfg(debug_assertions)]
+            store.mark_read(shader.asset_id);
         }
 
         Ok(())

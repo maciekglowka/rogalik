@@ -1,7 +1,6 @@
 use std::{
     collections::HashMap,
-    fs::{self, File},
-    io::prelude::*,
+    fs::{self},
     path::Path,
 };
 
@@ -17,6 +16,7 @@ pub struct DevFileStore {
 }
 impl Default for DevFileStore {
     fn default() -> Self {
+        log::debug!("Dev Asset Store init.");
         Self {
             next_id: ResourceId(0),
             assets: HashMap::new(),

@@ -13,6 +13,8 @@ const MAX_LIGHTS: u32 = 16;
 pub struct Renderer2d {
     global: globals::GlobalUniform,
     sprite_pass: sprite_pass::SpritePass,
+    rendering_resolution: Option<(u32, u32)>, // for pixel perfect renders
+    upscale_pass: Option<postprocess_pass::PostProcessPass>,
     post_process_passes: Vec<postprocess_pass::PostProcessPass>,
 }
 impl Renderer2d {
@@ -21,11 +23,45 @@ impl Renderer2d {
         Self {
             global: globals::GlobalUniform::default(),
             sprite_pass,
+            rendering_resolution: None,
+            upscale_pass: None,
             post_process_passes: Vec::new(),
         }
     }
     pub fn set_clear_color(&mut self, color: wgpu::Color) {
         self.sprite_pass.clear_color = color;
+    }
+    pub fn set_rendering_resolution(
+        &mut self,
+        assets: &WgpuAssets,
+        w: u32,
+        h: u32,
+    ) -> Result<(), EngineError> {
+        self.rendering_resolution = Some((w, h));
+        let shader_id = assets
+            .built_in_shaders
+            .get("SpriteUpscale")
+            .ok_or(EngineError::GraphicsInternalError)?;
+        self.upscale_pass = Some(postprocess_pass::PostProcessPass::new(
+            *shader_id,
+            wgpu::FilterMode::Nearest,
+        ));
+        Ok(())
+    }
+    pub fn create_upscale_pass(
+        &mut self,
+        assets: &WgpuAssets,
+        device: &wgpu::Device,
+        texture_format: wgpu::TextureFormat,
+    ) -> Result<(), EngineError> {
+        if let Some((w, h)) = self.rendering_resolution {
+            return self
+                .upscale_pass
+                .as_mut()
+                .ok_or(EngineError::GraphicsInternalError)?
+                .create_wgpu_data(assets, w, h, device, texture_format);
+        }
+        Ok(())
     }
     pub fn set_ambient(&mut self, color: Color) {
         self.global.set_ambient(color);
@@ -64,6 +100,7 @@ impl Renderer2d {
         for pass in self.post_process_passes.iter_mut() {
             let _ = pass.create_wgpu_data(assets, width, height, device, texture_format);
         }
+        let _ = self.create_upscale_pass(assets, device, texture_format);
     }
     pub fn draw_atlas_sprite(
         &mut self,
@@ -127,6 +164,7 @@ impl Renderer2d {
         // }
         Ok(())
     }
+
     pub fn render(
         &mut self,
         assets: &WgpuAssets,
@@ -155,7 +193,14 @@ impl Renderer2d {
             label: Some("Renderer2D Encoder"),
         });
 
-        let mut current_view = if let Some(pass) = self.post_process_passes.get(0) {
+        // TODO avoid allocation here?
+        let mut post_process_queue = Vec::new();
+        if let Some(pass) = &self.upscale_pass {
+            post_process_queue.push(pass);
+        }
+        post_process_queue.extend(&self.post_process_passes);
+
+        let mut current_view = if let Some(pass) = post_process_queue.get(0) {
             pass.get_view().ok_or(EngineError::GraphicsNotReady)?
         } else {
             &view
@@ -165,12 +210,11 @@ impl Renderer2d {
             assets,
             &mut encoder,
             device,
-            queue,
             &global_bind_group,
             current_view,
         )?;
 
-        let mut post_processes = self.post_process_passes.iter().peekable();
+        let mut post_processes = post_process_queue.iter().peekable();
         while let Some(pass) = post_processes.next() {
             current_view = if let Some(next_pass) = post_processes.peek() {
                 next_pass.get_view().ok_or(EngineError::GraphicsNotReady)?

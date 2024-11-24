@@ -2,6 +2,10 @@ use std::{fs::File, io::Write, path::Path};
 
 const ASSET_FILE_NAME: &str = "included_assets.rs";
 
+#[cfg(debug_assertions)]
+fn main() {}
+
+#[cfg(not(debug_assertions))]
 fn main() {
     let out_dir = std::env::var("OUT_DIR").expect("OUT_DIR env var is not set!");
     let dest_path = Path::new(&out_dir).join(ASSET_FILE_NAME);

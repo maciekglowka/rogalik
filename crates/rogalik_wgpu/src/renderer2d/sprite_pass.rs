@@ -42,7 +42,6 @@ impl SpritePass {
         assets: &WgpuAssets,
         encoder: &mut wgpu::CommandEncoder,
         device: &wgpu::Device,
-        queue: &wgpu::Queue,
         global_bind_group: &wgpu::BindGroup,
         view: &wgpu::TextureView,
     ) -> Result<(), EngineError> {

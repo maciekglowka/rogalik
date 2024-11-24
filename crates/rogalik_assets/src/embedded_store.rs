@@ -13,6 +13,7 @@ pub struct EmbeddedStore {
 }
 impl Default for EmbeddedStore {
     fn default() -> Self {
+        log::debug!("Embedded Asset Store init.");
         Self {
             embedded: get_embedded(),
             next_id: ResourceId(0),

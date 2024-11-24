@@ -23,7 +23,7 @@ pub fn get_pipeline_layouts(
 }
 
 pub struct Shader {
-    asset_id: ResourceId,
+    pub asset_id: ResourceId,
     pub kind: ShaderKind,
     pub pipeline: Option<wgpu::RenderPipeline>,
 }
@@ -73,6 +73,7 @@ impl Shader {
                 device,
             )),
         };
+        log::debug!("Updated shader WGPU data.");
 
         Ok(())
     }
