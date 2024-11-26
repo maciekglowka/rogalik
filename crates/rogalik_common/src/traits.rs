@@ -44,7 +44,7 @@ pub trait GraphicsContext {
     ) -> Result<(), EngineError>;
     fn add_light(
         &mut self,
-        intensity: f32,
+        strength: f32,
         color: Color,
         position: Vector2f,
     ) -> Result<(), EngineError>;

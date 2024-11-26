@@ -212,11 +212,11 @@ impl GraphicsContext for WgpuContext {
     }
     fn add_light(
         &mut self,
-        intensity: f32,
+        strength: f32,
         color: rogalik_common::Color,
         position: Vector2f,
     ) -> Result<(), EngineError> {
-        self.renderer2d.add_light(intensity, color, position)
+        self.renderer2d.add_light(strength, color, position)
     }
     fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f {
         // if let Some(font) = self.assets.get_font(font) {

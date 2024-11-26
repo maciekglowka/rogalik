@@ -109,13 +109,22 @@ impl WgpuAssets {
             .ok_or(EngineError::GraphicsInternalError)?;
 
         for material in self.materials.iter_mut() {
+            let mut update = false;
             if let Some(asset) = store.get(material.diffuse_asset_id) {
                 if asset.state == AssetState::Updated {
-                    if let Err(_) =
-                        material.create_wgpu_data(&mut store, device, queue, material_layout)
-                    {
-                        log::debug!("Material reload failed!");
-                    }
+                    update = true;
+                }
+            }
+            if let Some(asset) = store.get(material.normal_asset_id) {
+                if asset.state == AssetState::Updated {
+                    update = true;
+                }
+            }
+            if update {
+                if let Err(_) =
+                    material.create_wgpu_data(&mut store, device, queue, material_layout)
+                {
+                    log::debug!("Material reload failed!");
                 }
             }
             #[cfg(debug_assertions)]

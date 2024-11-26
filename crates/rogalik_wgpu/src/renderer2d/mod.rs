@@ -68,11 +68,11 @@ impl Renderer2d {
     }
     pub fn add_light(
         &mut self,
-        intensity: f32,
+        strength: f32,
         color: Color,
         position: Vector2f,
     ) -> Result<(), EngineError> {
-        self.global.add_light(intensity, color, position)
+        self.global.add_light(strength, color, position)
     }
     pub fn add_post_process(
         &mut self,
