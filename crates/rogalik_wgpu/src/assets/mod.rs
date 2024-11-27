@@ -14,10 +14,12 @@ pub mod font;
 pub mod material;
 pub mod shader;
 
+use shader::BuiltInShader;
+
 pub struct WgpuAssets {
     asset_store: Arc<Mutex<AssetStore>>,
-    pub bind_group_layouts: HashMap<bind_groups::BindGroupKind, wgpu::BindGroupLayout>,
-    pub(crate) built_in_shaders: HashMap<&'static str, ResourceId>,
+    pub bind_group_layouts: HashMap<bind_groups::BindGroupLayoutKind, wgpu::BindGroupLayout>,
+    pub(crate) built_in_shaders: HashMap<BuiltInShader, ResourceId>,
     cameras: Vec<camera::Camera2D>,
     default_shader: ResourceId,
     default_normal: ResourceId,
@@ -55,13 +57,14 @@ impl WgpuAssets {
         self.default_shader = ResourceId(self.shaders.len());
         self.shaders.push(unlit_shader);
         self.built_in_shaders
-            .insert("SpriteUnlit", self.default_shader);
+            .insert(BuiltInShader::SpriteUnlit, self.default_shader);
 
         let upscale_asset_id = store.from_bytes(include_bytes!("include/sprite_pass_upscale.wgsl"));
         let upscale_shader = shader::Shader::new(ShaderKind::PostProcess, upscale_asset_id);
         let upscale_id = ResourceId(self.shaders.len());
         self.shaders.push(upscale_shader);
-        self.built_in_shaders.insert("SpriteUpscale", upscale_id);
+        self.built_in_shaders
+            .insert(BuiltInShader::Upscale, upscale_id);
 
         self.default_normal = store.from_bytes(include_bytes!("include/default_normal.png"));
     }
@@ -80,7 +83,7 @@ impl WgpuAssets {
 
         let material_layout = self
             .bind_group_layouts
-            .get(&bind_groups::BindGroupKind::Sprite)
+            .get(&bind_groups::BindGroupLayoutKind::Sprite)
             .ok_or(EngineError::GraphicsInternalError)?;
 
         for material in self.materials.iter_mut() {
@@ -105,7 +108,7 @@ impl WgpuAssets {
 
         let material_layout = self
             .bind_group_layouts
-            .get(&bind_groups::BindGroupKind::Sprite)
+            .get(&bind_groups::BindGroupLayoutKind::Sprite)
             .ok_or(EngineError::GraphicsInternalError)?;
 
         for material in self.materials.iter_mut() {

@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+
 use rogalik_common::{EngineError, ResourceId};
 
-use crate::assets::{bind_groups::BindGroupKind, WgpuAssets};
+use super::uniforms::UniformKind;
+use crate::assets::{bind_groups::BindGroupLayoutKind, WgpuAssets};
 
 pub struct PostProcessPass {
     pub shader_id: ResourceId,
@@ -25,7 +28,7 @@ impl PostProcessPass {
         assets: &WgpuAssets,
         encoder: &mut wgpu::CommandEncoder,
         output: &wgpu::TextureView,
-        global_bind_group: &wgpu::BindGroup,
+        uniform_bind_groups: &HashMap<UniformKind, wgpu::BindGroup>,
     ) -> Result<(), EngineError> {
         let shader = assets
             .get_shader(self.shader_id)
@@ -56,7 +59,7 @@ impl PostProcessPass {
                 .ok_or(EngineError::GraphicsNotReady)?,
             &[],
         );
-        pass.set_bind_group(1, global_bind_group, &[]);
+        pass.set_bind_group(1, uniform_bind_groups.get(&UniformKind::Globals), &[]);
         pass.draw(0..3, 0..1);
         Ok(())
     }
@@ -88,7 +91,7 @@ impl PostProcessPass {
             label: Some("PostProcess Bind Group"),
             layout: assets
                 .bind_group_layouts
-                .get(&BindGroupKind::PostProcess)
+                .get(&BindGroupLayoutKind::PostProcess)
                 .ok_or(EngineError::GraphicsInternalError)?,
             entries: &[
                 wgpu::BindGroupEntry {

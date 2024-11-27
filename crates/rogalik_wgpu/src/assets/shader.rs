@@ -3,11 +3,18 @@ use std::collections::HashMap;
 use rogalik_assets::{AssetContext, AssetStore};
 use rogalik_common::{EngineError, ResourceId, ShaderKind};
 
-use super::bind_groups::BindGroupKind;
+use super::bind_groups::BindGroupLayoutKind;
 use crate::structs::Vertex;
 
+#[derive(Hash, Eq, PartialEq)]
+pub enum BuiltInShader {
+    SpriteUnlit,
+    SpriteLit,
+    Upscale,
+}
+
 pub fn get_pipeline_layouts(
-    bind_group_layous: &HashMap<BindGroupKind, wgpu::BindGroupLayout>,
+    bind_group_layous: &HashMap<BindGroupLayoutKind, wgpu::BindGroupLayout>,
     device: &wgpu::Device,
 ) -> Result<HashMap<ShaderKind, wgpu::PipelineLayout>, EngineError> {
     Ok(HashMap::from_iter([
@@ -170,7 +177,7 @@ fn get_post_process_shader_pipeline(
 }
 
 fn get_sprite_shader_pipeline_layout(
-    bind_group_layous: &HashMap<BindGroupKind, wgpu::BindGroupLayout>,
+    bind_group_layous: &HashMap<BindGroupLayoutKind, wgpu::BindGroupLayout>,
     device: &wgpu::Device,
 ) -> Result<wgpu::PipelineLayout, EngineError> {
     Ok(
@@ -178,13 +185,16 @@ fn get_sprite_shader_pipeline_layout(
             label: Some("Sprite Pipeline Layout"),
             bind_group_layouts: &[
                 bind_group_layous
-                    .get(&BindGroupKind::Sprite)
+                    .get(&BindGroupLayoutKind::Sprite)
                     .ok_or(EngineError::GraphicsInternalError)?,
                 bind_group_layous
-                    .get(&BindGroupKind::Camera)
+                    .get(&BindGroupLayoutKind::Uniform) // Camera
                     .ok_or(EngineError::GraphicsInternalError)?,
                 bind_group_layous
-                    .get(&BindGroupKind::Global)
+                    .get(&BindGroupLayoutKind::Uniform) // Globals
+                    .ok_or(EngineError::GraphicsInternalError)?,
+                bind_group_layous
+                    .get(&BindGroupLayoutKind::Uniform) // Lights
                     .ok_or(EngineError::GraphicsInternalError)?,
             ],
             push_constant_ranges: &[],
@@ -193,7 +203,7 @@ fn get_sprite_shader_pipeline_layout(
 }
 
 fn get_post_process_pipeline_layout(
-    bind_group_layous: &HashMap<BindGroupKind, wgpu::BindGroupLayout>,
+    bind_group_layous: &HashMap<BindGroupLayoutKind, wgpu::BindGroupLayout>,
     device: &wgpu::Device,
 ) -> Result<wgpu::PipelineLayout, EngineError> {
     Ok(
@@ -201,10 +211,10 @@ fn get_post_process_pipeline_layout(
             label: Some("Postprocess Pipeline Layout"),
             bind_group_layouts: &[
                 bind_group_layous
-                    .get(&BindGroupKind::PostProcess)
+                    .get(&BindGroupLayoutKind::PostProcess)
                     .ok_or(EngineError::GraphicsInternalError)?,
                 bind_group_layous
-                    .get(&BindGroupKind::Global)
+                    .get(&BindGroupLayoutKind::Uniform) // Globals
                     .ok_or(EngineError::GraphicsInternalError)?,
             ],
             push_constant_ranges: &[],

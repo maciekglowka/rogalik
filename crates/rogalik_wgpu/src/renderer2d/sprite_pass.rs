@@ -5,6 +5,8 @@ use wgpu::util::DeviceExt;
 use crate::assets::WgpuAssets;
 use crate::structs::{BindParams, Triangle, Vertex};
 
+use super::uniforms::UniformKind;
+
 pub struct SpritePass {
     pub clear_color: wgpu::Color,
     vertex_queue: Vec<Vertex>,
@@ -42,7 +44,7 @@ impl SpritePass {
         assets: &WgpuAssets,
         encoder: &mut wgpu::CommandEncoder,
         device: &wgpu::Device,
-        global_bind_group: &wgpu::BindGroup,
+        uniform_bind_groups: &HashMap<UniformKind, wgpu::BindGroup>,
         view: &wgpu::TextureView,
     ) -> Result<(), EngineError> {
         if self.triangle_queue.len() == 0 {
@@ -59,7 +61,7 @@ impl SpritePass {
                     device,
                     assets
                         .bind_group_layouts
-                        .get(&crate::assets::bind_groups::BindGroupKind::Camera)
+                        .get(&crate::assets::bind_groups::BindGroupLayoutKind::Uniform)
                         .ok_or(EngineError::GraphicsInternalError)?,
                 ),
             );
@@ -134,7 +136,8 @@ impl SpritePass {
                 camera_bind_groups.get(&current_params.camera_id.0).unwrap(),
                 &[],
             );
-            pass.set_bind_group(2, global_bind_group, &[]);
+            pass.set_bind_group(2, uniform_bind_groups.get(&UniformKind::Globals), &[]);
+            pass.set_bind_group(3, uniform_bind_groups.get(&UniformKind::Lights), &[]);
 
             pass.set_vertex_buffer(0, vertex_buffer.slice(..));
             pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);

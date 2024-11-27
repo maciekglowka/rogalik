@@ -1,12 +1,15 @@
 use std::{fs::File, io::Write, path::Path};
 
+#[allow(dead_code)]
 const ASSET_FILE_NAME: &str = "included_assets.rs";
 
-#[cfg(debug_assertions)]
-fn main() {}
-
-#[cfg(not(debug_assertions))]
 fn main() {
+    #[cfg(not(debug_assertions))]
+    embedded()
+}
+
+#[allow(dead_code)]
+fn embedded() {
     let out_dir = std::env::var("OUT_DIR").expect("OUT_DIR env var is not set!");
     let dest_path = Path::new(&out_dir).join(ASSET_FILE_NAME);
     let Ok(asset_dir_var) = std::env::var("ROGALIK_ASSETS") else {

@@ -4,6 +4,8 @@ use winit::window::Window;
 use rogalik_common::{EngineError, GraphicsContext, ResourceId, SpriteParams};
 use rogalik_math::vectors::Vector2f;
 
+pub use assets::shader::BuiltInShader;
+
 mod assets;
 mod renderer2d;
 mod structs;

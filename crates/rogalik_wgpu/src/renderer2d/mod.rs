@@ -4,28 +4,28 @@ use rogalik_math::vectors::Vector2f;
 use crate::assets::WgpuAssets;
 use crate::structs::BindParams;
 
-mod globals;
 mod postprocess_pass;
 mod sprite_pass;
+mod uniforms;
 
 const MAX_LIGHTS: u32 = 16;
 
 pub struct Renderer2d {
-    global: globals::GlobalUniform,
     sprite_pass: sprite_pass::SpritePass,
     rendering_resolution: Option<(u32, u32)>, // for pixel perfect renders
     upscale_pass: Option<postprocess_pass::PostProcessPass>,
     post_process_passes: Vec<postprocess_pass::PostProcessPass>,
+    uniforms: uniforms::Uniforms,
 }
 impl Renderer2d {
     pub fn new() -> Self {
         let sprite_pass = sprite_pass::SpritePass::new(wgpu::Color::BLACK);
         Self {
-            global: globals::GlobalUniform::default(),
             sprite_pass,
             rendering_resolution: None,
             upscale_pass: None,
             post_process_passes: Vec::new(),
+            uniforms: uniforms::Uniforms::default(),
         }
     }
     pub fn set_clear_color(&mut self, color: wgpu::Color) {
@@ -40,7 +40,7 @@ impl Renderer2d {
         self.rendering_resolution = Some((w, h));
         let shader_id = assets
             .built_in_shaders
-            .get("SpriteUpscale")
+            .get(&crate::BuiltInShader::Upscale)
             .ok_or(EngineError::GraphicsInternalError)?;
         self.upscale_pass = Some(postprocess_pass::PostProcessPass::new(
             *shader_id,
@@ -64,7 +64,7 @@ impl Renderer2d {
         Ok(())
     }
     pub fn set_ambient(&mut self, color: Color) {
-        self.global.set_ambient(color);
+        self.uniforms.lights.set_ambient(color);
     }
     pub fn add_light(
         &mut self,
@@ -72,7 +72,7 @@ impl Renderer2d {
         color: Color,
         position: Vector2f,
     ) -> Result<(), EngineError> {
-        self.global.add_light(strength, color, position)
+        self.uniforms.lights.add_light(strength, color, position)
     }
     pub fn add_post_process(
         &mut self,
@@ -173,14 +173,15 @@ impl Renderer2d {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> Result<(), EngineError> {
-        self.global.set_time(time);
-        let global_bind_group = self.global.get_bind_group(
-            device,
+        self.uniforms.globals.set_time(time);
+        let uniform_bind_groups = self.uniforms.get_bind_groups(
             assets
                 .bind_group_layouts
-                .get(&crate::assets::bind_groups::BindGroupKind::Global)
+                .get(&crate::assets::bind_groups::BindGroupLayoutKind::Uniform)
                 .ok_or(EngineError::GraphicsInternalError)?,
+            device,
         );
+
         let output = surface
             .get_current_texture()
             .map_err(|_| EngineError::GraphicsNotReady)?;
@@ -210,7 +211,7 @@ impl Renderer2d {
             assets,
             &mut encoder,
             device,
-            &global_bind_group,
+            &uniform_bind_groups,
             current_view,
         )?;
 
@@ -221,12 +222,12 @@ impl Renderer2d {
             } else {
                 &view
             };
-            pass.render(assets, &mut encoder, &current_view, &global_bind_group)?;
+            pass.render(assets, &mut encoder, &current_view, &uniform_bind_groups)?;
         }
 
         queue.submit(std::iter::once(encoder.finish()));
         output.present();
-        self.global.frame_end();
+        self.uniforms.lights.frame_end();
         Ok(())
     }
 }
