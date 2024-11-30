@@ -41,6 +41,18 @@ impl WgpuContext {
             time: 0.,
         }
     }
+    /// Returns (vw, vh, rw, rh)
+    fn get_current_resolutions(&self) -> (u32, u32, u32, u32) {
+        let (w, h) = match &self.surface_state {
+            Some(s) => (s.config.width, s.config.height),
+            None => (0, 0),
+        };
+        let (rw, rh) = match self.rendering_resolution {
+            Some((rw, rh)) => (rw, rh),
+            None => (w, h),
+        };
+        (w, h, rw, rh)
+    }
     fn resize_renderer(&mut self) {
         if let Some(state) = &self.surface_state {
             self.renderer2d
@@ -48,15 +60,9 @@ impl WgpuContext {
         }
     }
     fn resize_cameras(&mut self) {
-        let (w, h) = if let Some((w, h)) = self.rendering_resolution {
-            (w, h)
-        } else if let Some(state) = &self.surface_state {
-            (state.config.width, state.config.height)
-        } else {
-            return;
-        };
+        let (vw, vh, rw, rh) = self.get_current_resolutions();
         for camera in self.assets.iter_cameras_mut() {
-            camera.resize_viewport(w as f32, h as f32);
+            camera.resize_viewport(vw as f32, vh as f32, rw as f32, rh as f32);
         }
     }
 }
@@ -227,11 +233,9 @@ impl GraphicsContext for WgpuContext {
             .unwrap_or(Vector2f::ZERO)
     }
     fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId {
-        let (w, h) = match &self.surface_state {
-            Some(s) => (s.config.width, s.config.height),
-            None => (0, 0),
-        };
-        self.assets.create_camera(w as f32, h as f32, scale, target)
+        let (vw, vh, rw, rh) = self.get_current_resolutions();
+        self.assets
+            .create_camera(vw as f32, vh as f32, rw as f32, rh as f32, scale, target)
     }
     fn set_camera(&mut self, id: ResourceId) {
         self.current_camera_id = id;

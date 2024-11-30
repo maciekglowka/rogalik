@@ -8,8 +8,10 @@ const Z_RANGE: f32 = 100.;
 pub struct Camera2D {
     scale: f32,
     target: Vector2f,
-    vw: f32,
+    vw: f32, // viewport
     vh: f32,
+    rw: f32, // rendering
+    rh: f32,
 }
 impl Camera for Camera2D {
     fn get_scale(&self) -> f32 {
@@ -26,19 +28,31 @@ impl Camera for Camera2D {
     }
     fn camera_to_world(&self, v: Vector2f) -> Vector2f {
         // in physical pixels
+        let x = v.x * self.rw / self.vw;
+        let y = v.y * self.rh / self.vh;
         Vector2f::new(
-            (v.x - 0.5 * self.vw) / self.scale + self.target.x,
-            (v.y - 0.5 * self.vh) / self.scale + self.target.y,
+            (x - 0.5 * self.rw) / self.scale + self.target.x,
+            (y - 0.5 * self.rh) / self.scale + self.target.y,
+        )
+    }
+    fn get_bounds(&self) -> (Vector2f, Vector2f) {
+        let hx = 0.5 * self.rw / self.scale;
+        let hy = 0.5 * self.rh / self.scale;
+        (
+            Vector2f::new(self.target.x - hx, self.target.y - hy),
+            Vector2f::new(self.target.x + hx, self.target.y + hy),
         )
     }
 }
 impl Camera2D {
-    pub fn new(vw: f32, vh: f32, scale: f32, target: Vector2f) -> Self {
+    pub fn new(vw: f32, vh: f32, rw: f32, rh: f32, scale: f32, target: Vector2f) -> Self {
         Self {
             scale,
             target,
             vw,
             vh,
+            rw,
+            rh,
         }
     }
     pub fn get_bind_group(
@@ -48,18 +62,20 @@ impl Camera2D {
     ) -> wgpu::BindGroup {
         Camera2D::create_bind_group(device, layout, self.get_matrix())
     }
-    pub fn resize_viewport(&mut self, vw: f32, vh: f32) {
+    pub fn resize_viewport(&mut self, vw: f32, vh: f32, rw: f32, rh: f32) {
         self.vw = vw;
         self.vh = vh;
+        self.rw = rw;
+        self.rh = rh;
     }
     fn get_matrix(&self) -> [[f32; 4]; 4] {
         let zoom = 1. / self.scale;
         let n = -Z_RANGE;
         let f = Z_RANGE;
-        let l = self.target.x - zoom * self.vw / 2.;
-        let r = self.target.x + zoom * self.vw / 2.;
-        let t = self.target.y - zoom * self.vh / 2.;
-        let b = self.target.y + zoom * self.vh / 2.;
+        let l = self.target.x - zoom * self.rw / 2.;
+        let r = self.target.x + zoom * self.rw / 2.;
+        let t = self.target.y - zoom * self.rh / 2.;
+        let b = self.target.y + zoom * self.rh / 2.;
 
         [
             [2. / (r - l), 0., 0., 0.],

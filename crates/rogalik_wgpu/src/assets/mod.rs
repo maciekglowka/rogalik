@@ -177,9 +177,17 @@ impl WgpuAssets {
         self.material_names.insert(name.to_string(), material_id);
         self.materials.push(material);
     }
-    pub fn create_camera(&mut self, w: f32, h: f32, scale: f32, target: Vector2f) -> ResourceId {
+    pub fn create_camera(
+        &mut self,
+        vw: f32,
+        vh: f32,
+        rw: f32,
+        rh: f32,
+        scale: f32,
+        target: Vector2f,
+    ) -> ResourceId {
         let id = self.get_next_camera_id();
-        let camera = camera::Camera2D::new(w as f32, h as f32, scale, target);
+        let camera = camera::Camera2D::new(vw, vh, rw, rh, scale, target);
         self.cameras.push(camera);
         id
     }
