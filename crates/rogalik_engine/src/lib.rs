@@ -52,6 +52,8 @@ pub struct EngineBuilder {
     title: Option<String>,
     physical_size: Option<(u32, u32)>,
     logical_size: Option<(f32, f32)>,
+    resizable: bool,
+    fullscreen: bool,
 }
 impl EngineBuilder {
     pub fn new() -> Self {
@@ -69,6 +71,14 @@ impl EngineBuilder {
         self.logical_size = Some((w, h));
         self
     }
+    pub fn resizable(mut self, val: bool) -> Self {
+        self.resizable = val;
+        self
+    }
+    pub fn fullscreen(mut self, val: bool) -> Self {
+        self.fullscreen = val;
+        self
+    }
     pub fn build<T>(&self, game: T, scene: Box<dyn traits::Scene<Game = T>>) -> Engine<T>
     where
         T: Game + 'static,
@@ -84,12 +94,20 @@ impl EngineBuilder {
         if let Some(title) = &self.title {
             window_attributes = window_attributes.with_title(title);
         }
+
+        window_attributes.resizable = self.resizable;
+
         if let Some(size) = self.physical_size {
             let window_size = PhysicalSize::new(size.0, size.1);
             window_attributes = window_attributes.with_inner_size(window_size);
         } else if let Some(size) = self.logical_size {
             let window_size = LogicalSize::new(size.0, size.1);
             window_attributes = window_attributes.with_inner_size(window_size);
+        }
+
+        if self.fullscreen {
+            window_attributes = window_attributes
+                .with_fullscreen(Some(winit::window::Fullscreen::Borderless(None)));
         }
 
         let assets = Arc::new(Mutex::new(AssetStore::default()));
