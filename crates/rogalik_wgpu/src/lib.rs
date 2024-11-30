@@ -216,6 +216,33 @@ impl GraphicsContext for WgpuContext {
             params,
         )
     }
+    fn draw_mesh(
+        &mut self,
+        material: &str,
+        vertices: &[Vector2f],
+        uvs: &[Vector2f],
+        indices: &[u16],
+        z_index: i32,
+    ) -> Result<(), EngineError> {
+        let vs = vertices
+            .iter()
+            .zip(uvs)
+            .map(|(v, uv)| crate::structs::Vertex {
+                position: [v.x, v.y, 0.],
+                color: [1., 1., 1., 1.],
+                tex_coords: [uv.x, uv.y],
+            })
+            // TODO allocation can be avoided here
+            .collect::<Vec<_>>();
+        self.renderer2d.draw_mesh(
+            &self.assets,
+            material,
+            self.current_camera_id,
+            &vs,
+            indices,
+            z_index,
+        )
+    }
     fn set_ambient(&mut self, color: rogalik_common::Color) {
         self.renderer2d.set_ambient(color);
     }

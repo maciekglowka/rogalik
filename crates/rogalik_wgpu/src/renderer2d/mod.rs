@@ -1,7 +1,7 @@
 use rogalik_common::{Color, EngineError, ResourceId, SpriteParams};
 use rogalik_math::vectors::Vector2f;
 
-use crate::assets::WgpuAssets;
+use crate::assets::{material::Material, WgpuAssets};
 use crate::structs::BindParams;
 
 mod postprocess_pass;
@@ -123,12 +123,7 @@ impl Renderer2d {
         size: Vector2f,
         params: SpriteParams,
     ) -> Result<(), EngineError> {
-        let &material_id = assets
-            .get_material_id(material_name)
-            .ok_or(EngineError::ResourceNotFound)?;
-        let material = assets
-            .get_material(material_id)
-            .ok_or(EngineError::ResourceNotFound)?;
+        let (material_id, material) = get_material(material_name, assets)?;
 
         let bind_params = BindParams {
             camera_id,
@@ -164,12 +159,7 @@ impl Renderer2d {
         size: f32,
         params: SpriteParams,
     ) -> Result<(), EngineError> {
-        let &material_id = assets
-            .get_material_id(font)
-            .ok_or(EngineError::ResourceNotFound)?;
-        let material = assets
-            .get_material(material_id)
-            .ok_or(EngineError::ResourceNotFound)?;
+        let (material_id, material) = get_material(font, assets)?;
         let atlas = material.atlas.ok_or(EngineError::InvalidResource)?;
 
         let bind_params = BindParams {
@@ -178,15 +168,31 @@ impl Renderer2d {
             shader_id: material.shader_id,
         };
 
-        // let font = assets.get_font(font).ok_or(EngineError::ResourceNotFound)?;
-        // let bind_params = BindParams {
-        //     camera_id,
-        //     texture_id: font.atlas.texture_id,
-        // };
         for s in crate::assets::font::get_text_sprites(text, atlas, position, size, params) {
             self.sprite_pass
                 .add_to_queue(&s.0, &s.1, z_index, bind_params);
         }
+        Ok(())
+    }
+    pub fn draw_mesh(
+        &mut self,
+        assets: &WgpuAssets,
+        material_name: &str,
+        camera_id: ResourceId,
+        vertices: &[crate::structs::Vertex],
+        indices: &[u16],
+        z_index: i32,
+    ) -> Result<(), EngineError> {
+        let (material_id, material) = get_material(material_name, assets)?;
+
+        let bind_params = BindParams {
+            camera_id,
+            material_id,
+            shader_id: material.shader_id,
+        };
+        self.sprite_pass
+            .add_to_queue(vertices, indices, z_index, bind_params);
+
         Ok(())
     }
 
@@ -255,4 +261,17 @@ impl Renderer2d {
         self.uniforms.lights.frame_end();
         Ok(())
     }
+}
+
+fn get_material<'a>(
+    name: &str,
+    assets: &'a WgpuAssets,
+) -> Result<(ResourceId, &'a Material), EngineError> {
+    let &material_id = assets
+        .get_material_id(name)
+        .ok_or(EngineError::ResourceNotFound)?;
+    let material = assets
+        .get_material(material_id)
+        .ok_or(EngineError::ResourceNotFound)?;
+    Ok((material_id, material))
 }

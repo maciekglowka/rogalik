@@ -42,6 +42,14 @@ pub trait GraphicsContext {
         size: f32,
         params: SpriteParams,
     ) -> Result<(), EngineError>;
+    fn draw_mesh(
+        &mut self,
+        material: &str,
+        vertices: &[Vector2f],
+        uvs: &[Vector2f],
+        indices: &[u16],
+        z_index: i32,
+    ) -> Result<(), EngineError>;
     fn add_light(
         &mut self,
         strength: f32,
