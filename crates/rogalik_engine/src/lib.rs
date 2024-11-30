@@ -21,7 +21,7 @@ mod wasm;
 
 pub use log;
 pub use time::Instant;
-pub use traits::{Game, Scene, SceneResult};
+pub use traits::{Game, Scene, SceneChange};
 
 use rogalik_assets::AssetStore;
 

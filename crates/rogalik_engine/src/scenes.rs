@@ -1,5 +1,5 @@
 use crate::{
-    traits::{Game, Scene, SceneResult},
+    traits::{Game, Scene, SceneChange},
     Context,
 };
 
@@ -33,22 +33,22 @@ pub fn update_scenes<T: Game>(
     game: &mut T,
     context: &mut Context,
 ) {
-    let mut scene_result = SceneResult::None;
+    let mut scene_result = None;
     if let Some(scene) = scene_manager.current_mut() {
         scene_result = scene.update(game, context);
     }
     match scene_result {
-        SceneResult::None => (),
-        SceneResult::Pop => {
+        None => (),
+        Some(SceneChange::Pop) => {
             if let Some(mut scene) = scene_manager.pop() {
                 scene.exit(game, context);
             }
         }
-        SceneResult::Push(mut scene) => {
+        Some(SceneChange::Push(mut scene)) => {
             scene.enter(game, context);
             scene_manager.push(scene);
         }
-        SceneResult::Switch(mut new_scene) => {
+        Some(SceneChange::Switch(mut new_scene)) => {
             new_scene.enter(game, context);
             if let Some(mut old_scene) = scene_manager.switch(new_scene) {
                 old_scene.exit(game, context)
