@@ -1,6 +1,5 @@
-use super::atlas::SpriteAtlas;
 use crate::structs::Vertex;
-use rogalik_common::{ResourceId, SpriteParams};
+use rogalik_common::SpriteParams;
 use rogalik_math::vectors::Vector2f;
 
 pub fn get_text_sprites(
