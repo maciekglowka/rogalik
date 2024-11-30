@@ -4,7 +4,7 @@ use std::{
 };
 
 use rogalik_assets::{AssetContext, AssetState, AssetStore};
-use rogalik_common::{EngineError, MaterialParams, ResourceId, ShaderKind};
+use rogalik_common::{AtlasParams, EngineError, MaterialParams, ResourceId, ShaderKind};
 use rogalik_math::vectors::Vector2f;
 
 pub mod atlas;
@@ -23,12 +23,10 @@ pub struct WgpuAssets {
     cameras: Vec<camera::Camera2D>,
     default_shader: ResourceId,
     default_normal: ResourceId,
-    // fonts: HashMap<String, font::Font>,
     pub pipeline_layouts: HashMap<ShaderKind, wgpu::PipelineLayout>,
     material_names: HashMap<String, ResourceId>, // lookup
     materials: Vec<material::Material>,
-    shaders: Vec<shader::Shader>, // pub materials: HashMap<ResourceId, material::Material>, // key == diffuse_asset_id
-                                  // pub shaders: HashMap<ResourceId, shader::Shader>, // key == asset_id
+    shaders: Vec<shader::Shader>,
 }
 impl WgpuAssets {
     pub fn new(asset_store: Arc<Mutex<AssetStore>>) -> Self {
@@ -188,20 +186,30 @@ impl WgpuAssets {
     pub fn load_font(
         &mut self,
         name: &str,
-        bytes: &[u8],
+        path: &str,
         rows: usize,
         cols: usize,
         padding: Option<(f32, f32)>,
     ) {
-        // let texture_id = self.load_texture(bytes);
-        // let font = font::Font::new(
-        //     texture_id,
-        //     self.textures[texture_id.0].dim,
-        //     rows,
-        //     cols,
-        //     padding,
-        // );
-        // self.fonts.insert(name.to_string(), font);
+        let atlas = Some(AtlasParams {
+            rows,
+            cols,
+            padding,
+        });
+
+        let params = MaterialParams {
+            atlas,
+            diffuse_path: path,
+            ..Default::default()
+        };
+        self.create_material(name, params);
+    }
+    pub fn get_text_dimensions(&self, font: &str, text: &str, size: f32) -> Option<Vector2f> {
+        let material = self.get_material(*self.get_material_id(font)?)?;
+        let (w, h) = material.atlas?.get_sprite_size();
+        let ratio = w / h;
+        let l = text.chars().count();
+        Some(size * Vector2f::new(ratio * l as f32, 1.))
     }
     pub fn get_material_id(&self, name: &str) -> Option<&ResourceId> {
         self.material_names.get(name)
@@ -224,9 +232,6 @@ impl WgpuAssets {
     pub fn iter_cameras_mut(&mut self) -> impl Iterator<Item = &mut camera::Camera2D> {
         self.cameras.iter_mut()
     }
-    // pub fn get_font(&self, name: &str) -> Option<&font::Font> {
-    //     self.fonts.get(name)
-    // }
     fn load_asset(&self, path: &str) -> ResourceId {
         let mut store = self
             .asset_store

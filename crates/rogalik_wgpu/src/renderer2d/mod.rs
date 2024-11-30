@@ -31,6 +31,14 @@ impl Renderer2d {
     pub fn set_clear_color(&mut self, color: wgpu::Color) {
         self.sprite_pass.clear_color = color;
     }
+    pub fn resize(&mut self, w: u32, h: u32) {
+        self.uniforms.globals.vw = w;
+        self.uniforms.globals.vh = h;
+        if self.rendering_resolution.is_none() {
+            self.uniforms.globals.rw = w;
+            self.uniforms.globals.rh = h;
+        }
+    }
     pub fn set_rendering_resolution(
         &mut self,
         assets: &WgpuAssets,
@@ -46,6 +54,8 @@ impl Renderer2d {
             *shader_id,
             wgpu::FilterMode::Nearest,
         ));
+        self.uniforms.globals.rw = w;
+        self.uniforms.globals.rh = h;
         Ok(())
     }
     pub fn create_upscale_pass(
@@ -154,14 +164,29 @@ impl Renderer2d {
         size: f32,
         params: SpriteParams,
     ) -> Result<(), EngineError> {
+        let &material_id = assets
+            .get_material_id(font)
+            .ok_or(EngineError::ResourceNotFound)?;
+        let material = assets
+            .get_material(material_id)
+            .ok_or(EngineError::ResourceNotFound)?;
+        let atlas = material.atlas.ok_or(EngineError::InvalidResource)?;
+
+        let bind_params = BindParams {
+            camera_id,
+            material_id,
+            shader_id: material.shader_id,
+        };
+
         // let font = assets.get_font(font).ok_or(EngineError::ResourceNotFound)?;
         // let bind_params = BindParams {
         //     camera_id,
         //     texture_id: font.atlas.texture_id,
         // };
-        // for s in font.get_sprites(text, position, size, params) {
-        //     self.add_to_queue(&s.0, &s.1, z_index, bind_params);
-        // }
+        for s in crate::assets::font::get_text_sprites(text, atlas, position, size, params) {
+            self.sprite_pass
+                .add_to_queue(&s.0, &s.1, z_index, bind_params);
+        }
         Ok(())
     }
 
@@ -173,7 +198,7 @@ impl Renderer2d {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> Result<(), EngineError> {
-        self.uniforms.globals.set_time(time);
+        self.uniforms.globals.time = time;
         let uniform_bind_groups = self.uniforms.get_bind_groups(
             assets
                 .bind_group_layouts

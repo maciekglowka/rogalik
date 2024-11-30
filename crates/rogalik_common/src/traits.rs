@@ -18,7 +18,7 @@ pub trait GraphicsContext {
     fn load_font(
         &mut self,
         name: &str,
-        bytes: &[u8],
+        path: &str,
         rows: usize,
         cols: usize,
         padding: Option<(f32, f32)>,

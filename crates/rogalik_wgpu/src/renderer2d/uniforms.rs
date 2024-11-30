@@ -36,12 +36,13 @@ impl Uniforms {
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, bytemuck::NoUninit, bytemuck::Zeroable)]
 pub struct GlobalsUniform {
-    time: f32,
+    pub time: f32,
+    pub rw: u32, // rendering dim
+    pub rh: u32,
+    pub vw: u32, // viewport dim
+    pub vh: u32,
 }
 impl GlobalsUniform {
-    pub fn set_time(&mut self, time: f32) {
-        self.time = time;
-    }
     pub fn get_bind_group(
         &self,
         device: &wgpu::Device,

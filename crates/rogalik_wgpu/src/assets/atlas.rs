@@ -31,6 +31,9 @@ impl SpriteAtlas {
             sprite_h: sp_h,
         }
     }
+    pub fn get_sprite_size(&self) -> (f32, f32) {
+        (self.sprite_w, self.sprite_h)
+    }
     pub fn get_sprite(
         &self,
         index: usize,

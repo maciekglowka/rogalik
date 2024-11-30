@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use winit::window::Window;
 
 use rogalik_common::{EngineError, GraphicsContext, ResourceId, SpriteParams};
-use rogalik_math::vectors::Vector2f;
+use rogalik_math::vectors::{vector2::Vector2, Vector2f};
 
 pub use assets::shader::BuiltInShader;
 
@@ -41,6 +41,12 @@ impl WgpuContext {
             time: 0.,
         }
     }
+    fn resize_renderer(&mut self) {
+        if let Some(state) = &self.surface_state {
+            self.renderer2d
+                .resize(state.config.width, state.config.height);
+        }
+    }
     fn resize_cameras(&mut self) {
         let (w, h) = if let Some((w, h)) = self.rendering_resolution {
             (w, h)
@@ -75,6 +81,7 @@ impl GraphicsContext for WgpuContext {
                 state.config.format,
             );
             self.resize_cameras();
+            self.resize_renderer();
         }
     }
     fn update_time(&mut self, delta: f32) {
@@ -89,13 +96,6 @@ impl GraphicsContext for WgpuContext {
         }
     }
     fn set_clear_color(&mut self, color: rogalik_common::Color) {
-        // let col = color.as_srgb();
-        // self.clear_color = wgpu::Color {
-        //     r: col[0] as f64,
-        //     g: col[1] as f64,
-        //     b: col[2] as f64,
-        //     a: col[3] as f64,
-        // };
         self.clear_color = utils::color_to_wgpu(color);
         self.renderer2d.set_clear_color(self.clear_color);
     }
@@ -114,6 +114,7 @@ impl GraphicsContext for WgpuContext {
                 );
             }
             self.resize_cameras();
+            self.resize_renderer();
         }
     }
     fn render(&mut self) {
@@ -155,12 +156,12 @@ impl GraphicsContext for WgpuContext {
     fn load_font(
         &mut self,
         name: &str,
-        bytes: &[u8],
+        path: &str,
         rows: usize,
         cols: usize,
         padding: Option<(f32, f32)>,
     ) {
-        self.assets.load_font(name, bytes, rows, cols, padding);
+        self.assets.load_font(name, path, rows, cols, padding);
     }
     fn add_post_process(
         &mut self,
@@ -221,12 +222,9 @@ impl GraphicsContext for WgpuContext {
         self.renderer2d.add_light(strength, color, position)
     }
     fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f {
-        // if let Some(font) = self.assets.get_font(font) {
-        //     font.text_dimensions(text, size)
-        // } else {
-        //     Vector2f::ZERO
-        // }
-        Vector2f::ZERO
+        self.assets
+            .get_text_dimensions(font, text, size)
+            .unwrap_or(Vector2f::ZERO)
     }
     fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId {
         let (w, h) = match &self.surface_state {
