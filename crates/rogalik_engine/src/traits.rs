@@ -12,11 +12,10 @@ pub trait Scene {
         &mut self,
         game: &mut Self::Game,
         context: &mut super::Context,
-    ) -> SceneResult<Self::Game>;
+    ) -> Option<SceneChange<Self::Game>>;
 }
 
-pub enum SceneResult<T: Game> {
-    None,
+pub enum SceneChange<T: Game> {
     Pop,
     Push(Box<dyn Scene<Game = T>>),
     Switch(Box<dyn Scene<Game = T>>),

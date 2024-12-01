@@ -1,6 +1,8 @@
+use std::sync::Arc;
 use winit::application::ApplicationHandler;
-use winit::event::WindowEvent;
+use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::keyboard::PhysicalKey;
 use winit::window::{Window, WindowAttributes, WindowId};
 
 use crate::{
@@ -13,7 +15,7 @@ pub struct App<T> {
     pub context: Context,
     pub game: T,
     pub scene_manager: SceneManager<T>,
-    window: Option<Window>,
+    window: Option<Arc<Window>>,
     window_attributes: WindowAttributes,
 }
 impl<T: Game> App<T> {
@@ -30,11 +32,11 @@ impl<T: Game> App<T> {
 
 impl<T: Game> ApplicationHandler for App<T> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        self.window = Some(
+        self.window = Some(Arc::new(
             event_loop
                 .create_window(self.window_attributes.clone())
                 .expect("Can't create window!"),
-        );
+        ));
         self.context.scale_factor = self
             .window
             .as_ref()
@@ -43,7 +45,7 @@ impl<T: Game> ApplicationHandler for App<T> {
         self.context.inner_size = self.window.as_ref().expect("No valid window!").inner_size();
         self.context
             .graphics
-            .create_context(self.window.as_ref().expect("No valid window!"));
+            .create_context(self.window.as_ref().expect("No valid window!").clone());
         self.game.resume(&mut self.context);
         self.game.resize(&mut self.context);
     }
@@ -62,6 +64,20 @@ impl<T: Game> ApplicationHandler for App<T> {
         match event {
             WindowEvent::KeyboardInput { event, .. } => {
                 self.context.input.handle_keyboard(&event);
+
+                // reload assets
+                #[cfg(debug_assertions)]
+                if let PhysicalKey::Code(code) = event.physical_key {
+                    if let ElementState::Pressed = event.state {
+                        // TODO add CTRL or SHIFT modifier
+                        if code == winit::keyboard::KeyCode::F5 {
+                            if let Ok(mut store) = self.context.assets.lock() {
+                                store.reload_modified();
+                            }
+                            self.context.graphics.update_assets();
+                        }
+                    }
+                }
             }
             WindowEvent::MouseInput { button, state, .. } => {
                 self.context.input.handle_mouse_button(&button, &state);
@@ -88,7 +104,7 @@ impl<T: Game> ApplicationHandler for App<T> {
             WindowEvent::Resized(physical_size) => {
                 if !self.context.graphics.has_context() {
                     if let Some(window) = &self.window {
-                        self.context.graphics.create_context(window);
+                        self.context.graphics.create_context(window.clone());
                     }
                 }
                 log::info!("Resized: {:?}", physical_size);
@@ -105,6 +121,9 @@ impl<T: Game> ApplicationHandler for App<T> {
             WindowEvent::RedrawRequested => {
                 // let start = std::time::Instant::now();
                 self.context.time.update();
+                self.context
+                    .graphics
+                    .update_time(self.context.time.get_delta());
                 update_scenes(&mut self.scene_manager, &mut self.game, &mut self.context);
 
                 self.context.graphics.render();

@@ -1,63 +1,109 @@
+use std::sync::{Arc, Mutex};
 use winit::window::Window;
 
-use rogalik_common::{EngineError, GraphicsContext, Params2d, ResourceId};
+use rogalik_common::{EngineError, GraphicsContext, ResourceId, SpriteParams};
 use rogalik_math::vectors::Vector2f;
 
+pub use assets::shader::BuiltInShader;
+
 mod assets;
-mod camera;
 mod renderer2d;
 mod structs;
+mod utils;
+
+const MAX_TIME: f32 = 3600.;
 
 struct SurfaceState {
-    surface: wgpu::Surface,
+    surface: wgpu::Surface<'static>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
-    renderer2d: renderer2d::Renderer2d,
 }
 
 pub struct WgpuContext {
-    assets: assets::AssetStore,
+    assets: assets::WgpuAssets,
     current_camera_id: ResourceId,
-    cameras: Vec<camera::Camera2D>,
     clear_color: wgpu::Color,
+    renderer2d: renderer2d::Renderer2d,
+    rendering_resolution: Option<(u32, u32)>,
     surface_state: Option<SurfaceState>,
+    time: f32,
 }
-impl GraphicsContext for WgpuContext {
-    fn new() -> Self {
+impl WgpuContext {
+    pub fn new(asset_store: Arc<Mutex<rogalik_assets::AssetStore>>) -> Self {
         Self {
-            assets: assets::AssetStore::new(),
+            assets: assets::WgpuAssets::new(asset_store),
             current_camera_id: ResourceId::default(),
-            cameras: Vec::new(),
             clear_color: wgpu::Color::BLACK,
+            renderer2d: renderer2d::Renderer2d::new(),
+            rendering_resolution: None,
             surface_state: None,
+            time: 0.,
         }
     }
+    /// Returns (vw, vh, rw, rh)
+    fn get_current_resolutions(&self) -> (u32, u32, u32, u32) {
+        let (w, h) = match &self.surface_state {
+            Some(s) => (s.config.width, s.config.height),
+            None => (0, 0),
+        };
+        let (rw, rh) = match self.rendering_resolution {
+            Some((rw, rh)) => (rw, rh),
+            None => (w, h),
+        };
+        (w, h, rw, rh)
+    }
+    fn resize_renderer(&mut self) {
+        if let Some(state) = &self.surface_state {
+            self.renderer2d
+                .resize(state.config.width, state.config.height);
+        }
+    }
+    fn resize_cameras(&mut self) {
+        let (vw, vh, rw, rh) = self.get_current_resolutions();
+        for camera in self.assets.iter_cameras_mut() {
+            camera.resize_viewport(vw as f32, vh as f32, rw as f32, rh as f32);
+        }
+    }
+}
+impl GraphicsContext for WgpuContext {
     fn has_context(&self) -> bool {
         self.surface_state.is_some()
     }
-    fn create_context(&mut self, window: &Window) {
-        self.surface_state = create_surface_state(window, &self.assets, self.clear_color);
-        if self.surface_state.is_some() {
-            for camera in self.cameras.iter_mut() {
-                camera.resize_viewport(
-                    self.surface_state.as_ref().unwrap().config.width as f32,
-                    self.surface_state.as_ref().unwrap().config.height as f32,
-                );
-            }
+    fn create_context(&mut self, window: Arc<Window>) {
+        self.surface_state = create_surface_state(window);
+        if let Some(state) = &self.surface_state {
+            let w = state.config.width;
+            let h = state.config.height;
+
+            let _ = self
+                .assets
+                .create_wgpu_data(&state.device, &state.queue, &state.config.format);
+            let _ = self.renderer2d.create_wgpu_data(
+                &self.assets,
+                w,
+                h,
+                &state.device,
+                state.config.format,
+            );
+            self.resize_cameras();
+            self.resize_renderer();
+        }
+    }
+    fn update_time(&mut self, delta: f32) {
+        self.time += delta;
+        self.time = self.time % MAX_TIME;
+    }
+    fn update_assets(&mut self) {
+        if let Some(state) = &self.surface_state {
+            let _ = self
+                .assets
+                .update_assets(&state.device, &state.queue, &state.config.format);
         }
     }
     fn set_clear_color(&mut self, color: rogalik_common::Color) {
-        let col = color.as_srgb();
-        self.clear_color = wgpu::Color {
-            r: col[0] as f64,
-            g: col[1] as f64,
-            b: col[2] as f64,
-            a: col[3] as f64,
-        };
-        if let Some(state) = &mut self.surface_state {
-            state.renderer2d.set_clear_color(self.clear_color);
-        };
+        self.clear_color = utils::color_to_wgpu(color);
+        self.renderer2d.set_clear_color(self.clear_color);
     }
     fn resize(&mut self, width: u32, height: u32) {
         if width > 0 && height > 0 {
@@ -65,39 +111,70 @@ impl GraphicsContext for WgpuContext {
                 state.config.width = width;
                 state.config.height = height;
                 state.surface.configure(&state.device, &state.config);
+                let _ = self.renderer2d.create_wgpu_data(
+                    &self.assets,
+                    width,
+                    height,
+                    &state.device,
+                    state.config.format,
+                );
             }
-
-            for camera in self.cameras.iter_mut() {
-                camera.resize_viewport(width as f32, height as f32);
-            }
+            self.resize_cameras();
+            self.resize_renderer();
         }
     }
     fn render(&mut self) {
         if let Some(state) = &mut self.surface_state {
-            state
-                .renderer2d
-                .render(&state.surface, &state.device, &state.queue, &self.cameras);
+            let _ = self.renderer2d.render(
+                &self.assets,
+                self.time,
+                &state.surface,
+                &state.device,
+                &state.queue,
+            );
         }
     }
-    fn load_sprite_atlas(
-        &mut self,
-        name: &str,
-        bytes: &[u8],
-        rows: usize,
-        cols: usize,
-        padding: Option<(f32, f32)>,
-    ) {
-        self.assets.load_atlas(name, bytes, rows, cols, padding);
+    fn set_rendering_resolution(&mut self, w: u32, h: u32) {
+        self.rendering_resolution = Some((w, h));
+        if self
+            .renderer2d
+            .set_rendering_resolution(&self.assets, w, h)
+            .is_ok()
+        {
+            if let Some(state) = &self.surface_state {
+                let _ = self.renderer2d.create_upscale_pass(
+                    &self.assets,
+                    &state.device,
+                    state.config.format,
+                );
+            }
+        }
+        self.resize_cameras();
+    }
+    fn load_material(&mut self, name: &str, params: rogalik_common::MaterialParams) {
+        self.assets.create_material(name, params);
+        // TODO if self.surface_state build bind_group
+    }
+    fn load_shader(&mut self, kind: rogalik_common::ShaderKind, path: &str) -> ResourceId {
+        // TODO if self.surface_state build pipeline
+        self.assets.create_shader(kind, path)
     }
     fn load_font(
         &mut self,
         name: &str,
-        bytes: &[u8],
+        path: &str,
         rows: usize,
         cols: usize,
         padding: Option<(f32, f32)>,
     ) {
-        self.assets.load_font(name, bytes, rows, cols, padding);
+        self.assets.load_font(name, path, rows, cols, padding);
+    }
+    fn add_post_process(
+        &mut self,
+        shader_id: ResourceId,
+        filtering: rogalik_common::TextureFiltering,
+    ) {
+        self.renderer2d.add_post_process(shader_id, filtering);
     }
     fn draw_atlas_sprite(
         &mut self,
@@ -106,22 +183,18 @@ impl GraphicsContext for WgpuContext {
         position: rogalik_math::vectors::Vector2f,
         z_index: i32,
         size: rogalik_math::vectors::Vector2f,
-        params: Params2d,
+        params: SpriteParams,
     ) -> Result<(), EngineError> {
-        if let Some(state) = &mut self.surface_state {
-            state.renderer2d.draw_atlas_sprite(
-                &self.assets,
-                index,
-                atlas,
-                self.current_camera_id,
-                position,
-                z_index,
-                size,
-                params,
-            )
-        } else {
-            Err(EngineError::GraphicsNotReady)
-        }
+        self.renderer2d.draw_atlas_sprite(
+            &self.assets,
+            index,
+            atlas,
+            self.current_camera_id,
+            position,
+            z_index,
+            size,
+            params,
+        )
     }
     fn draw_text(
         &mut self,
@@ -130,59 +203,82 @@ impl GraphicsContext for WgpuContext {
         position: Vector2f,
         z_index: i32,
         size: f32,
-        params: Params2d,
+        params: SpriteParams,
     ) -> Result<(), EngineError> {
-        if let Some(state) = &mut self.surface_state {
-            state.renderer2d.draw_text(
-                &self.assets,
-                font,
-                text,
-                self.current_camera_id,
-                position,
-                z_index,
-                size,
-                params,
-            )
-        } else {
-            Err(EngineError::GraphicsNotReady)
-        }
+        self.renderer2d.draw_text(
+            &self.assets,
+            font,
+            text,
+            self.current_camera_id,
+            position,
+            z_index,
+            size,
+            params,
+        )
+    }
+    fn draw_mesh(
+        &mut self,
+        material: &str,
+        vertices: &[Vector2f],
+        uvs: &[Vector2f],
+        indices: &[u16],
+        z_index: i32,
+    ) -> Result<(), EngineError> {
+        let vs = vertices
+            .iter()
+            .zip(uvs)
+            .map(|(v, uv)| crate::structs::Vertex {
+                position: [v.x, v.y, 0.],
+                color: [1., 1., 1., 1.],
+                tex_coords: [uv.x, uv.y],
+            })
+            // TODO allocation can be avoided here
+            .collect::<Vec<_>>();
+        self.renderer2d.draw_mesh(
+            &self.assets,
+            material,
+            self.current_camera_id,
+            &vs,
+            indices,
+            z_index,
+        )
+    }
+    fn set_ambient(&mut self, color: rogalik_common::Color) {
+        self.renderer2d.set_ambient(color);
+    }
+    fn add_light(
+        &mut self,
+        strength: f32,
+        color: rogalik_common::Color,
+        position: Vector2f,
+    ) -> Result<(), EngineError> {
+        self.renderer2d.add_light(strength, color, position)
     }
     fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f {
-        if let Some(font) = self.assets.get_font(font) {
-            font.text_dimensions(text, size)
-        } else {
-            Vector2f::ZERO
-        }
+        self.assets
+            .get_text_dimensions(font, text, size)
+            .unwrap_or(Vector2f::ZERO)
     }
     fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId {
-        let id = ResourceId(self.cameras.len());
-        let (w, h) = match &self.surface_state {
-            Some(s) => (s.config.width, s.config.height),
-            None => (0, 0),
-        };
-        let camera = camera::Camera2D::new(w as f32, h as f32, scale, target);
-        self.cameras.push(camera);
-        id
+        let (vw, vh, rw, rh) = self.get_current_resolutions();
+        self.assets
+            .create_camera(vw as f32, vh as f32, rw as f32, rh as f32, scale, target)
     }
     fn set_camera(&mut self, id: ResourceId) {
         self.current_camera_id = id;
     }
     fn get_current_camera(&self) -> &dyn rogalik_common::Camera {
-        &self.cameras[self.current_camera_id.0]
+        self.assets.get_camera(self.current_camera_id).unwrap()
     }
     fn get_camera(&self, id: ResourceId) -> Option<&dyn rogalik_common::Camera> {
-        Some(self.cameras.get(id.0)?)
+        Some(self.assets.get_camera(id)?)
     }
     fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut dyn rogalik_common::Camera> {
-        Some(self.cameras.get_mut(id.0)?)
+        Some(self.assets.get_camera_mut(id)?)
     }
 }
 
-fn create_surface_state(
-    window: &Window,
-    assets: &assets::AssetStore,
-    clear_color: wgpu::Color,
-) -> Option<SurfaceState> {
+fn create_surface_state(window: Arc<Window>) -> Option<SurfaceState> {
     let size = window.inner_size();
 
     if size.width == 0 || size.height == 0 {
@@ -192,10 +288,10 @@ fn create_surface_state(
     log::debug!("Creating WGPU instance");
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends: wgpu::Backends::all(),
-        dx12_shader_compiler: Default::default(),
+        ..Default::default()
     });
     log::debug!("Creating WGPU surface");
-    let surface = unsafe { instance.create_surface(window) }.unwrap();
+    let surface = instance.create_surface(window).unwrap();
     log::debug!("Creating WGPU adapter");
     let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::default(),
@@ -206,13 +302,14 @@ fn create_surface_state(
     log::debug!("Creating WGPU device");
     let (device, queue) = pollster::block_on(adapter.request_device(
         &wgpu::DeviceDescriptor {
-            features: wgpu::Features::empty(),
-            limits: if cfg!(target_arch = "wasm32") {
+            required_features: wgpu::Features::empty(),
+            required_limits: if cfg!(target_arch = "wasm32") {
                 wgpu::Limits::downlevel_webgl2_defaults()
             } else {
                 wgpu::Limits::default()
             },
             label: None,
+            memory_hints: Default::default(),
         },
         None,
     ))
@@ -247,18 +344,14 @@ fn create_surface_state(
         present_mode,
         alpha_mode: surface_caps.alpha_modes[0],
         view_formats: vec![],
+        desired_maximum_frame_latency: 2,
     };
     surface.configure(&device, &config);
-
-    log::debug!("Creating Renderer2d");
-    let renderer2d =
-        renderer2d::Renderer2d::new(assets, &device, &queue, &surface_format, clear_color);
 
     Some(SurfaceState {
         surface,
         device,
         queue,
         config,
-        renderer2d,
     })
 }

@@ -1,3 +1,5 @@
+use rogalik_wgpu::WgpuContext;
+use std::sync::{Arc, Mutex};
 #[cfg(target_os = "android")]
 pub use winit::platform::android::activity::AndroidApp;
 use winit::{
@@ -18,11 +20,13 @@ pub mod traits;
 mod wasm;
 
 pub use log;
-pub use rogalik_common::{Color, GraphicsContext, Params2d, ResourceId};
 pub use time::Instant;
-pub use traits::{Game, Scene, SceneResult};
+pub use traits::{Game, Scene, SceneChange};
+
+use rogalik_assets::AssetStore;
 
 pub struct Context {
+    pub assets: Arc<Mutex<rogalik_assets::AssetStore>>,
     pub graphics: rogalik_wgpu::WgpuContext,
     pub input: input::InputContext,
     pub time: time::Time,
@@ -48,6 +52,8 @@ pub struct EngineBuilder {
     title: Option<String>,
     physical_size: Option<(u32, u32)>,
     logical_size: Option<(f32, f32)>,
+    resizable: bool,
+    fullscreen: bool,
 }
 impl EngineBuilder {
     pub fn new() -> Self {
@@ -65,6 +71,14 @@ impl EngineBuilder {
         self.logical_size = Some((w, h));
         self
     }
+    pub fn resizable(mut self, val: bool) -> Self {
+        self.resizable = val;
+        self
+    }
+    pub fn fullscreen(mut self, val: bool) -> Self {
+        self.fullscreen = val;
+        self
+    }
     pub fn build<T>(&self, game: T, scene: Box<dyn traits::Scene<Game = T>>) -> Engine<T>
     where
         T: Game + 'static,
@@ -75,13 +89,14 @@ impl EngineBuilder {
 
         // set window
         let event_loop = app::get_event_loop();
-        // let event_loop = EventLoop::new().expect("Can't create the event loop!");
-        // let mut window_builder = WindowBuilder::new();
         let mut window_attributes = WindowAttributes::default();
 
         if let Some(title) = &self.title {
             window_attributes = window_attributes.with_title(title);
         }
+
+        window_attributes.resizable = self.resizable;
+
         if let Some(size) = self.physical_size {
             let window_size = PhysicalSize::new(size.0, size.1);
             window_attributes = window_attributes.with_inner_size(window_size);
@@ -90,8 +105,15 @@ impl EngineBuilder {
             window_attributes = window_attributes.with_inner_size(window_size);
         }
 
-        let graphics = GraphicsContext::new();
+        if self.fullscreen {
+            window_attributes = window_attributes
+                .with_fullscreen(Some(winit::window::Fullscreen::Borderless(None)));
+        }
+
+        let assets = Arc::new(Mutex::new(AssetStore::default()));
+        let graphics = WgpuContext::new(assets.clone());
         let context = Context {
+            assets,
             graphics,
             input: input::InputContext::new(),
             time: time::Time::new(),
@@ -105,10 +127,9 @@ impl EngineBuilder {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub fn build_wasm<G, T>(&self, game: T) -> Engine<G, T>
+    pub fn build_wasm<T>(&self, game: T, scene: Box<dyn traits::Scene<Game = T>>) -> Engine<T>
     where
-        G: GraphicsContext + 'static,
-        T: Game<G> + 'static,
+        T: Game + 'static,
     {
         wasm::configure_handlers();
         log::info!("Logging configured");

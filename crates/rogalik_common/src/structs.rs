@@ -5,6 +5,11 @@ use rogalik_math::vectors::Vector2f;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub struct ResourceId(pub usize);
+impl ResourceId {
+    pub fn next(&self) -> Self {
+        Self(self.0 + 1)
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
@@ -35,7 +40,7 @@ impl Default for Color {
 }
 
 #[derive(Clone, Copy, Default)]
-pub struct Params2d {
+pub struct SpriteParams {
     pub color: Color,
     pub flip_x: bool,
     pub flip_y: bool,
@@ -49,7 +54,48 @@ fn srgb_single(v: f32) -> f32 {
     ((v + 0.055) / 1.055).powf(2.4)
 }
 
+#[derive(Debug)]
 pub enum EngineError {
+    InvalidResource,
     ResourceNotFound,
+    GraphicsInternalError,
     GraphicsNotReady,
+}
+
+#[derive(Clone, Copy, Default)]
+pub struct MaterialParams<'a> {
+    pub atlas: Option<AtlasParams>,
+    pub diffuse_path: &'a str,
+    pub normal_path: Option<&'a str>,
+    pub shader: Option<ResourceId>,
+    pub repeat: TextureRepeat,
+    pub filtering: TextureFiltering,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct AtlasParams {
+    pub cols: usize,
+    pub rows: usize,
+    pub padding: Option<(f32, f32)>,
+}
+
+#[derive(Clone, Copy, Default)]
+pub enum TextureRepeat {
+    #[default]
+    Clamp,
+    Repeat,
+    MirrorRepeat,
+}
+
+#[derive(Clone, Copy, Default)]
+pub enum TextureFiltering {
+    #[default]
+    Nearest,
+    Linear,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+pub enum ShaderKind {
+    Sprite,
+    PostProcess,
 }
