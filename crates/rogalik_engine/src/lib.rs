@@ -84,8 +84,8 @@ impl EngineBuilder {
         T: Game + 'static,
     {
         // set logging
-        #[cfg(not(target_os = "android"))]
-        env_logger::init();
+        // #[cfg(not(target_os = "android"))]
+        // env_logger::init();
 
         // set window
         let event_loop = app::get_event_loop();
