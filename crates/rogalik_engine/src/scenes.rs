@@ -44,7 +44,7 @@ pub fn update_scenes<T: Game>(
                 scene.exit(game, context);
             }
             if let Some(scene) = scene_manager.current_mut() {
-                scene.retore(game, context);
+                scene.restore(game, context);
             }
         }
         Some(SceneChange::Push(mut scene)) => {

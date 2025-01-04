@@ -8,7 +8,7 @@ pub trait Scene {
     type Game: Game;
     fn enter(&mut self, _game: &mut Self::Game, _context: &mut super::Context) {}
     fn exit(&mut self, _game: &mut Self::Game, _context: &mut super::Context) {}
-    fn retore(&mut self, _game: &mut Self::Game, _context: &mut super::Context) {}
+    fn restore(&mut self, _game: &mut Self::Game, _context: &mut super::Context) {}
     fn update(
         &mut self,
         game: &mut Self::Game,
