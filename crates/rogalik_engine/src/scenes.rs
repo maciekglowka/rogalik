@@ -43,6 +43,9 @@ pub fn update_scenes<T: Game>(
             if let Some(mut scene) = scene_manager.pop() {
                 scene.exit(game, context);
             }
+            if let Some(scene) = scene_manager.current_mut() {
+                scene.retore(game, context);
+            }
         }
         Some(SceneChange::Push(mut scene)) => {
             scene.enter(game, context);
