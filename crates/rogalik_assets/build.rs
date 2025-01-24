@@ -16,7 +16,8 @@ fn embedded() {
         return;
     };
     let asset_dir = Path::new(&asset_dir_var);
-    println!("cargo::rerun-if-changed={}", asset_dir.to_string_lossy());
+    println!("cargo:rerun-if-changed={}", asset_dir.to_string_lossy());
+    println!("cargo:rerun-if-env-changed=ROGALIK_ASSETS");
 
     let mut asset_file =
         File::create(&dest_path).expect(&format!("Can't create the asset_file at {:?}", dest_path));
