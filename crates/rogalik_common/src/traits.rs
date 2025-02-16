@@ -62,6 +62,7 @@ pub trait GraphicsContext {
     fn set_camera(&mut self, id: ResourceId);
     fn get_camera(&self, id: ResourceId) -> Option<&dyn Camera>;
     fn get_current_camera(&self) -> &dyn Camera;
+    fn get_current_camera_mut(&mut self) -> &mut dyn Camera;
     fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut dyn Camera>;
 }
 

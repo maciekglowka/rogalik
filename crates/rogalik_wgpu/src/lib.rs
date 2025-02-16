@@ -270,6 +270,9 @@ impl GraphicsContext for WgpuContext {
     fn get_current_camera(&self) -> &dyn rogalik_common::Camera {
         self.assets.get_camera(self.current_camera_id).unwrap()
     }
+    fn get_current_camera_mut(&mut self) -> &mut dyn rogalik_common::Camera {
+        self.assets.get_camera_mut(self.current_camera_id).unwrap()
+    }
     fn get_camera(&self, id: ResourceId) -> Option<&dyn rogalik_common::Camera> {
         Some(self.assets.get_camera(id)?)
     }
