@@ -51,11 +51,13 @@ pub fn update_scenes<T: Game>(
             scene.enter(game, context);
             scene_manager.push(scene);
         }
-        Some(SceneChange::Switch(mut new_scene)) => {
-            new_scene.enter(game, context);
+        Some(SceneChange::Switch(new_scene)) => {
             if let Some(mut old_scene) = scene_manager.switch(new_scene) {
                 old_scene.exit(game, context)
             }
+            if let Some(mut new) = scene_manager.current_mut() {
+                new.enter(game, context)
+            };
         }
     };
 }
