@@ -1,20 +1,20 @@
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
     event::{ElementState, KeyEvent},
-    keyboard::PhysicalKey
+    keyboard::PhysicalKey,
 };
 
+use rogalik_math::vectors::Vector2f;
 pub use winit::{
     event::{MouseButton, TouchPhase},
-    keyboard::KeyCode
+    keyboard::KeyCode,
 };
-use rogalik_math::vectors::Vector2f;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Touch {
     pub position: Vector2f,
-    pub phase: TouchPhase
+    pub phase: TouchPhase,
 }
 
 pub struct InputContext {
@@ -27,7 +27,7 @@ pub struct InputContext {
     mouse_physical_position: Vector2f,
     // mouse_logical_position: Vector2f,
     touches: HashMap<u64, Touch>,
-    touch_click: bool
+    touch_click: bool,
 }
 impl InputContext {
     pub fn new() -> Self {
@@ -40,24 +40,32 @@ impl InputContext {
             mouse_buttons_released: HashSet::new(),
             mouse_physical_position: Vector2f::ZERO,
             touches: HashMap::new(),
-            touch_click: true
+            touch_click: true,
         }
     }
     pub fn clear(&mut self) {
-        self.keys_pressed = HashSet::new();
-        self.keys_released = HashSet::new();
-        self.mouse_buttons_pressed = HashSet::new();
-        self.mouse_buttons_released = HashSet::new();
+        self.keys_pressed.clear();
+        self.keys_released.clear();
+        self.mouse_buttons_pressed.clear();
+        self.mouse_buttons_released.clear();
         // self.touches.retain(|_, t| t.phase != TouchPhase::Ended && t.phase != TouchPhase::Cancelled);
-        self.touches = HashMap::new();
+        self.touches.clear();
     }
-    fn calculate_position(&self, position: PhysicalPosition<f64>, window_size: &PhysicalSize<u32>) -> Vector2f {
+    fn calculate_position(
+        &self,
+        position: PhysicalPosition<f64>,
+        window_size: &PhysicalSize<u32>,
+    ) -> Vector2f {
         Vector2f::new(
             position.x as f32,
             window_size.height as f32 - position.y as f32,
         )
     }
-    pub fn handle_mouse_move(&mut self, position: PhysicalPosition<f64>, window_size: &PhysicalSize<u32>) {
+    pub fn handle_mouse_move(
+        &mut self,
+        position: PhysicalPosition<f64>,
+        window_size: &PhysicalSize<u32>,
+    ) {
         self.mouse_physical_position = self.calculate_position(position, window_size);
     }
     pub fn handle_keyboard(&mut self, event: &KeyEvent) {
@@ -68,11 +76,11 @@ impl InputContext {
                         self.keys_pressed.insert(code);
                         self.keys_down.insert(code);
                     }
-                },
+                }
                 ElementState::Released => {
                     self.keys_down.remove(&code);
                     self.keys_released.insert(code);
-                },
+                }
             };
         }
     }
@@ -83,11 +91,11 @@ impl InputContext {
                     self.mouse_buttons_down.insert(*button);
                     self.mouse_buttons_pressed.insert(*button);
                 }
-            },
+            }
             ElementState::Released => {
                 self.mouse_buttons_down.remove(button);
                 self.mouse_buttons_released.insert(*button);
-            },
+            }
         };
     }
     pub fn handle_touch(
@@ -97,16 +105,24 @@ impl InputContext {
         position: PhysicalPosition<f64>,
         window_size: &PhysicalSize<u32>,
     ) {
-        self.touches.insert(id, Touch { phase, position: self.calculate_position(position, window_size) });
+        self.touches.insert(
+            id,
+            Touch {
+                phase,
+                position: self.calculate_position(position, window_size),
+            },
+        );
 
         if self.touch_click {
             match phase {
                 TouchPhase::Started => {
                     self.handle_mouse_button(&MouseButton::Left, &ElementState::Pressed);
                     self.handle_mouse_move(position, window_size);
-                },
-                TouchPhase::Ended => self.handle_mouse_button(&MouseButton::Left, &ElementState::Released),
-                _ => ()
+                }
+                TouchPhase::Ended => {
+                    self.handle_mouse_button(&MouseButton::Left, &ElementState::Released)
+                }
+                _ => (),
             };
         }
     }
