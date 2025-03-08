@@ -2,6 +2,8 @@ use rogalik_wgpu::WgpuContext;
 use std::sync::{Arc, Mutex};
 #[cfg(target_os = "android")]
 pub use winit::platform::android::activity::AndroidApp;
+#[cfg(target_arch = "wasm32")]
+use winit::platform::web::WindowAttributesExtWebSys;
 use winit::{
     dpi::{LogicalSize, PhysicalSize},
     event_loop::EventLoop,
@@ -133,25 +135,27 @@ impl EngineBuilder {
     {
         wasm::configure_handlers();
         log::info!("Logging configured");
-        let event_loop = EventLoop::new().expect("Can't create the event loop!");
-        let window = wasm::get_window(&event_loop);
+        let event_loop = app::get_event_loop();
         log::info!("Created WASM window");
-        log::info!("{:?}", window.inner_size());
-        let graphics = GraphicsContext::new();
+
+        let assets = Arc::new(Mutex::new(AssetStore::default()));
+        let graphics = WgpuContext::new(assets.clone());
         let context = Context {
+            assets,
             graphics,
             input: input::InputContext::new(),
             time: time::Time::new(),
-            inner_size: window.inner_size(),
-            scale_factor: window.scale_factor(),
-            window,
+            inner_size: PhysicalSize::default(),
+            scale_factor: 1.,
             os_path: None,
         };
-        Engine {
-            event_loop,
-            game,
-            context,
-        }
+
+        let canvas = wasm::get_canvas();
+        let window_attributes = WindowAttributes::default().with_canvas(Some(canvas));
+        let mut app = app::App::new(game, context, window_attributes);
+        app.scene_manager.push(scene);
+
+        Engine { event_loop, app }
     }
 
     #[cfg(target_os = "android")]

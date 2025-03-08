@@ -75,10 +75,12 @@ impl GraphicsContext for WgpuContext {
         if let Some(state) = &self.surface_state {
             let w = state.config.width;
             let h = state.config.height;
+            log::debug!("State config dim: {}, {}", w, h);
 
             let _ = self
                 .assets
                 .create_wgpu_data(&state.device, &state.queue, &state.config.format);
+            log::debug!("Asset data created");
             let _ = self.renderer2d.create_wgpu_data(
                 &self.assets,
                 w,
@@ -86,6 +88,7 @@ impl GraphicsContext for WgpuContext {
                 &state.device,
                 state.config.format,
             );
+            log::debug!("Renderer2d data created");
             self.resize_cameras();
             self.resize_renderer();
         }
@@ -135,6 +138,7 @@ impl GraphicsContext for WgpuContext {
         }
     }
     fn set_rendering_resolution(&mut self, w: u32, h: u32) {
+        log::debug!("Setting rendering resolution at: {}x{}", w, h);
         self.rendering_resolution = Some((w, h));
         if self
             .renderer2d
@@ -282,13 +286,20 @@ impl GraphicsContext for WgpuContext {
 }
 
 fn create_surface_state(window: Arc<Window>) -> Option<SurfaceState> {
-    let size = window.inner_size();
+    log::debug!("Creating WGPU instance");
+    #[cfg(not(target_arch = "wasm32"))]
+    let size = (window.inner_size().width, window.inner_size().height);
+    #[cfg(target_arch = "wasm32")]
+    let size = (
+        (window.inner_size().width as f64 / window.scale_factor()) as u32,
+        (window.inner_size().height as f64 / window.scale_factor()) as u32,
+    );
+    log::debug!("Size: {:?}", size);
 
-    if size.width == 0 || size.height == 0 {
+    if size.0 == 0 || size.1 == 0 {
         return None;
     }
 
-    log::debug!("Creating WGPU instance");
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends: wgpu::Backends::all(),
         ..Default::default()
@@ -320,12 +331,14 @@ fn create_surface_state(window: Arc<Window>) -> Option<SurfaceState> {
 
     log::debug!("Config WGPU surface");
     let surface_caps = surface.get_capabilities(&adapter);
+    log::debug!("WGPU surface capabilities: {:?}", surface_caps);
     let surface_format = surface_caps
         .formats
         .iter()
         .copied()
         .find(|f| f.is_srgb())
         .unwrap_or(surface_caps.formats[0]);
+    log::debug!("WGPU surface format: {:?}", surface_format);
 
     let present_mode = if surface_caps
         .present_modes
@@ -338,18 +351,21 @@ fn create_surface_state(window: Arc<Window>) -> Option<SurfaceState> {
     } else {
         surface_caps.present_modes[0]
     };
+    log::debug!("WGPU present mode: {:?}", present_mode);
 
     let config = wgpu::SurfaceConfiguration {
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
         format: surface_format,
-        width: size.width,
-        height: size.height,
+        width: size.0,
+        height: size.1,
         present_mode,
         alpha_mode: surface_caps.alpha_modes[0],
         view_formats: vec![],
         desired_maximum_frame_latency: 2,
     };
+    log::debug!("WGPU surface config: {:?}", config);
     surface.configure(&device, &config);
+    log::debug!("WGPU surface configured");
 
     Some(SurfaceState {
         surface,

@@ -5,6 +5,7 @@ use rogalik_common::{EngineError, ResourceId};
 use super::uniforms::UniformKind;
 use crate::assets::{bind_groups::BindGroupLayoutKind, WgpuAssets};
 
+#[derive(Debug)]
 pub struct PostProcessPass {
     pub shader_id: ResourceId,
     bind_group: Option<wgpu::BindGroup>,

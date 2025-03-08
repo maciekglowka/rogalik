@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use winit::application::ApplicationHandler;
+use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::PhysicalKey;
@@ -28,10 +29,42 @@ impl<T: Game> App<T> {
             window_attributes,
         }
     }
+    #[cfg(not(target_arch = "wasm32"))]
+    fn set_inner_size_on_resume(&mut self) {
+        self.context.inner_size = self.window.as_ref().expect("No valid window!").inner_size();
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn set_inner_size_on_resume(&mut self) {
+        let (w, h) = crate::wasm::canvas_size();
+        self.context.inner_size = PhysicalSize {
+            width: w,
+            height: h,
+        };
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    fn resize(&mut self, physical_size: PhysicalSize<u32>) {
+        self.context.inner_size = physical_size;
+        self.context
+            .graphics
+            .resize(physical_size.width, physical_size.height);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn resize(&mut self, physical_size: PhysicalSize<u32>) {
+        let (w, h) = crate::wasm::canvas_size();
+        let size = PhysicalSize {
+            width: w,
+            height: h,
+        };
+        self.context.inner_size = size;
+        self.context.graphics.resize(size.width, size.height);
+    }
 }
 
 impl<T: Game> ApplicationHandler for App<T> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        log::info!("App resume");
         self.window = Some(Arc::new(
             event_loop
                 .create_window(self.window_attributes.clone())
@@ -42,7 +75,10 @@ impl<T: Game> ApplicationHandler for App<T> {
             .as_ref()
             .expect("No valid window!")
             .scale_factor();
-        self.context.inner_size = self.window.as_ref().expect("No valid window!").inner_size();
+        log::info!("Scale factor set to: {:?}", self.context.scale_factor);
+
+        self.set_inner_size_on_resume();
+        log::info!("Inner size set to: {:?}", self.context.inner_size);
         self.context
             .graphics
             .create_context(self.window.as_ref().expect("No valid window!").clone());
@@ -108,10 +144,11 @@ impl<T: Game> ApplicationHandler for App<T> {
                     }
                 }
                 log::info!("Resized: {:?}", physical_size);
-                self.context.inner_size = physical_size;
-                self.context
-                    .graphics
-                    .resize(physical_size.width, physical_size.height);
+                // self.context.inner_size = physical_size;
+                // self.context
+                //     .graphics
+                //     .resize(physical_size.width, physical_size.height);
+                self.resize(physical_size);
                 self.game.resize(&mut self.context);
             }
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {

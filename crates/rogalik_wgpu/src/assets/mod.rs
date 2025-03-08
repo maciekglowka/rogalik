@@ -85,10 +85,12 @@ impl WgpuAssets {
             .ok_or(EngineError::GraphicsInternalError)?;
 
         for material in self.materials.iter_mut() {
+            log::debug!("Creating material: {:?}", material);
             material.create_wgpu_data(&mut store, device, queue, material_layout)?;
         }
 
         for shader in self.shaders.iter_mut() {
+            log::debug!("Creating shader: {:?}", shader);
             shader.create_wgpu_data(&mut store, device, texture_format, &self.pipeline_layouts)?;
         }
         Ok(())

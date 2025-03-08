@@ -65,6 +65,7 @@ impl Renderer2d {
         texture_format: wgpu::TextureFormat,
     ) -> Result<(), EngineError> {
         if let Some((w, h)) = self.rendering_resolution {
+            log::debug!("Creating upscale pass with w:{}, h:{}", w, h);
             return self
                 .upscale_pass
                 .as_mut()
@@ -107,6 +108,7 @@ impl Renderer2d {
         device: &wgpu::Device,
         texture_format: wgpu::TextureFormat,
     ) {
+        log::debug!("Creating Renderer2d data with w:{}, h:{}", width, height);
         for pass in self.post_process_passes.iter_mut() {
             let _ = pass.create_wgpu_data(assets, width, height, device, texture_format);
         }

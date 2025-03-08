@@ -28,10 +28,10 @@ winit = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1"
-console_log = "1.0"
+# console_log = "1.0"
 wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = [
-    "Document", "Window", "Element", "HtmlCollection"
+    "Document", "Window", "Element", "HtmlCollection", "Performance"
 ]}
 
 [target.'cfg(target_os = "android")'.dependencies]

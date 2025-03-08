@@ -6,7 +6,7 @@ use rogalik_common::{EngineError, ResourceId, ShaderKind};
 use super::bind_groups::BindGroupLayoutKind;
 use crate::structs::Vertex;
 
-#[derive(Hash, Eq, PartialEq)]
+#[derive(Hash, Eq, PartialEq, Debug)]
 pub enum BuiltInShader {
     SpriteUnlit,
     SpriteLit,
@@ -29,6 +29,7 @@ pub fn get_pipeline_layouts(
     ]))
 }
 
+#[derive(Debug)]
 pub struct Shader {
     pub asset_id: ResourceId,
     pub kind: ShaderKind,

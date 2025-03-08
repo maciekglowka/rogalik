@@ -41,6 +41,7 @@ pub struct GlobalsUniform {
     pub rh: u32,
     pub vw: u32, // viewport dim
     pub vh: u32,
+    _padding: [u32; 3], // for WASM
 }
 impl GlobalsUniform {
     pub fn get_bind_group(

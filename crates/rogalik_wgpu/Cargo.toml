@@ -24,6 +24,6 @@ default-features = false
 features = ["png"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wgpu = { version = "0.17", features = ["webgl"] }
+wgpu = { version = "23.0", features = ["webgl"] }
 
 
