@@ -55,7 +55,7 @@ pub fn update_scenes<T: Game>(
             if let Some(mut old_scene) = scene_manager.switch(new_scene) {
                 old_scene.exit(game, context)
             }
-            if let Some(mut new) = scene_manager.current_mut() {
+            if let Some(new) = scene_manager.current_mut() {
                 new.enter(game, context)
             };
         }
