@@ -37,8 +37,13 @@ impl Vector2<i32> {
     pub fn as_f32(&self) -> Vector2<f32> {
         Vector2::<f32>::new(self.x as f32, self.y as f32)
     }
+    #[inline(always)]
     pub fn len(&self) -> f32 {
         self.as_f32().len()
+    }
+    #[inline(always)]
+    pub fn len_sq(&self) -> f32 {
+        self.as_f32().len_sq()
     }
     pub fn angle(&self, other: &Self) -> f32 {
         self.as_f32().angle(&other.as_f32())
@@ -68,8 +73,13 @@ impl Vector2<f32> {
     pub const RIGHT: Vector2<f32> = Vector2::<f32> { x: 1., y: 0. };
     pub const ZERO: Vector2<f32> = Vector2::<f32> { x: 0., y: 0. };
 
+    #[inline(always)]
     pub fn len(&self) -> f32 {
-        (self.x * self.x + self.y * self.y).sqrt()
+        self.len_sq().sqrt()
+    }
+    #[inline(always)]
+    pub fn len_sq(&self) -> f32 {
+        self.x * self.x + self.y * self.y
     }
     pub fn angle(&self, other: &Self) -> f32 {
         (self.dot(other) / (self.len() * other.len())).acos()
