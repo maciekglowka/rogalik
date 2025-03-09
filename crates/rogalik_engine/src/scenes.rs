@@ -5,10 +5,14 @@ use crate::{
 
 pub struct SceneManager<T> {
     scenes: Vec<Box<dyn Scene<Game = T>>>,
+    initialized: bool,
 }
 impl<T> SceneManager<T> {
     pub fn new() -> Self {
-        Self { scenes: Vec::new() }
+        Self {
+            scenes: Vec::new(),
+            initialized: false,
+        }
     }
 }
 impl<T: Game> SceneManager<T> {
@@ -26,6 +30,12 @@ impl<T: Game> SceneManager<T> {
     pub fn current_mut(&mut self) -> Option<&mut Box<dyn Scene<Game = T>>> {
         self.scenes.last_mut()
     }
+    pub fn initialize(&mut self, game: &mut T, context: &mut Context) {
+        self.initialized = true;
+        self.current_mut()
+            .expect("No scene found!")
+            .enter(game, context);
+    }
 }
 
 pub fn update_scenes<T: Game>(
@@ -33,6 +43,12 @@ pub fn update_scenes<T: Game>(
     game: &mut T,
     context: &mut Context,
 ) {
+    // TODO find a better way to enter first scene on start?
+    if !scene_manager.initialized {
+        scene_manager.initialize(game, context);
+        return;
+    }
+
     let mut scene_result = None;
     if let Some(scene) = scene_manager.current_mut() {
         scene_result = scene.update(game, context);
