@@ -29,36 +29,14 @@ impl<T: Game> App<T> {
             window_attributes,
         }
     }
-    #[cfg(not(target_arch = "wasm32"))]
     fn set_inner_size_on_resume(&mut self) {
         self.context.inner_size = self.window.as_ref().expect("No valid window!").inner_size();
     }
-
-    #[cfg(target_arch = "wasm32")]
-    fn set_inner_size_on_resume(&mut self) {
-        let (w, h) = crate::wasm::canvas_size();
-        self.context.inner_size = PhysicalSize {
-            width: w,
-            height: h,
-        };
-    }
-    #[cfg(not(target_arch = "wasm32"))]
     fn resize(&mut self, physical_size: PhysicalSize<u32>) {
         self.context.inner_size = physical_size;
         self.context
             .graphics
             .resize(physical_size.width, physical_size.height);
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    fn resize(&mut self, physical_size: PhysicalSize<u32>) {
-        let (w, h) = crate::wasm::canvas_size();
-        let size = PhysicalSize {
-            width: w,
-            height: h,
-        };
-        self.context.inner_size = size;
-        self.context.graphics.resize(size.width, size.height);
     }
 }
 
@@ -144,10 +122,6 @@ impl<T: Game> ApplicationHandler for App<T> {
                     }
                 }
                 log::info!("Resized: {:?}", physical_size);
-                // self.context.inner_size = physical_size;
-                // self.context
-                //     .graphics
-                //     .resize(physical_size.width, physical_size.height);
                 self.resize(physical_size);
                 self.game.resize(&mut self.context);
             }

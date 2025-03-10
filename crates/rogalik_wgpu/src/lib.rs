@@ -51,7 +51,6 @@ impl WgpuContext {
     }
     /// Returns (vw, vh, rw, rh)
     fn get_current_resolutions(&self) -> (u32, u32, u32, u32) {
-        // let (w, h) = match &self.surface_state {
         let (w, h) = match self.surface_state.lock() {
             Ok(s) => match s.as_ref() {
                 Some(s) => (s.config.width, s.config.height),
@@ -347,14 +346,7 @@ async fn create_surface_state(
     window: Arc<Window>,
 ) {
     log::debug!("Creating WGPU instance");
-    #[cfg(not(target_arch = "wasm32"))]
     let size = (window.inner_size().width, window.inner_size().height);
-    #[cfg(target_arch = "wasm32")]
-    let size = (
-        (window.inner_size().width as f64 / window.scale_factor()) as u32,
-        (window.inner_size().height as f64 / window.scale_factor()) as u32,
-    );
-    log::debug!("Size: {:?}", size);
 
     if size.0 == 0 || size.1 == 0 {
         return;
@@ -367,12 +359,7 @@ async fn create_surface_state(
     log::debug!("Creating WGPU surface");
     let surface = instance.create_surface(window).unwrap();
     log::debug!("Creating WGPU adapter");
-    // let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-    //     power_preference: wgpu::PowerPreference::default(),
-    //     compatible_surface: Some(&surface),
-    //     force_fallback_adapter: false,
-    // }))
-    // .expect("Request for adapter failed!");
+
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::default(),
@@ -381,21 +368,8 @@ async fn create_surface_state(
         })
         .await
         .expect("Request for adapter failed!");
+
     log::debug!("Creating WGPU device");
-    // let (device, queue) = pollster::block_on(adapter.request_device(
-    //     &wgpu::DeviceDescriptor {
-    //         required_features: wgpu::Features::empty(),
-    //         required_limits: if cfg!(target_arch = "wasm32") {
-    //             wgpu::Limits::downlevel_webgl2_defaults()
-    //         } else {
-    //             wgpu::Limits::default()
-    //         },
-    //         label: None,
-    //         memory_hints: Default::default(),
-    //     },
-    //     None,
-    // ))
-    // .expect("Could not create the device!");
     let (device, queue) = adapter
         .request_device(
             &wgpu::DeviceDescriptor {

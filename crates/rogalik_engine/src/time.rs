@@ -17,12 +17,12 @@ impl Time {
             delta: 1.0,
             timers: HashMap::default(),
             next_timer_id: 0,
-            frame_start: Instant::init(),
+            frame_start: Instant::now(),
         }
     }
     pub fn update(&mut self) {
         self.delta = self.frame_start.elapsed();
-        self.frame_start = Instant::init();
+        self.frame_start = Instant::now();
         for timer in self.timers.values_mut() {
             timer.update(self.delta);
         }
@@ -83,7 +83,7 @@ pub struct Instant {
     inner: f64,
 }
 impl Instant {
-    pub fn init() -> Self {
+    pub fn now() -> Self {
         Self {
             #[cfg(not(target_arch = "wasm32"))]
             inner: std::time::Instant::now(),
