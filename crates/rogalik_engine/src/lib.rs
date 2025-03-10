@@ -229,11 +229,11 @@ where
     T: Game + 'static,
 {
     pub fn run(self) {
-        pollster::block_on(run::<T>(self.event_loop, self.app));
+        run::<T>(self.event_loop, self.app);
     }
 }
 
-async fn run<T>(event_loop: EventLoop<()>, mut app: app::App<T>)
+fn run<T>(event_loop: EventLoop<()>, mut app: app::App<T>)
 where
     T: Game + 'static,
 {

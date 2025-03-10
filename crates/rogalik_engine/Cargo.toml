@@ -19,7 +19,6 @@ rogalik_wgpu = { path = "../rogalik_wgpu" }
 
 cfg-if = "1"
 log = { workspace = true }
-pollster = { workspace = true }
 serde = { workspace = true, optional = true }
 winit = { workspace = true }
 

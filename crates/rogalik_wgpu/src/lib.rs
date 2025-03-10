@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
 use winit::window::Window;
 
 use rogalik_common::{EngineError, GraphicsContext, ResourceId, SpriteParams};
@@ -13,6 +16,11 @@ mod utils;
 
 const MAX_TIME: f32 = 3600.;
 
+// because of WASM
+// static SURFACE_STATE: Arc<Mutex<Option<SurfaceState>>> = Arc::new(Mutex::new(None));
+// static mut SURFACE_STATE: Option<Arc<Mutex<SurfaceState>>> = None;
+static SURFACE_REFRESH: AtomicBool = AtomicBool::new(false);
+
 struct SurfaceState {
     surface: wgpu::Surface<'static>,
     device: wgpu::Device,
@@ -26,7 +34,7 @@ pub struct WgpuContext {
     clear_color: wgpu::Color,
     renderer2d: renderer2d::Renderer2d,
     rendering_resolution: Option<(u32, u32)>,
-    surface_state: Option<SurfaceState>,
+    surface_state: Arc<Mutex<Option<SurfaceState>>>, // because of WASM
     time: f32,
 }
 impl WgpuContext {
@@ -37,15 +45,19 @@ impl WgpuContext {
             clear_color: wgpu::Color::BLACK,
             renderer2d: renderer2d::Renderer2d::new(),
             rendering_resolution: None,
-            surface_state: None,
+            surface_state: Arc::new(Mutex::new(None)),
             time: 0.,
         }
     }
     /// Returns (vw, vh, rw, rh)
     fn get_current_resolutions(&self) -> (u32, u32, u32, u32) {
-        let (w, h) = match &self.surface_state {
-            Some(s) => (s.config.width, s.config.height),
-            None => (0, 0),
+        // let (w, h) = match &self.surface_state {
+        let (w, h) = match self.surface_state.lock() {
+            Ok(s) => match s.as_ref() {
+                Some(s) => (s.config.width, s.config.height),
+                _ => (0, 0),
+            },
+            _ => (0, 0),
         };
         let (rw, rh) = match self.rendering_resolution {
             Some((rw, rh)) => (rw, rh),
@@ -54,9 +66,11 @@ impl WgpuContext {
         (w, h, rw, rh)
     }
     fn resize_renderer(&mut self) {
-        if let Some(state) = &self.surface_state {
-            self.renderer2d
-                .resize(state.config.width, state.config.height);
+        if let Ok(state) = self.surface_state.lock() {
+            if let Some(state) = state.as_ref() {
+                self.renderer2d
+                    .resize(state.config.width, state.config.height);
+            }
         }
     }
     fn resize_cameras(&mut self) {
@@ -65,43 +79,77 @@ impl WgpuContext {
             camera.resize_viewport(vw as f32, vh as f32, rw as f32, rh as f32);
         }
     }
+    fn post_surface_state(&mut self) {
+        if let Ok(state) = self.surface_state.lock() {
+            if let Some(state) = state.as_ref() {
+                let w = state.config.width;
+                let h = state.config.height;
+                log::debug!("State config dim: {}, {}", w, h);
+
+                let _ =
+                    self.assets
+                        .create_wgpu_data(&state.device, &state.queue, &state.config.format);
+                log::debug!("Asset data created");
+                let _ = self.renderer2d.create_wgpu_data(
+                    &self.assets,
+                    w,
+                    h,
+                    &state.device,
+                    state.config.format,
+                );
+                log::debug!("Renderer2d data created");
+            }
+            SURFACE_REFRESH.store(false, Ordering::Relaxed);
+        }
+        self.resize_cameras();
+        self.resize_renderer();
+    }
 }
 impl GraphicsContext for WgpuContext {
     fn has_context(&self) -> bool {
-        self.surface_state.is_some()
+        match self.surface_state.lock() {
+            Ok(s) => s.is_some(),
+            _ => false,
+        }
     }
     fn create_context(&mut self, window: Arc<Window>) {
-        self.surface_state = create_surface_state(window);
-        if let Some(state) = &self.surface_state {
-            let w = state.config.width;
-            let h = state.config.height;
-            log::debug!("State config dim: {}, {}", w, h);
+        #[cfg(not(target_arch = "wasm32"))]
+        pollster::block_on(create_surface_state(self.surface_state.clone(), window));
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(create_surface_state(self.surface_state.clone(), window));
+        // self.surface_state = create_surface_state(window);
+        // if let Some(state) = &self.surface_state {
+        //     let w = state.config.width;
+        //     let h = state.config.height;
+        //     log::debug!("State config dim: {}, {}", w, h);
 
-            let _ = self
-                .assets
-                .create_wgpu_data(&state.device, &state.queue, &state.config.format);
-            log::debug!("Asset data created");
-            let _ = self.renderer2d.create_wgpu_data(
-                &self.assets,
-                w,
-                h,
-                &state.device,
-                state.config.format,
-            );
-            log::debug!("Renderer2d data created");
-            self.resize_cameras();
-            self.resize_renderer();
-        }
+        //     let _ = self
+        //         .assets
+        //         .create_wgpu_data(&state.device, &state.queue, &state.config.format);
+        //     log::debug!("Asset data created");
+        //     let _ = self.renderer2d.create_wgpu_data(
+        //         &self.assets,
+        //         w,
+        //         h,
+        //         &state.device,
+        //         state.config.format,
+        //     );
+        //     log::debug!("Renderer2d data created");
+        //     self.resize_cameras();
+        //     self.resize_renderer();
+        // }
     }
     fn update_time(&mut self, delta: f32) {
         self.time += delta;
         self.time = self.time % MAX_TIME;
     }
     fn update_assets(&mut self) {
-        if let Some(state) = &self.surface_state {
-            let _ = self
-                .assets
-                .update_assets(&state.device, &state.queue, &state.config.format);
+        if let Ok(state) = self.surface_state.lock() {
+            if let Some(state) = state.as_ref() {
+                let _ =
+                    self.assets
+                        .update_assets(&state.device, &state.queue, &state.config.format);
+            }
         }
     }
     fn set_clear_color(&mut self, color: rogalik_common::Color) {
@@ -110,31 +158,38 @@ impl GraphicsContext for WgpuContext {
     }
     fn resize(&mut self, width: u32, height: u32) {
         if width > 0 && height > 0 {
-            if let Some(state) = &mut self.surface_state {
-                state.config.width = width;
-                state.config.height = height;
-                state.surface.configure(&state.device, &state.config);
-                let _ = self.renderer2d.create_wgpu_data(
-                    &self.assets,
-                    width,
-                    height,
-                    &state.device,
-                    state.config.format,
-                );
+            if let Ok(mut state) = self.surface_state.lock() {
+                if let Some(state) = state.as_mut() {
+                    state.config.width = width;
+                    state.config.height = height;
+                    state.surface.configure(&state.device, &state.config);
+                    let _ = self.renderer2d.create_wgpu_data(
+                        &self.assets,
+                        width,
+                        height,
+                        &state.device,
+                        state.config.format,
+                    );
+                }
             }
             self.resize_cameras();
             self.resize_renderer();
         }
     }
     fn render(&mut self) {
-        if let Some(state) = &mut self.surface_state {
-            let _ = self.renderer2d.render(
-                &self.assets,
-                self.time,
-                &state.surface,
-                &state.device,
-                &state.queue,
-            );
+        if SURFACE_REFRESH.load(Ordering::Relaxed) {
+            self.post_surface_state();
+        }
+        if let Ok(state) = self.surface_state.lock() {
+            if let Some(state) = state.as_ref() {
+                let _ = self.renderer2d.render(
+                    &self.assets,
+                    self.time,
+                    &state.surface,
+                    &state.device,
+                    &state.queue,
+                );
+            }
         }
     }
     fn set_rendering_resolution(&mut self, w: u32, h: u32) {
@@ -145,12 +200,14 @@ impl GraphicsContext for WgpuContext {
             .set_rendering_resolution(&self.assets, w, h)
             .is_ok()
         {
-            if let Some(state) = &self.surface_state {
-                let _ = self.renderer2d.create_upscale_pass(
-                    &self.assets,
-                    &state.device,
-                    state.config.format,
-                );
+            if let Ok(state) = self.surface_state.lock() {
+                if let Some(state) = state.as_ref() {
+                    let _ = self.renderer2d.create_upscale_pass(
+                        &self.assets,
+                        &state.device,
+                        state.config.format,
+                    );
+                }
             }
         }
         self.resize_cameras();
@@ -285,7 +342,10 @@ impl GraphicsContext for WgpuContext {
     }
 }
 
-fn create_surface_state(window: Arc<Window>) -> Option<SurfaceState> {
+async fn create_surface_state(
+    surface_state: Arc<Mutex<Option<SurfaceState>>>,
+    window: Arc<Window>,
+) {
     log::debug!("Creating WGPU instance");
     #[cfg(not(target_arch = "wasm32"))]
     let size = (window.inner_size().width, window.inner_size().height);
@@ -297,7 +357,7 @@ fn create_surface_state(window: Arc<Window>) -> Option<SurfaceState> {
     log::debug!("Size: {:?}", size);
 
     if size.0 == 0 || size.1 == 0 {
-        return None;
+        return;
     }
 
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -307,27 +367,51 @@ fn create_surface_state(window: Arc<Window>) -> Option<SurfaceState> {
     log::debug!("Creating WGPU surface");
     let surface = instance.create_surface(window).unwrap();
     log::debug!("Creating WGPU adapter");
-    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-        power_preference: wgpu::PowerPreference::default(),
-        compatible_surface: Some(&surface),
-        force_fallback_adapter: false,
-    }))
-    .expect("Request for adapter failed!");
+    // let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+    //     power_preference: wgpu::PowerPreference::default(),
+    //     compatible_surface: Some(&surface),
+    //     force_fallback_adapter: false,
+    // }))
+    // .expect("Request for adapter failed!");
+    let adapter = instance
+        .request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::default(),
+            compatible_surface: Some(&surface),
+            force_fallback_adapter: false,
+        })
+        .await
+        .expect("Request for adapter failed!");
     log::debug!("Creating WGPU device");
-    let (device, queue) = pollster::block_on(adapter.request_device(
-        &wgpu::DeviceDescriptor {
-            required_features: wgpu::Features::empty(),
-            required_limits: if cfg!(target_arch = "wasm32") {
-                wgpu::Limits::downlevel_webgl2_defaults()
-            } else {
-                wgpu::Limits::default()
+    // let (device, queue) = pollster::block_on(adapter.request_device(
+    //     &wgpu::DeviceDescriptor {
+    //         required_features: wgpu::Features::empty(),
+    //         required_limits: if cfg!(target_arch = "wasm32") {
+    //             wgpu::Limits::downlevel_webgl2_defaults()
+    //         } else {
+    //             wgpu::Limits::default()
+    //         },
+    //         label: None,
+    //         memory_hints: Default::default(),
+    //     },
+    //     None,
+    // ))
+    // .expect("Could not create the device!");
+    let (device, queue) = adapter
+        .request_device(
+            &wgpu::DeviceDescriptor {
+                required_features: wgpu::Features::empty(),
+                required_limits: if cfg!(target_arch = "wasm32") {
+                    wgpu::Limits::downlevel_webgl2_defaults()
+                } else {
+                    wgpu::Limits::default()
+                },
+                label: None,
+                memory_hints: Default::default(),
             },
-            label: None,
-            memory_hints: Default::default(),
-        },
-        None,
-    ))
-    .expect("Could not create the device!");
+            None,
+        )
+        .await
+        .expect("Could not create the device!");
 
     log::debug!("Config WGPU surface");
     let surface_caps = surface.get_capabilities(&adapter);
@@ -367,10 +451,13 @@ fn create_surface_state(window: Arc<Window>) -> Option<SurfaceState> {
     surface.configure(&device, &config);
     log::debug!("WGPU surface configured");
 
-    Some(SurfaceState {
-        surface,
-        device,
-        queue,
-        config,
-    })
+    if let Ok(mut state) = surface_state.lock() {
+        *state = Some(SurfaceState {
+            surface,
+            device,
+            queue,
+            config,
+        });
+    };
+    SURFACE_REFRESH.store(true, Ordering::Relaxed);
 }

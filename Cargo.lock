@@ -1309,7 +1309,6 @@ dependencies = [
  "jni",
  "log",
  "ndk-context",
- "pollster",
  "rogalik_assets",
  "rogalik_common",
  "rogalik_math",
@@ -1364,6 +1363,7 @@ dependencies = [
  "rogalik_assets",
  "rogalik_common",
  "rogalik_math",
+ "wasm-bindgen-futures",
  "wgpu",
  "winit",
 ]

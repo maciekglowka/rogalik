@@ -12,7 +12,7 @@ rogalik_math = { path = "../rogalik_math" }
 
 bytemuck = { version = "1.12", features = ["derive"] }
 log = { workspace = true }
-pollster = { workspace = true }
+pollster = "0.3"
 
 wgpu = "23.0"
 winit = { workspace = true }
@@ -25,5 +25,6 @@ features = ["png"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wgpu = { version = "23.0", features = ["webgl"] }
+wasm-bindgen-futures = "0.4"
 
 
