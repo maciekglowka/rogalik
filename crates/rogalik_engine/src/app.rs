@@ -178,6 +178,9 @@ impl<T: Game> ApplicationHandler for App<T> {
 
 pub fn get_event_loop() -> EventLoop<()> {
     let event_loop = EventLoop::new().expect("Can't create the event loop!");
+    #[cfg(not(target_arch = "wasm32"))]
     event_loop.set_control_flow(ControlFlow::Poll);
+    #[cfg(target_arch = "wasm32")]
+    event_loop.set_control_flow(ControlFlow::Wait);
     event_loop
 }
