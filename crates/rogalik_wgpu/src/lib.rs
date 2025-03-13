@@ -116,27 +116,6 @@ impl GraphicsContext for WgpuContext {
         pollster::block_on(create_surface_state(self.surface_state.clone(), window));
         #[cfg(target_arch = "wasm32")]
         wasm_bindgen_futures::spawn_local(create_surface_state(self.surface_state.clone(), window));
-        // self.surface_state = create_surface_state(window);
-        // if let Some(state) = &self.surface_state {
-        //     let w = state.config.width;
-        //     let h = state.config.height;
-        //     log::debug!("State config dim: {}, {}", w, h);
-
-        //     let _ = self
-        //         .assets
-        //         .create_wgpu_data(&state.device, &state.queue, &state.config.format);
-        //     log::debug!("Asset data created");
-        //     let _ = self.renderer2d.create_wgpu_data(
-        //         &self.assets,
-        //         w,
-        //         h,
-        //         &state.device,
-        //         state.config.format,
-        //     );
-        //     log::debug!("Renderer2d data created");
-        //     self.resize_cameras();
-        //     self.resize_renderer();
-        // }
     }
     fn update_time(&mut self, delta: f32) {
         self.time += delta;
@@ -353,7 +332,8 @@ async fn create_surface_state(
     }
 
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-        backends: wgpu::Backends::all(),
+        // backends: wgpu::Backends::all(),
+        backends: get_backends(),
         ..Default::default()
     });
     log::debug!("Creating WGPU surface");
@@ -434,4 +414,13 @@ async fn create_surface_state(
         });
     };
     SURFACE_REFRESH.store(true, Ordering::Relaxed);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn get_backends() -> wgpu::Backends {
+    wgpu::Backends::all()
+}
+#[cfg(target_arch = "wasm32")]
+fn get_backends() -> wgpu::Backends {
+    wgpu::Backends::GL
 }
