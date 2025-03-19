@@ -350,15 +350,12 @@ async fn create_surface_state(
         .expect("Request for adapter failed!");
 
     log::debug!("Creating WGPU device");
+
     let (device, queue) = adapter
         .request_device(
             &wgpu::DeviceDescriptor {
                 required_features: wgpu::Features::empty(),
-                required_limits: if cfg!(target_arch = "wasm32") {
-                    wgpu::Limits::downlevel_webgl2_defaults()
-                } else {
-                    wgpu::Limits::default()
-                },
+                required_limits: get_limits(),
                 label: None,
                 memory_hints: Default::default(),
             },
@@ -423,4 +420,15 @@ fn get_backends() -> wgpu::Backends {
 #[cfg(target_arch = "wasm32")]
 fn get_backends() -> wgpu::Backends {
     wgpu::Backends::GL
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn get_limits() -> wgpu::Limits {
+    wgpu::Limits::default()
+}
+#[cfg(target_arch = "wasm32")]
+fn get_limits() -> wgpu::Limits {
+    let mut limits = wgpu::Limits::downlevel_webgl2_defaults();
+    limits.max_color_attachments = 4;
+    limits
 }
