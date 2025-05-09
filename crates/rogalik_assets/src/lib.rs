@@ -56,4 +56,5 @@ pub trait AssetContext: Default {
     fn from_bytes(&mut self, data: &'static [u8]) -> ResourceId;
     fn load(&mut self, path: &str) -> Result<ResourceId, EngineError>;
     fn get(&self, asset_id: ResourceId) -> Option<&Asset>;
+    fn mark_read(&mut self, _asset_id: ResourceId) {}
 }

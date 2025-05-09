@@ -6,6 +6,7 @@ pub use rogalik_storage as storage;
 pub use rogalik_wgpu as wgpu;
 
 pub mod prelude {
+    pub use rogalik_assets::AssetContext;
     pub use rogalik_common::*;
     pub use rogalik_engine::{Context, EngineBuilder, Game, Scene, SceneChange};
     pub use rogalik_math::vectors::{Vector2f, Vector2i};

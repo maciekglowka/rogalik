@@ -2,6 +2,7 @@ pub trait Game {
     fn setup(&mut self, context: &mut super::Context);
     fn resize(&mut self, _context: &mut super::Context) {}
     fn resume(&mut self, _context: &mut super::Context) {}
+    fn reload_assets(&mut self, _context: &mut super::Context) {}
 }
 
 pub trait Scene {

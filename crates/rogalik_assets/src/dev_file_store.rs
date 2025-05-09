@@ -51,11 +51,6 @@ impl DevFileStore {
             }
         }
     }
-    pub fn mark_read(&mut self, asset_id: ResourceId) {
-        if let Some(asset) = self.assets.get_mut(&asset_id) {
-            asset.state = AssetState::Loaded;
-        }
-    }
     fn bump_id(&mut self) {
         self.next_id = self.next_id.next();
     }
@@ -90,6 +85,11 @@ impl AssetContext for DevFileStore {
     }
     fn get(&self, asset_id: ResourceId) -> Option<&Asset> {
         self.assets.get(&asset_id)
+    }
+    fn mark_read(&mut self, asset_id: ResourceId) {
+        if let Some(asset) = self.assets.get_mut(&asset_id) {
+            asset.state = AssetState::Loaded;
+        }
     }
 }
 struct FileAssetMeta {

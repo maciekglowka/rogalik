@@ -89,6 +89,7 @@ impl<T: Game> ApplicationHandler for App<T> {
                                 store.reload_modified();
                             }
                             self.context.graphics.update_assets();
+                            self.game.reload_assets(&mut self.context);
                         }
                     }
                 }
