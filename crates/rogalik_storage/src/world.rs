@@ -6,279 +6,74 @@ use std::{
 
 use rogalik_events::EventBus;
 
-use crate::component::Component;
-use crate::component_storage::{ComponentCell, ComponentSet, ComponentStorage};
-use crate::entity::{Entity, EntityStorage};
+use crate::components::Components;
+use crate::entity::{Entities, Entity};
 use crate::errors::WorldError;
-use crate::resource::ResourceCell;
-use crate::{Storage, WorldEvent};
-
-#[cfg(feature = "serialize")]
-use crate::serialize::StorageRegistry;
+use crate::query::{IntoQuery, Query};
 
 #[derive(Default)]
 pub struct World {
-    pub(crate) component_storage: HashMap<TypeId, Box<dyn ComponentStorage>>,
-    pub(crate) entity_storage: EntityStorage,
-    pub(crate) resource_storage: HashMap<TypeId, Box<dyn Storage>>,
-    #[cfg(feature = "serialize")]
-    pub(crate) component_registry: StorageRegistry<Box<dyn ComponentStorage>>,
-    #[cfg(feature = "serialize")]
-    pub(crate) resource_registry: StorageRegistry<Box<dyn Storage>>,
+    entities: Entities,
+    components: Components,
 }
 impl World {
     pub fn new() -> Self {
-        let mut world = World {
-            component_storage: HashMap::new(),
-            resource_storage: HashMap::new(),
-            entity_storage: EntityStorage::new(),
-            #[cfg(feature = "serialize")]
-            component_registry: StorageRegistry::<Box<dyn ComponentStorage>>::new(),
-            #[cfg(feature = "serialize")]
-            resource_registry: StorageRegistry::<Box<dyn Storage>>::new(),
-        };
-        let events = EventBus::<WorldEvent>::new();
-        world.insert_resource(events);
-        world
-    }
-
-    // events
-
-    fn publish(&self, event: WorldEvent) {
-        if let Some(bus) = self.get_resource_mut::<EventBus<WorldEvent>>() {
-            bus.publish(event);
+        Self {
+            entities: Entities::new(),
+            components: Components::new(),
         }
     }
 
     // entities
 
-    pub fn spawn_entity(&mut self) -> Entity {
-        self.entity_storage.spawn()
+    pub fn spawn(&mut self) -> Entity {
+        self.entities.spawn()
     }
-    pub fn despawn_entity(&mut self, entity: Entity) {
-        self.entity_storage.despawn(entity);
-        for (type_id, storage) in self.component_storage.iter() {
-            if storage.remove_untyped(entity).is_some() {
-                self.publish(WorldEvent::ComponentRemoved(entity, *type_id))
-            }
-        }
+    pub fn despawn(&mut self, entity: Entity) {
+        self.entities.despawn(entity);
+        // for (type_id, storage) in self.component_storage.iter() {
+        //     // TODO
+        //     if storage.remove_untyped(entity).is_some() {}
+        // }
     }
 
     // components
-    pub fn get_component_set<T: Component + 'static>(&self) -> Option<Ref<ComponentSet<T>>> {
-        let type_id = TypeId::of::<T>();
-        let storage = self.component_storage.get(&type_id)?;
-        let cell: &ComponentCell<T> = storage.as_any().downcast_ref()?;
-        Some(cell.inner.borrow())
-    }
-    pub fn get_component_set_mut<T: Component + 'static>(&self) -> Option<RefMut<ComponentSet<T>>> {
-        let type_id = TypeId::of::<T>();
-        let storage = self.component_storage.get(&type_id)?;
-        let cell: &ComponentCell<T> = storage.as_any().downcast_ref()?;
-        Some(cell.inner.borrow_mut())
-    }
-    fn insert_component_storage<T: Component + 'static>(&mut self) {
-        let type_id = TypeId::of::<T>();
-        let set = ComponentSet::<T>::new();
-        let storage = ComponentCell {
-            inner: RefCell::new(set),
-        };
-        self.component_storage.insert(type_id, Box::new(storage));
-    }
-    pub fn insert_component<T: Component + 'static>(
-        &mut self,
-        entity: Entity,
-        component: T,
-    ) -> Result<(), WorldError> {
-        let type_id = TypeId::of::<T>();
-        if !self.component_storage.contains_key(&type_id) {
-            self.insert_component_storage::<T>()
-        }
-        let res = self
-            .get_component_set_mut()
-            .ok_or(WorldError::EntityError)?
-            .insert(entity, component);
-        if res.is_ok() {
-            self.publish(WorldEvent::ComponentSpawned(entity, type_id))
-        }
-        res
-    }
-    pub fn remove_component<T: Component + 'static>(&mut self, entity: Entity) -> Option<T> {
-        let type_id = TypeId::of::<T>();
-        let res = self.get_component_set_mut()?.remove(entity);
-        if res.is_some() {
-            self.publish(WorldEvent::ComponentRemoved(entity, type_id))
-        }
-        res
-    }
-    pub fn get_component<T: Component + 'static>(&self, entity: Entity) -> Option<Ref<T>> {
-        let set = self.get_component_set::<T>()?;
-        Ref::filter_map(set, |s| s.get(entity)).ok()
-    }
-    pub fn get_component_mut<T: Component + 'static>(&self, entity: Entity) -> Option<RefMut<T>> {
-        let set = self.get_component_set_mut::<T>()?;
-        RefMut::filter_map(set, |s| s.get_mut(entity)).ok()
-    }
-    pub fn get_entity_components(&self, entity: Entity) -> Vec<Box<Ref<'_, dyn Component>>> {
-        self.component_storage
-            .values()
-            .filter_map(|a| a.get_as_component(entity))
-            .collect::<Vec<_>>()
-    }
 
-    // resources
-
-    pub fn get_resource<T: 'static>(&self) -> Option<Ref<T>> {
-        let type_id = TypeId::of::<T>();
-        let storage = self.resource_storage.get(&type_id)?;
-        let cell: &ResourceCell<T> = storage.as_any().downcast_ref()?;
-        Some(cell.inner.borrow())
-    }
-    pub fn get_resource_mut<T: 'static>(&self) -> Option<RefMut<T>> {
-        let type_id = TypeId::of::<T>();
-        let storage = self.resource_storage.get(&type_id)?;
-        let cell: &ResourceCell<T> = storage.as_any().downcast_ref()?;
-        Some(cell.inner.borrow_mut())
-    }
-    pub fn insert_resource<T: 'static>(&mut self, resource: T) {
-        let type_id = TypeId::of::<T>();
-        let storage = ResourceCell {
-            inner: RefCell::new(resource),
-        };
-        self.resource_storage.insert(type_id, Box::new(storage));
+    pub fn insert<T: 'static>(&mut self, entity: Entity, value: T) {
+        self.components.insert(entity, value);
     }
 
     // query
 
-    pub fn query<T: 'static + Component>(&self) -> QueryBuilder {
-        QueryBuilder::new::<T>(self)
+    pub fn query<'a, T: IntoQuery>(&'a self) -> Query<'a, T> {
+        Query::new(&self.components)
     }
 }
 
-pub struct QueryBuilder<'a> {
-    world: &'a World,
-    inner: HashSet<Entity>,
-}
-impl<'a> QueryBuilder<'a> {
-    pub fn new<T: 'static + Component>(world: &World) -> QueryBuilder {
-        let entities = match world.get_component_set::<T>() {
-            Some(c) => c.hashset(),
-            _ => HashSet::new(),
-        };
-        QueryBuilder {
-            inner: entities,
-            world,
-        }
-    }
-    pub fn with<T: 'static + Component>(self) -> QueryBuilder<'a> {
-        let h = match self.world.get_component_set::<T>() {
-            Some(c) => c.hashset(),
-            _ => HashSet::new(),
-        };
-        let entities = self.inner.intersection(&h);
-        QueryBuilder {
-            inner: entities.map(|e| *e).collect(),
-            world: self.world,
-        }
-    }
-    pub fn without<T: 'static + Component>(self) -> QueryBuilder<'a> {
-        let h = match self.world.get_component_set::<T>() {
-            Some(c) => c.hashset(),
-            _ => HashSet::new(),
-        };
-        let entities = self.inner.difference(&h);
-        QueryBuilder {
-            inner: entities.map(|e| *e).collect(),
-            world: self.world,
-        }
-    }
-    pub fn build(self) -> EntityQuery<'a> {
-        EntityQuery {
-            world: self.world,
-            entities: Vec::from_iter(self.inner),
-        }
-    }
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-pub struct EntityQuery<'a> {
-    world: &'a World,
-    entities: Vec<Entity>,
-}
-impl<'a> EntityQuery<'a> {
-    pub fn iter<T: Component + 'static>(&self) -> ComponentIterator<'_, T> {
-        ComponentIterator::new(self.world, &self.entities)
-    }
-    pub fn iter_mut<T: Component + 'static>(&self) -> ComponentIteratorMut<'_, T> {
-        ComponentIteratorMut::new(self.world, &self.entities)
-    }
-    pub fn entities(&self) -> std::slice::Iter<Entity> {
-        self.entities.iter()
-    }
-    pub fn single_entity(&self) -> Option<Entity> {
-        self.entities.get(0).map(|a| *a)
-    }
-    pub fn single<T: Component + 'static>(&self) -> Option<Ref<T>> {
-        let entity = self.entities.get(0)?;
-        self.world.get_component::<T>(*entity)
-    }
-    pub fn single_mut<T: Component + 'static>(&self) -> Option<RefMut<T>> {
-        let entity = self.entities.get(0)?;
-        self.world.get_component_mut::<T>(*entity)
-    }
-}
+    #[test]
+    fn query_two() {
+        let mut world = World::new();
 
-pub struct ComponentIterator<'a, T: Component + 'static> {
-    inner: std::slice::Iter<'a, Entity>,
-    cell: Option<&'a ComponentCell<T>>,
-}
-impl<'a, T: Component + 'static> ComponentIterator<'a, T> {
-    pub fn new(world: &'a World, entities: &'a Vec<Entity>) -> Self {
-        let type_id = TypeId::of::<T>();
-        let cell = if let Some(storage) = world.component_storage.get(&type_id) {
-            let cell: &ComponentCell<T> = storage.as_any().downcast_ref().unwrap();
-            Some(cell)
-        } else {
-            None
-        };
-        ComponentIterator {
-            inner: entities.iter(),
-            cell,
-        }
-    }
-}
-impl<'a, T: Component + 'static> Iterator for ComponentIterator<'a, T> {
-    type Item = Ref<'a, T>;
-    fn next(&mut self) -> Option<Self::Item> {
-        let entity = self.inner.next()?;
-        let set = self.cell?.inner.borrow();
-        Some(Ref::filter_map(set, |s| s.get(*entity)).ok()?)
-    }
-}
+        let a = world.spawn();
+        let b = world.spawn();
+        let c = world.spawn();
 
-pub struct ComponentIteratorMut<'a, T: Component + 'static> {
-    inner: std::slice::Iter<'a, Entity>,
-    cell: Option<&'a ComponentCell<T>>,
-}
-impl<'a, T: Component + 'static> ComponentIteratorMut<'a, T> {
-    pub fn new(world: &'a World, entities: &'a Vec<Entity>) -> Self {
-        let type_id = TypeId::of::<T>();
-        let cell = if let Some(storage) = world.component_storage.get(&type_id) {
-            let cell: &ComponentCell<T> = storage.as_any().downcast_ref().unwrap();
-            Some(cell)
-        } else {
-            None
-        };
-        ComponentIteratorMut {
-            inner: entities.iter(),
-            cell,
-        }
-    }
-}
-impl<'a, T: Component + 'static> Iterator for ComponentIteratorMut<'a, T> {
-    type Item = RefMut<'a, T>;
-    fn next(&mut self) -> Option<Self::Item> {
-        let entity = self.inner.next()?;
-        let set = self.cell?.inner.borrow_mut();
-        Some(RefMut::filter_map(set, |s| s.get_mut(*entity)).ok()?)
+        world.insert(a, 235);
+        world.insert(b, 24);
+        world.insert(c, 25);
+
+        world.insert(a, "A".to_string());
+        world.insert(c, "C".to_string());
+
+        let query = world.query::<(i32, String)>();
+        let v = query.iter().collect::<Vec<_>>();
+
+        assert_eq!(2, v.len());
+        assert!(v.contains(&(&235, &"A".to_string())));
+        assert!(v.contains(&(&25, &"C".to_string())));
     }
 }
