@@ -6,7 +6,9 @@ use std::{
 
 use rogalik_common::{EngineError, ResourceId};
 
-use super::{Asset, AssetBytes, AssetContext, AssetState, ROOT_VAR};
+use super::{Asset, AssetBytes, AssetContext, AssetState};
+
+include!(concat!(env!("OUT_DIR"), "/included_assets.rs"));
 
 pub struct DevFileStore {
     next_id: ResourceId,
@@ -21,7 +23,7 @@ impl Default for DevFileStore {
             next_id: ResourceId(0),
             assets: HashMap::new(),
             meta: HashMap::new(),
-            root: std::env::var(ROOT_VAR).expect(&format!("{} variable not set!", ROOT_VAR)),
+            root: ASSET_ROOT.to_string(),
         }
     }
 }

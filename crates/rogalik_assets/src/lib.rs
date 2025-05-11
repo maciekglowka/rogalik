@@ -12,8 +12,6 @@ pub use dev_file_store::DevFileStore as AssetStore;
 #[cfg(not(debug_assertions))]
 pub use embedded_store::EmbeddedStore as AssetStore;
 
-const ROOT_VAR: &str = "ROGALIK_ASSETS";
-
 pub struct Asset {
     pub state: AssetState,
     pub data: AssetBytes,
