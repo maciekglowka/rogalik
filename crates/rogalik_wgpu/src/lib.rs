@@ -17,8 +17,9 @@ mod utils;
 const MAX_TIME: f32 = 3600.;
 
 // because of WASM
-// static SURFACE_STATE: Arc<Mutex<Option<SurfaceState>>> = Arc::new(Mutex::new(None));
-// static mut SURFACE_STATE: Option<Arc<Mutex<SurfaceState>>> = None;
+// static SURFACE_STATE: Arc<Mutex<Option<SurfaceState>>> =
+// Arc::new(Mutex::new(None)); static mut SURFACE_STATE:
+// Option<Arc<Mutex<SurfaceState>>> = None;
 static SURFACE_REFRESH: AtomicBool = AtomicBool::new(false);
 
 struct SurfaceState {
@@ -85,16 +86,21 @@ impl WgpuContext {
                 let h = state.config.height;
                 log::debug!("State config dim: {}, {}", w, h);
 
-                let _ =
-                    self.assets
-                        .create_wgpu_data(&state.device, &state.queue, &state.config.format);
+                let _ = self.assets.create_wgpu_data(
+                    w,
+                    h,
+                    &state.device,
+                    &state.queue,
+                    &state.config.format,
+                );
                 log::debug!("Asset data created");
                 let _ = self.renderer2d.create_wgpu_data(
                     &self.assets,
                     w,
                     h,
                     &state.device,
-                    state.config.format,
+                    &state.queue,
+                    &state.config.format,
                 );
                 log::debug!("Renderer2d data created");
             }
@@ -146,7 +152,15 @@ impl GraphicsContext for WgpuContext {
                         width,
                         height,
                         &state.device,
-                        state.config.format,
+                        &state.queue,
+                        &state.config.format,
+                    );
+                    let _ = self.assets.update_postprocess_wgpu_data(
+                        width,
+                        height,
+                        &state.device,
+                        &state.queue,
+                        &state.config.format,
                     );
                 }
             }
@@ -175,7 +189,7 @@ impl GraphicsContext for WgpuContext {
         self.rendering_resolution = Some((w, h));
         if self
             .renderer2d
-            .set_rendering_resolution(&self.assets, w, h)
+            .set_rendering_resolution(&mut self.assets, w, h)
             .is_ok()
         {
             if let Ok(state) = self.surface_state.lock() {
@@ -183,7 +197,8 @@ impl GraphicsContext for WgpuContext {
                     let _ = self.renderer2d.create_upscale_pass(
                         &self.assets,
                         &state.device,
-                        state.config.format,
+                        &state.queue,
+                        &state.config.format,
                     );
                 }
             }
@@ -208,12 +223,8 @@ impl GraphicsContext for WgpuContext {
     ) {
         self.assets.load_font(name, path, rows, cols, padding);
     }
-    fn add_post_process(
-        &mut self,
-        shader_id: ResourceId,
-        filtering: rogalik_common::TextureFiltering,
-    ) {
-        self.renderer2d.add_post_process(shader_id, filtering);
+    fn add_post_process(&mut self, params: rogalik_common::PostProcessParams) {
+        self.assets.create_post_process(params);
     }
     fn draw_atlas_sprite(
         &mut self,

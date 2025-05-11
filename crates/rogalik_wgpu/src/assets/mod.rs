@@ -1,10 +1,12 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
 };
 
 use rogalik_assets::{AssetContext, AssetState, AssetStore};
-use rogalik_common::{AtlasParams, EngineError, MaterialParams, ResourceId, ShaderKind};
+use rogalik_common::{
+    AtlasParams, EngineError, MaterialParams, PostProcessParams, ResourceId, ShaderKind,
+};
 use rogalik_math::vectors::Vector2f;
 
 pub mod atlas;
@@ -12,7 +14,9 @@ pub mod bind_groups;
 pub mod camera;
 pub mod font;
 pub mod material;
+pub mod postprocess;
 pub mod shader;
+mod texture;
 
 use shader::BuiltInShader;
 
@@ -21,12 +25,15 @@ pub struct WgpuAssets {
     pub bind_group_layouts: HashMap<bind_groups::BindGroupLayoutKind, wgpu::BindGroupLayout>,
     pub(crate) built_in_shaders: HashMap<BuiltInShader, ResourceId>,
     cameras: Vec<camera::Camera2D>,
-    default_shader: ResourceId,
-    default_normal: ResourceId,
+    pub(crate) default_shader: ResourceId,
+    pub(crate) default_normal: ResourceId,
+    pub(crate) default_diffuse: ResourceId,
     pub pipeline_layouts: HashMap<ShaderKind, wgpu::PipelineLayout>,
     material_names: HashMap<String, ResourceId>, // lookup
     materials: Vec<material::Material>,
+    pub(crate) postprocess: Vec<postprocess::PostProcessPass>,
     shaders: Vec<shader::Shader>,
+    pub(crate) textures: Vec<texture::TextureData>,
 }
 impl WgpuAssets {
     pub fn new(asset_store: Arc<Mutex<AssetStore>>) -> Self {
@@ -38,10 +45,13 @@ impl WgpuAssets {
             cameras: Vec::new(),
             default_shader: ResourceId::default(),
             default_normal: ResourceId::default(),
+            default_diffuse: ResourceId::default(),
             material_names: HashMap::new(),
             materials: Vec::new(),
             pipeline_layouts: HashMap::new(),
+            postprocess: Vec::new(),
             shaders: Vec::new(),
+            textures: Vec::new(),
         };
         assets.load_built_ins(asset_store);
         assets
@@ -64,10 +74,15 @@ impl WgpuAssets {
         self.built_in_shaders
             .insert(BuiltInShader::Upscale, upscale_id);
 
-        self.default_normal = store.from_bytes(include_bytes!("include/default_normal.png"));
+        drop(store);
+
+        self.default_normal = self.texture_from_bytes(include_bytes!("include/default_normal.png"));
+        self.default_diffuse = self.texture_from_bytes(include_bytes!("include/white.png"));
     }
     pub fn create_wgpu_data(
         &mut self,
+        w: u32,
+        h: u32,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         texture_format: &wgpu::TextureFormat,
@@ -86,12 +101,41 @@ impl WgpuAssets {
 
         for material in self.materials.iter_mut() {
             log::debug!("Creating material: {:?}", material);
-            material.create_wgpu_data(&mut store, device, queue, material_layout)?;
+            material.create_wgpu_data(&self.textures, device, queue, material_layout)?;
         }
 
         for shader in self.shaders.iter_mut() {
             log::debug!("Creating shader: {:?}", shader);
             shader.create_wgpu_data(&mut store, device, texture_format, &self.pipeline_layouts)?;
+        }
+        drop(store);
+        self.update_postprocess_wgpu_data(w, h, device, queue, texture_format)?;
+
+        Ok(())
+    }
+    pub fn update_postprocess_wgpu_data(
+        &mut self,
+        w: u32,
+        h: u32,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        texture_format: &wgpu::TextureFormat,
+    ) -> Result<(), EngineError> {
+        let postprocess_layout = self
+            .bind_group_layouts
+            .get(&bind_groups::BindGroupLayoutKind::PostProcess)
+            .ok_or(EngineError::GraphicsInternalError)?;
+
+        for pass in self.postprocess.iter_mut() {
+            pass.create_wgpu_data(
+                &self.textures,
+                &postprocess_layout,
+                w,
+                h,
+                device,
+                queue,
+                texture_format,
+            )?;
         }
         Ok(())
     }
@@ -111,27 +155,32 @@ impl WgpuAssets {
             .get(&bind_groups::BindGroupLayoutKind::Sprite)
             .ok_or(EngineError::GraphicsInternalError)?;
 
+        let mut updated_textures = HashSet::new();
+
+        for (i, texture) in self.textures.iter_mut().enumerate() {
+            if let Some(asset) = store.get(texture.asset_id) {
+                if asset.state == AssetState::Updated {
+                    log::debug!("Updating texture {}, Asset: {:?}", i, texture.asset_id);
+                    texture.update_bytes(asset.data.get());
+                    updated_textures.insert(i);
+
+                    #[cfg(debug_assertions)]
+                    store.mark_read(texture.asset_id);
+                }
+            }
+        }
+
         for material in self.materials.iter_mut() {
-            let mut update = false;
-            if let Some(asset) = store.get(material.diffuse_asset_id) {
-                if asset.state == AssetState::Updated {
-                    update = true;
-                }
-            }
-            if let Some(asset) = store.get(material.normal_asset_id) {
-                if asset.state == AssetState::Updated {
-                    update = true;
-                }
-            }
-            if update {
+            if updated_textures.contains(&material.diffuse_texture_id.0)
+                || updated_textures.contains(&material.normal_texture_id.0)
+            {
+                log::debug!("Updating material {:?}", material);
                 if let Err(_) =
-                    material.create_wgpu_data(&mut store, device, queue, material_layout)
+                    material.create_wgpu_data(&self.textures, device, queue, material_layout)
                 {
-                    log::debug!("Material reload failed!");
+                    log::error!("Material reload failed!");
                 }
             }
-            #[cfg(debug_assertions)]
-            store.mark_read(material.diffuse_asset_id);
         }
 
         for shader in self.shaders.iter_mut() {
@@ -161,9 +210,9 @@ impl WgpuAssets {
         shader_id
     }
     pub fn create_material(&mut self, name: &str, params: MaterialParams) {
-        let diffuse_id = self.load_asset(params.diffuse_path);
+        let diffuse_id = self.texture_from_path(params.diffuse_path);
         let normal_id = if let Some(normal_path) = params.normal_path {
-            self.load_asset(normal_path)
+            self.texture_from_path(normal_path)
         } else {
             self.default_normal
         };
@@ -178,6 +227,45 @@ impl WgpuAssets {
         let material_id = self.get_next_material_id();
         self.material_names.insert(name.to_string(), material_id);
         self.materials.push(material);
+    }
+    pub fn create_post_process(&mut self, params: PostProcessParams) {
+        let texture_id = if let Some(path) = params.texture_path {
+            self.texture_from_path(path)
+        } else {
+            self.default_diffuse
+        };
+        let pass = postprocess::PostProcessPass::new(texture_id, params);
+        self.postprocess.push(pass);
+    }
+    pub(crate) fn texture_from_path(&mut self, path: &str) -> ResourceId {
+        let asset_id = self.load_asset(path);
+        self.create_texture(asset_id)
+    }
+    fn texture_from_bytes(&mut self, bytes: &'static [u8]) -> ResourceId {
+        let asset_id = {
+            let mut store = self
+                .asset_store
+                .lock()
+                .expect("Can't acquire the asset store!");
+            store.from_bytes(bytes)
+        };
+        self.create_texture(asset_id)
+    }
+    fn create_texture(&mut self, asset_id: ResourceId) -> ResourceId {
+        let texture = {
+            let store = self
+                .asset_store
+                .lock()
+                .expect("Can't acquire the asset store!");
+            let asset = store
+                .get(asset_id)
+                .ok_or(EngineError::ResourceNotFound)
+                .expect("Invalid texture asset!");
+            texture::TextureData::from_bytes(asset_id, asset.data.get())
+        };
+        let texture_id = self.get_next_texture_id();
+        self.textures.push(texture);
+        texture_id
     }
     pub fn create_camera(
         &mut self,
@@ -254,6 +342,9 @@ impl WgpuAssets {
     }
     fn get_next_material_id(&self) -> ResourceId {
         ResourceId(self.materials.len())
+    }
+    fn get_next_texture_id(&self) -> ResourceId {
+        ResourceId(self.textures.len())
     }
     fn get_next_camera_id(&self) -> ResourceId {
         ResourceId(self.cameras.len())

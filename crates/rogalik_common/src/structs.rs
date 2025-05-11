@@ -72,6 +72,14 @@ pub struct MaterialParams<'a> {
     pub filtering: TextureFiltering,
 }
 
+#[derive(Clone, Copy, Default)]
+pub struct PostProcessParams<'a> {
+    pub texture_path: Option<&'a str>,
+    pub shader: ResourceId,
+    pub repeat: TextureRepeat,
+    pub filtering: TextureFiltering,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct AtlasParams {
     pub cols: usize,

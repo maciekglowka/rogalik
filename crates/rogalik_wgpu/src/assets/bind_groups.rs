@@ -42,10 +42,10 @@ fn get_uniform_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout
     })
 }
 
-// fn get_camera_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-//     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-//         label: Some("Camera Bind Group Layou"),
-//         entries: &[wgpu::BindGroupLayoutEntry {
+// fn get_camera_bind_group_layout(device: &wgpu::Device) ->
+// wgpu::BindGroupLayout {     device.create_bind_group_layout(&
+// wgpu::BindGroupLayoutDescriptor {         label: Some("Camera Bind Group
+// Layou"),         entries: &[wgpu::BindGroupLayoutEntry {
 //             binding: 0,
 //             visibility: wgpu::ShaderStages::VERTEX,
 //             ty: wgpu::BindingType::Buffer {
@@ -103,6 +103,7 @@ fn get_sprite_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout 
 fn get_post_process_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         entries: &[
+            // input view
             wgpu::BindGroupLayoutEntry {
                 binding: 0,
                 visibility: wgpu::ShaderStages::FRAGMENT,
@@ -115,6 +116,23 @@ fn get_post_process_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupL
             },
             wgpu::BindGroupLayoutEntry {
                 binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+            // texture
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 3,
                 visibility: wgpu::ShaderStages::FRAGMENT,
                 ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                 count: None,

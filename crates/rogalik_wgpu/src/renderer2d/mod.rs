@@ -1,20 +1,18 @@
-use rogalik_common::{Color, EngineError, ResourceId, SpriteParams};
+use rogalik_common::{Color, EngineError, PostProcessParams, ResourceId, SpriteParams};
 use rogalik_math::vectors::Vector2f;
 
-use crate::assets::{material::Material, WgpuAssets};
+use crate::assets::{material::Material, postprocess::PostProcessPass, WgpuAssets};
 use crate::structs::BindParams;
 
-mod postprocess_pass;
 mod sprite_pass;
-mod uniforms;
+pub(crate) mod uniforms;
 
 const MAX_LIGHTS: u32 = 16;
 
 pub struct Renderer2d {
     sprite_pass: sprite_pass::SpritePass,
     rendering_resolution: Option<(u32, u32)>, // for pixel perfect renders
-    upscale_pass: Option<postprocess_pass::PostProcessPass>,
-    post_process_passes: Vec<postprocess_pass::PostProcessPass>,
+    upscale_pass: Option<PostProcessPass>,    // for pixel perfect renders
     uniforms: uniforms::Uniforms,
 }
 impl Renderer2d {
@@ -24,7 +22,6 @@ impl Renderer2d {
             sprite_pass,
             rendering_resolution: None,
             upscale_pass: None,
-            post_process_passes: Vec::new(),
             uniforms: uniforms::Uniforms::default(),
         }
     }
@@ -41,7 +38,7 @@ impl Renderer2d {
     }
     pub fn set_rendering_resolution(
         &mut self,
-        assets: &WgpuAssets,
+        assets: &mut WgpuAssets,
         w: u32,
         h: u32,
     ) -> Result<(), EngineError> {
@@ -50,9 +47,13 @@ impl Renderer2d {
             .built_in_shaders
             .get(&crate::BuiltInShader::Upscale)
             .ok_or(EngineError::GraphicsInternalError)?;
-        self.upscale_pass = Some(postprocess_pass::PostProcessPass::new(
-            *shader_id,
-            wgpu::FilterMode::Nearest,
+        self.upscale_pass = Some(PostProcessPass::new(
+            assets.default_diffuse,
+            PostProcessParams {
+                shader: *shader_id,
+                filtering: rogalik_common::TextureFiltering::Nearest,
+                ..Default::default()
+            },
         ));
         self.uniforms.globals.rw = w;
         self.uniforms.globals.rh = h;
@@ -62,15 +63,28 @@ impl Renderer2d {
         &mut self,
         assets: &WgpuAssets,
         device: &wgpu::Device,
-        texture_format: wgpu::TextureFormat,
+        queue: &wgpu::Queue,
+        texture_format: &wgpu::TextureFormat,
     ) -> Result<(), EngineError> {
         if let Some((w, h)) = self.rendering_resolution {
             log::debug!("Creating upscale pass with w:{}, h:{}", w, h);
+            let postprocess_layout = assets
+                .bind_group_layouts
+                .get(&crate::assets::bind_groups::BindGroupLayoutKind::PostProcess)
+                .ok_or(EngineError::GraphicsInternalError)?;
             return self
                 .upscale_pass
                 .as_mut()
                 .ok_or(EngineError::GraphicsInternalError)?
-                .create_wgpu_data(assets, w, h, device, texture_format);
+                .create_wgpu_data(
+                    &assets.textures,
+                    &postprocess_layout,
+                    w,
+                    h,
+                    device,
+                    queue,
+                    texture_format,
+                );
         }
         Ok(())
     }
@@ -85,34 +99,35 @@ impl Renderer2d {
     ) -> Result<(), EngineError> {
         self.uniforms.lights.add_light(strength, color, position)
     }
-    pub fn add_post_process(
-        &mut self,
-        shader_id: ResourceId,
-        filtering: rogalik_common::TextureFiltering,
-    ) {
-        let filter_mode = match filtering {
-            rogalik_common::TextureFiltering::Nearest => wgpu::FilterMode::Nearest,
-            rogalik_common::TextureFiltering::Linear => wgpu::FilterMode::Linear,
-        };
-        self.post_process_passes
-            .push(postprocess_pass::PostProcessPass::new(
-                shader_id,
-                filter_mode,
-            ));
-    }
+    // pub fn add_post_process(
+    //     &mut self,
+    //     shader_id: ResourceId,
+    //     texture_id: ResourceId,
+    //     filtering: rogalik_common::TextureFiltering,
+    // ) {
+    //     let filter_mode = match filtering {
+    //         rogalik_common::TextureFiltering::Nearest =>
+    // wgpu::FilterMode::Nearest,
+    //         rogalik_common::TextureFiltering::Linear => wgpu::FilterMode::Linear,
+    //     };
+    //     self.post_process_passes
+    //         .push(postprocess_pass::PostProcessPass::new(
+    //             shader_id,
+    //             filter_mode,
+    //             // texture_id,
+    //         ));
+    // }
     pub fn create_wgpu_data(
         &mut self,
         assets: &WgpuAssets,
         width: u32,
         height: u32,
         device: &wgpu::Device,
-        texture_format: wgpu::TextureFormat,
+        queue: &wgpu::Queue,
+        texture_format: &wgpu::TextureFormat,
     ) {
         log::debug!("Creating Renderer2d data with w:{}, h:{}", width, height);
-        for pass in self.post_process_passes.iter_mut() {
-            let _ = pass.create_wgpu_data(assets, width, height, device, texture_format);
-        }
-        let _ = self.create_upscale_pass(assets, device, texture_format);
+        let _ = self.create_upscale_pass(assets, device, queue, texture_format);
     }
     pub fn draw_atlas_sprite(
         &mut self,
@@ -232,7 +247,7 @@ impl Renderer2d {
         if let Some(pass) = &self.upscale_pass {
             post_process_queue.push(pass);
         }
-        post_process_queue.extend(&self.post_process_passes);
+        post_process_queue.extend(assets.postprocess.iter());
 
         let mut current_view = if let Some(pass) = post_process_queue.get(0) {
             pass.get_view().ok_or(EngineError::GraphicsNotReady)?
