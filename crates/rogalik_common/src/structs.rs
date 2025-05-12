@@ -63,18 +63,18 @@ pub enum EngineError {
 }
 
 #[derive(Clone, Copy, Default)]
-pub struct MaterialParams<'a> {
+pub struct MaterialParams {
     pub atlas: Option<AtlasParams>,
-    pub diffuse_path: &'a str,
-    pub normal_path: Option<&'a str>,
+    pub diffuse_texture: Option<ResourceId>,
+    pub normal_texture: Option<ResourceId>,
     pub shader: Option<ResourceId>,
     pub repeat: TextureRepeat,
     pub filtering: TextureFiltering,
 }
 
 #[derive(Clone, Copy, Default)]
-pub struct PostProcessParams<'a> {
-    pub texture_path: Option<&'a str>,
+pub struct PostProcessParams {
+    pub texture: Option<ResourceId>,
     pub shader: ResourceId,
     pub repeat: TextureRepeat,
     pub filtering: TextureFiltering,
@@ -106,4 +106,12 @@ pub enum TextureFiltering {
 pub enum ShaderKind {
     Sprite,
     PostProcess,
+}
+
+#[derive(Hash, Eq, PartialEq, Debug)]
+pub enum BuiltInShader {
+    SpriteUnlit,
+    SpriteLit,
+    Upscale,
+    Lut,
 }

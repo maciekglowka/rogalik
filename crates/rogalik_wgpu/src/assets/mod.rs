@@ -5,7 +5,8 @@ use std::{
 
 use rogalik_assets::{AssetContext, AssetState, AssetStore};
 use rogalik_common::{
-    AtlasParams, EngineError, MaterialParams, PostProcessParams, ResourceId, ShaderKind,
+    AtlasParams, BuiltInShader, EngineError, MaterialParams, PostProcessParams, ResourceId,
+    ShaderKind,
 };
 use rogalik_math::vectors::Vector2f;
 
@@ -18,12 +19,10 @@ pub mod postprocess;
 pub mod shader;
 mod texture;
 
-use shader::BuiltInShader;
-
 pub struct WgpuAssets {
     asset_store: Arc<Mutex<AssetStore>>,
     pub bind_group_layouts: HashMap<bind_groups::BindGroupLayoutKind, wgpu::BindGroupLayout>,
-    pub(crate) built_in_shaders: HashMap<BuiltInShader, ResourceId>,
+    pub(crate) builtin_shaders: HashMap<BuiltInShader, ResourceId>,
     cameras: Vec<camera::Camera2D>,
     pub(crate) default_shader: ResourceId,
     pub(crate) default_normal: ResourceId,
@@ -41,7 +40,7 @@ impl WgpuAssets {
             // perhaps this clone could be avoided?
             asset_store: asset_store.clone(),
             bind_group_layouts: HashMap::new(),
-            built_in_shaders: HashMap::new(),
+            builtin_shaders: HashMap::new(),
             cameras: Vec::new(),
             default_shader: ResourceId::default(),
             default_normal: ResourceId::default(),
@@ -53,28 +52,31 @@ impl WgpuAssets {
             shaders: Vec::new(),
             textures: Vec::new(),
         };
-        assets.load_built_ins(asset_store);
+        assets.load_builtins();
         assets
     }
     /// Only (and immediately) to be called in a constructor
-    fn load_built_ins(&mut self, asset_store: Arc<Mutex<AssetStore>>) {
-        let mut store = asset_store.lock().expect("Can't acquire the asset store!");
-
-        let unlit_asset_id = store.from_bytes(include_bytes!("include/sprite_unlit.wgsl"));
-        let unlit_shader = shader::Shader::new(ShaderKind::Sprite, unlit_asset_id);
-        self.default_shader = ResourceId(self.shaders.len());
-        self.shaders.push(unlit_shader);
-        self.built_in_shaders
-            .insert(BuiltInShader::SpriteUnlit, self.default_shader);
-
-        let upscale_asset_id = store.from_bytes(include_bytes!("include/sprite_pass_upscale.wgsl"));
-        let upscale_shader = shader::Shader::new(ShaderKind::PostProcess, upscale_asset_id);
-        let upscale_id = ResourceId(self.shaders.len());
-        self.shaders.push(upscale_shader);
-        self.built_in_shaders
-            .insert(BuiltInShader::Upscale, upscale_id);
-
-        drop(store);
+    fn load_builtins(&mut self) {
+        self.load_builtin_shader(
+            include_bytes!("include/sprite_unlit.wgsl"),
+            ShaderKind::Sprite,
+            BuiltInShader::SpriteUnlit,
+        );
+        self.load_builtin_shader(
+            include_bytes!("include/sprite_lit.wgsl"),
+            ShaderKind::Sprite,
+            BuiltInShader::SpriteLit,
+        );
+        self.load_builtin_shader(
+            include_bytes!("include/sprite_pass_upscale.wgsl"),
+            ShaderKind::PostProcess,
+            BuiltInShader::Upscale,
+        );
+        self.load_builtin_shader(
+            include_bytes!("include/lut.wgsl"),
+            ShaderKind::PostProcess,
+            BuiltInShader::Lut,
+        );
 
         self.default_normal = self.texture_from_bytes(include_bytes!("include/default_normal.png"));
         self.default_diffuse = self.texture_from_bytes(include_bytes!("include/white.png"));
@@ -210,18 +212,9 @@ impl WgpuAssets {
         shader_id
     }
     pub fn create_material(&mut self, name: &str, params: MaterialParams) {
-        let diffuse_id = self.texture_from_path(params.diffuse_path);
-        let normal_id = if let Some(normal_path) = params.normal_path {
-            self.texture_from_path(normal_path)
-        } else {
-            self.default_normal
-        };
-
-        let shader_id = if let Some(id) = params.shader {
-            id
-        } else {
-            self.default_shader
-        };
+        let diffuse_id = params.diffuse_texture.unwrap_or(self.default_diffuse);
+        let normal_id = params.normal_texture.unwrap_or(self.default_normal);
+        let shader_id = params.shader.unwrap_or(self.default_shader);
 
         let material = material::Material::new(diffuse_id, normal_id, shader_id, params);
         let material_id = self.get_next_material_id();
@@ -229,11 +222,7 @@ impl WgpuAssets {
         self.materials.push(material);
     }
     pub fn create_post_process(&mut self, params: PostProcessParams) {
-        let texture_id = if let Some(path) = params.texture_path {
-            self.texture_from_path(path)
-        } else {
-            self.default_diffuse
-        };
+        let texture_id = params.texture.unwrap_or(self.default_diffuse);
         let pass = postprocess::PostProcessPass::new(texture_id, params);
         self.postprocess.push(pass);
     }
@@ -297,7 +286,7 @@ impl WgpuAssets {
 
         let params = MaterialParams {
             atlas,
-            diffuse_path: path,
+            diffuse_texture: Some(self.texture_from_path(path)),
             ..Default::default()
         };
         self.create_material(name, params);
@@ -336,6 +325,22 @@ impl WgpuAssets {
             .lock()
             .expect("Can't acquire the asset store!");
         store.load(path).expect(&format!("Can't load {}!", path))
+    }
+    fn load_builtin_shader(
+        &mut self,
+        bytes: &'static [u8],
+        kind: ShaderKind,
+        builtin_id: BuiltInShader,
+    ) {
+        let mut store = self
+            .asset_store
+            .lock()
+            .expect("Can't acquire the asset store!");
+        let asset_id = store.from_bytes(bytes);
+        let shader = shader::Shader::new(kind, asset_id);
+        let id = self.get_next_shader_id();
+        self.shaders.push(shader);
+        self.builtin_shaders.insert(builtin_id, id);
     }
     fn get_next_shader_id(&self) -> ResourceId {
         ResourceId(self.shaders.len())

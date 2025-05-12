@@ -4,10 +4,8 @@ use std::sync::{
 };
 use winit::window::Window;
 
-use rogalik_common::{EngineError, GraphicsContext, ResourceId, SpriteParams};
+use rogalik_common::{BuiltInShader, EngineError, GraphicsContext, ResourceId, SpriteParams};
 use rogalik_math::vectors::Vector2f;
-
-pub use assets::shader::BuiltInShader;
 
 mod assets;
 mod renderer2d;
@@ -205,6 +203,9 @@ impl GraphicsContext for WgpuContext {
         }
         self.resize_cameras();
     }
+    fn load_texture(&mut self, path: &str) -> ResourceId {
+        self.assets.texture_from_path(path)
+    }
     fn load_material(&mut self, name: &str, params: rogalik_common::MaterialParams) {
         self.assets.create_material(name, params);
         // TODO if self.surface_state build bind_group
@@ -225,6 +226,25 @@ impl GraphicsContext for WgpuContext {
     }
     fn add_post_process(&mut self, params: rogalik_common::PostProcessParams) {
         self.assets.create_post_process(params);
+    }
+    fn draw_sprite(
+        &mut self,
+        material: &str,
+        position: Vector2f,
+        z_index: i32,
+        size: Vector2f,
+        params: SpriteParams,
+    ) -> Result<(), EngineError> {
+        self.renderer2d.draw_atlas_sprite(
+            &self.assets,
+            0,
+            material,
+            self.current_camera_id,
+            position,
+            z_index,
+            size,
+            params,
+        )
     }
     fn draw_atlas_sprite(
         &mut self,
@@ -328,6 +348,9 @@ impl GraphicsContext for WgpuContext {
     }
     fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut dyn rogalik_common::Camera> {
         Some(self.assets.get_camera_mut(id)?)
+    }
+    fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId> {
+        self.assets.builtin_shaders.get(&shader).copied()
     }
 }
 

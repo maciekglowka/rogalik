@@ -6,13 +6,6 @@ use rogalik_common::{EngineError, ResourceId, ShaderKind};
 use super::bind_groups::BindGroupLayoutKind;
 use crate::structs::Vertex;
 
-#[derive(Hash, Eq, PartialEq, Debug)]
-pub enum BuiltInShader {
-    SpriteUnlit,
-    SpriteLit,
-    Upscale,
-}
-
 pub fn get_pipeline_layouts(
     bind_group_layous: &HashMap<BindGroupLayoutKind, wgpu::BindGroupLayout>,
     device: &wgpu::Device,

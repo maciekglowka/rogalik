@@ -44,7 +44,7 @@ impl Renderer2d {
     ) -> Result<(), EngineError> {
         self.rendering_resolution = Some((w, h));
         let shader_id = assets
-            .built_in_shaders
+            .builtin_shaders
             .get(&crate::BuiltInShader::Upscale)
             .ok_or(EngineError::GraphicsInternalError)?;
         self.upscale_pass = Some(PostProcessPass::new(
@@ -99,24 +99,6 @@ impl Renderer2d {
     ) -> Result<(), EngineError> {
         self.uniforms.lights.add_light(strength, color, position)
     }
-    // pub fn add_post_process(
-    //     &mut self,
-    //     shader_id: ResourceId,
-    //     texture_id: ResourceId,
-    //     filtering: rogalik_common::TextureFiltering,
-    // ) {
-    //     let filter_mode = match filtering {
-    //         rogalik_common::TextureFiltering::Nearest =>
-    // wgpu::FilterMode::Nearest,
-    //         rogalik_common::TextureFiltering::Linear => wgpu::FilterMode::Linear,
-    //     };
-    //     self.post_process_passes
-    //         .push(postprocess_pass::PostProcessPass::new(
-    //             shader_id,
-    //             filter_mode,
-    //             // texture_id,
-    //         ));
-    // }
     pub fn create_wgpu_data(
         &mut self,
         assets: &WgpuAssets,

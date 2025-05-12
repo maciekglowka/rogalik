@@ -2,7 +2,7 @@ use rogalik_math::vectors::Vector2f;
 use std::sync::Arc;
 use winit::window::Window;
 
-use crate::structs::{Color, EngineError, ResourceId, ShaderKind, SpriteParams};
+use crate::structs::{BuiltInShader, Color, EngineError, ResourceId, ShaderKind, SpriteParams};
 
 pub trait GraphicsContext {
     fn create_context(&mut self, window: Arc<Window>);
@@ -13,6 +13,7 @@ pub trait GraphicsContext {
     fn resize(&mut self, w: u32, h: u32);
     fn render(&mut self);
     fn set_rendering_resolution(&mut self, w: u32, h: u32);
+    fn load_texture(&mut self, path: &str) -> ResourceId;
     fn load_material(&mut self, name: &str, params: crate::MaterialParams);
     fn load_shader(&mut self, kind: ShaderKind, path: &str) -> ResourceId;
     fn load_font(
@@ -24,6 +25,14 @@ pub trait GraphicsContext {
         padding: Option<(f32, f32)>,
     );
     fn add_post_process(&mut self, params: crate::PostProcessParams);
+    fn draw_sprite(
+        &mut self,
+        material: &str,
+        position: Vector2f,
+        z_index: i32,
+        size: Vector2f,
+        params: SpriteParams,
+    ) -> Result<(), EngineError>;
     fn draw_atlas_sprite(
         &mut self,
         material: &str,
@@ -64,6 +73,7 @@ pub trait GraphicsContext {
     fn get_current_camera(&self) -> &dyn Camera;
     fn get_current_camera_mut(&mut self) -> &mut dyn Camera;
     fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut dyn Camera>;
+    fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId>;
 }
 
 pub trait Camera {

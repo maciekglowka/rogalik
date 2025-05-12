@@ -67,6 +67,9 @@ impl Material {
                 atlas_params.cols,
                 atlas_params.padding,
             ))
+        } else {
+            // Create 1x1 atlas for compatibility.
+            self.atlas = Some(SpriteAtlas::new(diffuse_texture.dim, 1, 1, None));
         }
 
         Ok(())
