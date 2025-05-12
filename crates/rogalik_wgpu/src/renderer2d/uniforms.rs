@@ -17,22 +17,6 @@ pub struct Uniforms {
     buffers: HashMap<UniformKind, wgpu::Buffer>,
 }
 impl Uniforms {
-    // pub fn get_bind_groups(
-    //     &self,
-    //     layout: &wgpu::BindGroupLayout,
-    //     device: &wgpu::Device,
-    // ) -> HashMap<UniformKind, wgpu::BindGroup> {
-    //     HashMap::from_iter([
-    //         (
-    //             UniformKind::Globals,
-    //             self.globals.get_bind_group(device, layout),
-    //         ),
-    //         (
-    //             UniformKind::Lights,
-    //             self.lights.get_bind_group(device, layout),
-    //         ),
-    //     ])
-    // }
     pub fn create_wgpu_data(&mut self, layout: &wgpu::BindGroupLayout, device: &wgpu::Device) {
         let (globals_bind_group, globals_buffer) = self.globals.get_bind_group(device, layout);
         self.bind_groups

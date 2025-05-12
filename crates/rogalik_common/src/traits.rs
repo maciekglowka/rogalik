@@ -24,7 +24,7 @@ pub trait GraphicsContext {
         cols: usize,
         padding: Option<(f32, f32)>,
     );
-    fn add_post_process(&mut self, params: crate::PostProcessParams);
+    fn add_post_process(&mut self, name: &str, params: crate::PostProcessParams);
     fn draw_sprite(
         &mut self,
         material: &str,
@@ -66,6 +66,7 @@ pub trait GraphicsContext {
         position: Vector2f,
     ) -> Result<(), EngineError>;
     fn set_ambient(&mut self, color: Color);
+    fn set_postprocess_strength(&mut self, name: &str, value: f32) -> Result<(), EngineError>;
     fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f;
     fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId;
     fn set_camera(&mut self, id: ResourceId);

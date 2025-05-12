@@ -31,6 +31,7 @@ pub struct WgpuAssets {
     material_names: HashMap<String, ResourceId>, // lookup
     materials: Vec<material::Material>,
     pub(crate) postprocess: Vec<postprocess::PostProcessPass>,
+    postprocess_names: HashMap<String, ResourceId>, // lookup
     shaders: Vec<shader::Shader>,
     pub(crate) textures: Vec<texture::TextureData>,
 }
@@ -49,6 +50,7 @@ impl WgpuAssets {
             materials: Vec::new(),
             pipeline_layouts: HashMap::new(),
             postprocess: Vec::new(),
+            postprocess_names: HashMap::new(),
             shaders: Vec::new(),
             textures: Vec::new(),
         };
@@ -230,10 +232,13 @@ impl WgpuAssets {
         self.material_names.insert(name.to_string(), material_id);
         self.materials.push(material);
     }
-    pub fn create_post_process(&mut self, params: PostProcessParams) {
+    pub fn create_post_process(&mut self, name: &str, params: PostProcessParams) {
         let texture_id = params.texture.unwrap_or(self.default_diffuse);
         let pass = postprocess::PostProcessPass::new(texture_id, params);
+        let postprocess_id = self.get_next_postprocess_id();
         self.postprocess.push(pass);
+        self.postprocess_names
+            .insert(name.to_string(), postprocess_id);
     }
     pub(crate) fn texture_from_path(&mut self, path: &str) -> ResourceId {
         let asset_id = self.load_asset(path);
@@ -322,6 +327,15 @@ impl WgpuAssets {
     pub fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut camera::Camera2D> {
         self.cameras.get_mut(id.0)
     }
+    pub fn get_postprocess_id(&self, name: &str) -> Option<&ResourceId> {
+        self.postprocess_names.get(name)
+    }
+    pub fn get_postprocess_mut(
+        &mut self,
+        id: ResourceId,
+    ) -> Option<&mut postprocess::PostProcessPass> {
+        self.postprocess.get_mut(id.0)
+    }
     fn load_asset(&self, path: &str) -> ResourceId {
         let mut store = self
             .asset_store
@@ -353,6 +367,9 @@ impl WgpuAssets {
     }
     fn get_next_texture_id(&self) -> ResourceId {
         ResourceId(self.textures.len())
+    }
+    fn get_next_postprocess_id(&self) -> ResourceId {
+        ResourceId(self.postprocess.len())
     }
     fn get_next_camera_id(&self) -> ResourceId {
         ResourceId(self.cameras.len())

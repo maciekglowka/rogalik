@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use wgpu::util::DeviceExt;
 
 use rogalik_common::{EngineError, PostProcessParams, ResourceId};
 
@@ -11,6 +12,8 @@ pub struct PostProcessPass {
     pub shader_id: ResourceId,
     texture_id: ResourceId,
     bind_group: Option<wgpu::BindGroup>,
+    uniform_buffer: Option<wgpu::Buffer>,
+    uniform_data: PostProcessUniform,
     filter_mode: wgpu::FilterMode,
     address_mode: wgpu::AddressMode,
     view: Option<wgpu::TextureView>,
@@ -22,6 +25,8 @@ impl PostProcessPass {
         Self {
             shader_id: params.shader,
             bind_group: None,
+            uniform_buffer: None,
+            uniform_data: PostProcessUniform::new(),
             filter_mode,
             address_mode,
             texture_id,
@@ -30,6 +35,19 @@ impl PostProcessPass {
     }
     pub fn get_view(&self) -> Option<&wgpu::TextureView> {
         self.view.as_ref()
+    }
+    pub fn set_strength(&mut self, value: f32) {
+        self.uniform_data.strength = value;
+    }
+    pub fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), EngineError> {
+        queue.write_buffer(
+            self.uniform_buffer
+                .as_ref()
+                .ok_or(EngineError::GraphicsNotReady)?,
+            0,
+            bytemuck::cast_slice(&[self.uniform_data]),
+        );
+        Ok(())
     }
     pub fn render(
         &self,
@@ -82,8 +100,9 @@ impl PostProcessPass {
         texture_format: &wgpu::TextureFormat,
     ) -> Result<(), EngineError> {
         let view = Self::get_texture_view(w, h, device, texture_format);
-        self.bind_group = Some(Self::get_bind_group(
+        let (bind_group, uniform_buffer) = Self::get_bind_group(
             textures,
+            &self.uniform_data,
             bind_group_layout,
             &view,
             self.filter_mode,
@@ -91,12 +110,15 @@ impl PostProcessPass {
             self.texture_id,
             device,
             queue,
-        )?);
+        )?;
+        self.bind_group = Some(bind_group);
+        self.uniform_buffer = Some(uniform_buffer);
         self.view = Some(view);
         Ok(())
     }
     fn get_bind_group(
         textures: &Vec<TextureData>,
+        uniform_data: &PostProcessUniform,
         bind_group_layout: &wgpu::BindGroupLayout,
         view: &wgpu::TextureView,
         filter_mode: wgpu::FilterMode,
@@ -104,7 +126,7 @@ impl PostProcessPass {
         texture_id: ResourceId,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-    ) -> Result<wgpu::BindGroup, EngineError> {
+    ) -> Result<(wgpu::BindGroup, wgpu::Buffer), EngineError> {
         let texture = textures
             .get(texture_id.0)
             .ok_or(EngineError::ResourceNotFound)?;
@@ -123,31 +145,44 @@ impl PostProcessPass {
             ..Default::default()
         });
 
-        Ok(device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("PostProcess Bind Group"),
-            layout: bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&Self::get_view_sampler(
-                        filter_mode,
-                        device,
-                    )),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&texture_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::Sampler(&texture_sampler),
-                },
-            ],
-        }))
+        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("PostProcess Uniform Buffer"),
+            contents: bytemuck::cast_slice(&[*uniform_data]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        Ok((
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("PostProcess Bind Group"),
+                layout: bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&Self::get_view_sampler(
+                            filter_mode,
+                            device,
+                        )),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: wgpu::BindingResource::TextureView(&texture_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: wgpu::BindingResource::Sampler(&texture_sampler),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: uniform_buffer.as_entire_binding(),
+                    },
+                ],
+            }),
+            uniform_buffer,
+        ))
     }
     fn get_texture_view(
         w: u32,
@@ -182,5 +217,20 @@ impl PostProcessPass {
             mipmap_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         })
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Default, bytemuck::NoUninit, bytemuck::Zeroable)]
+struct PostProcessUniform {
+    pub strength: f32,
+    _padding: [f32; 3], // for WASM
+}
+impl PostProcessUniform {
+    pub fn new() -> Self {
+        Self {
+            strength: 1.0,
+            ..Default::default()
+        }
     }
 }

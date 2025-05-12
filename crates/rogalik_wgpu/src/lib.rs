@@ -224,8 +224,8 @@ impl GraphicsContext for WgpuContext {
     ) {
         self.assets.load_font(name, path, rows, cols, padding);
     }
-    fn add_post_process(&mut self, params: rogalik_common::PostProcessParams) {
-        self.assets.create_post_process(params);
+    fn add_post_process(&mut self, name: &str, params: rogalik_common::PostProcessParams) {
+        self.assets.create_post_process(name, params);
     }
     fn draw_sprite(
         &mut self,
@@ -315,6 +315,25 @@ impl GraphicsContext for WgpuContext {
     }
     fn set_ambient(&mut self, color: rogalik_common::Color) {
         self.renderer2d.set_ambient(color);
+    }
+    fn set_postprocess_strength(&mut self, name: &str, value: f32) -> Result<(), EngineError> {
+        let id = *self
+            .assets
+            .get_postprocess_id(name)
+            .ok_or(EngineError::ResourceNotFound)?;
+        let pass = self
+            .assets
+            .get_postprocess_mut(id)
+            .ok_or(EngineError::ResourceNotFound)?;
+
+        pass.set_strength(value);
+
+        if let Ok(state) = self.surface_state.lock() {
+            if let Some(state) = state.as_ref() {
+                pass.write_buffer(&state.queue)?;
+            };
+        }
+        Ok(())
     }
     fn add_light(
         &mut self,
