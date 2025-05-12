@@ -23,7 +23,7 @@ pub struct WgpuAssets {
     asset_store: Arc<Mutex<AssetStore>>,
     pub bind_group_layouts: HashMap<bind_groups::BindGroupLayoutKind, wgpu::BindGroupLayout>,
     pub(crate) builtin_shaders: HashMap<BuiltInShader, ResourceId>,
-    cameras: Vec<camera::Camera2D>,
+    pub(crate) cameras: Vec<camera::Camera2D>,
     pub(crate) default_shader: ResourceId,
     pub(crate) default_normal: ResourceId,
     pub(crate) default_diffuse: ResourceId,
@@ -112,6 +112,15 @@ impl WgpuAssets {
         }
         drop(store);
         self.update_postprocess_wgpu_data(w, h, device, queue, texture_format)?;
+
+        for camera in self.cameras.iter_mut() {
+            camera.create_wgpu_data(
+                device,
+                self.bind_group_layouts
+                    .get(&crate::assets::bind_groups::BindGroupLayoutKind::Uniform)
+                    .ok_or(EngineError::GraphicsInternalError)?,
+            );
+        }
 
         Ok(())
     }
@@ -312,12 +321,6 @@ impl WgpuAssets {
     }
     pub fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut camera::Camera2D> {
         self.cameras.get_mut(id.0)
-    }
-    pub fn iter_cameras(&self) -> impl Iterator<Item = &camera::Camera2D> {
-        self.cameras.iter()
-    }
-    pub fn iter_cameras_mut(&mut self) -> impl Iterator<Item = &mut camera::Camera2D> {
-        self.cameras.iter_mut()
     }
     fn load_asset(&self, path: &str) -> ResourceId {
         let mut store = self

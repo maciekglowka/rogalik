@@ -73,7 +73,7 @@ impl WgpuContext {
     }
     fn resize_cameras(&mut self) {
         let (vw, vh, rw, rh) = self.get_current_resolutions();
-        for camera in self.assets.iter_cameras_mut() {
+        for camera in self.assets.cameras.iter_mut() {
             camera.resize_viewport(vw as f32, vh as f32, rw as f32, rh as f32);
         }
     }

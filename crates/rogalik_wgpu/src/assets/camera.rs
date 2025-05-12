@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use rogalik_common::Camera;
+use rogalik_common::{Camera, EngineError};
 use rogalik_math::vectors::Vector2f;
 
 const Z_RANGE: f32 = 100.;
@@ -12,6 +12,8 @@ pub struct Camera2D {
     vh: f32,
     rw: f32, // rendering
     rh: f32,
+    bind_group: Option<wgpu::BindGroup>,
+    buffer: Option<wgpu::Buffer>,
 }
 impl Camera for Camera2D {
     fn get_scale(&self) -> f32 {
@@ -53,14 +55,25 @@ impl Camera2D {
             vh,
             rw,
             rh,
+            bind_group: None,
+            buffer: None,
         }
     }
-    pub fn get_bind_group(
-        &self,
-        device: &wgpu::Device,
-        layout: &wgpu::BindGroupLayout,
-    ) -> wgpu::BindGroup {
-        Camera2D::create_bind_group(device, layout, self.get_matrix())
+    pub fn create_wgpu_data(&mut self, device: &wgpu::Device, layout: &wgpu::BindGroupLayout) {
+        let (bind_group, buffer) = Camera2D::create_bind_group(device, layout, self.get_matrix());
+        self.bind_group = Some(bind_group);
+        self.buffer = Some(buffer);
+    }
+    pub fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), EngineError> {
+        queue.write_buffer(
+            self.buffer.as_ref().ok_or(EngineError::GraphicsNotReady)?,
+            0,
+            bytemuck::cast_slice(&[self.get_matrix()]),
+        );
+        Ok(())
+    }
+    pub fn get_bind_group(&self) -> Option<&wgpu::BindGroup> {
+        self.bind_group.as_ref()
     }
     pub fn resize_viewport(&mut self, vw: f32, vh: f32, rw: f32, rh: f32) {
         self.vw = vw;
@@ -88,15 +101,19 @@ impl Camera2D {
         device: &wgpu::Device,
         layout: &wgpu::BindGroupLayout,
         matrix: [[f32; 4]; 4],
-    ) -> wgpu::BindGroup {
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout,
-            label: Some("Camera Bind Group"),
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: get_camera_buffer(device, matrix).as_entire_binding(),
-            }],
-        })
+    ) -> (wgpu::BindGroup, wgpu::Buffer) {
+        let buffer = get_camera_buffer(device, matrix);
+        (
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout,
+                label: Some("Camera Bind Group"),
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: buffer.as_entire_binding(),
+                }],
+            }),
+            buffer,
+        )
     }
 }
 

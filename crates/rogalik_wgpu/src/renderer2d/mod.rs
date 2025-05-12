@@ -107,9 +107,17 @@ impl Renderer2d {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         texture_format: &wgpu::TextureFormat,
-    ) {
+    ) -> Result<(), EngineError> {
         log::debug!("Creating Renderer2d data with w:{}, h:{}", width, height);
-        let _ = self.create_upscale_pass(assets, device, queue, texture_format);
+        self.create_upscale_pass(assets, device, queue, texture_format)?;
+        self.uniforms.create_wgpu_data(
+            assets
+                .bind_group_layouts
+                .get(&crate::assets::bind_groups::BindGroupLayoutKind::Uniform)
+                .ok_or(EngineError::GraphicsInternalError)?,
+            device,
+        );
+        Ok(())
     }
     pub fn draw_atlas_sprite(
         &mut self,
@@ -203,14 +211,12 @@ impl Renderer2d {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> Result<(), EngineError> {
+        for camera in assets.cameras.iter() {
+            camera.write_buffer(queue)?;
+        }
+
         self.uniforms.globals.time = time;
-        let uniform_bind_groups = self.uniforms.get_bind_groups(
-            assets
-                .bind_group_layouts
-                .get(&crate::assets::bind_groups::BindGroupLayoutKind::Uniform)
-                .ok_or(EngineError::GraphicsInternalError)?,
-            device,
-        );
+        self.uniforms.write_buffers(queue)?;
 
         let output = surface
             .get_current_texture()
@@ -241,7 +247,7 @@ impl Renderer2d {
             assets,
             &mut encoder,
             device,
-            &uniform_bind_groups,
+            &self.uniforms.bind_groups,
             current_view,
         )?;
 
@@ -252,7 +258,12 @@ impl Renderer2d {
             } else {
                 &view
             };
-            pass.render(assets, &mut encoder, &current_view, &uniform_bind_groups)?;
+            pass.render(
+                assets,
+                &mut encoder,
+                &current_view,
+                &self.uniforms.bind_groups,
+            )?;
         }
 
         queue.submit(std::iter::once(encoder.finish()));

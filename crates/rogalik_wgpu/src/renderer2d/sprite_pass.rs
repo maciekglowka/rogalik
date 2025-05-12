@@ -52,21 +52,6 @@ impl SpritePass {
             return Ok(());
         };
 
-        // create on the fly as camera's position might have changed
-        let mut camera_bind_groups = HashMap::new();
-        for (i, camera) in assets.iter_cameras().enumerate() {
-            camera_bind_groups.insert(
-                i,
-                camera.get_bind_group(
-                    device,
-                    assets
-                        .bind_group_layouts
-                        .get(&crate::assets::bind_groups::BindGroupLayoutKind::Uniform)
-                        .ok_or(EngineError::GraphicsInternalError)?,
-                ),
-            );
-        }
-
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Sprite vertex buffer"),
             contents: bytemuck::cast_slice(&self.vertex_queue),
@@ -133,7 +118,12 @@ impl SpritePass {
 
             pass.set_bind_group(
                 1,
-                camera_bind_groups.get(&current_params.camera_id.0).unwrap(),
+                assets
+                    .cameras
+                    .get(current_params.camera_id.0)
+                    .ok_or(EngineError::ResourceNotFound)?
+                    .get_bind_group()
+                    .ok_or(EngineError::GraphicsNotReady)?,
                 &[],
             );
             pass.set_bind_group(2, uniform_bind_groups.get(&UniformKind::Globals), &[]);
@@ -168,7 +158,16 @@ impl SpritePass {
                         pass.set_bind_group(0, bind_group, &[]);
                     }
                     if current_params.camera_id != tri.params.camera_id {
-                        pass.set_bind_group(1, &camera_bind_groups[&tri.params.camera_id.0], &[]);
+                        pass.set_bind_group(
+                            1,
+                            assets
+                                .cameras
+                                .get(tri.params.camera_id.0)
+                                .ok_or(EngineError::ResourceNotFound)?
+                                .get_bind_group()
+                                .ok_or(EngineError::GraphicsNotReady)?,
+                            &[],
+                        );
                     }
                     current_params = tri.params;
                     batch_start = offset;

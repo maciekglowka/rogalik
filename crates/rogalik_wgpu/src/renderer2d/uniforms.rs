@@ -13,23 +13,52 @@ pub enum UniformKind {
 pub struct Uniforms {
     pub globals: GlobalsUniform,
     pub lights: LightsUniform,
+    pub bind_groups: HashMap<UniformKind, wgpu::BindGroup>,
+    buffers: HashMap<UniformKind, wgpu::Buffer>,
 }
 impl Uniforms {
-    pub fn get_bind_groups(
-        &self,
-        layout: &wgpu::BindGroupLayout,
-        device: &wgpu::Device,
-    ) -> HashMap<UniformKind, wgpu::BindGroup> {
-        HashMap::from_iter([
-            (
-                UniformKind::Globals,
-                self.globals.get_bind_group(device, layout),
-            ),
-            (
-                UniformKind::Lights,
-                self.lights.get_bind_group(device, layout),
-            ),
-        ])
+    // pub fn get_bind_groups(
+    //     &self,
+    //     layout: &wgpu::BindGroupLayout,
+    //     device: &wgpu::Device,
+    // ) -> HashMap<UniformKind, wgpu::BindGroup> {
+    //     HashMap::from_iter([
+    //         (
+    //             UniformKind::Globals,
+    //             self.globals.get_bind_group(device, layout),
+    //         ),
+    //         (
+    //             UniformKind::Lights,
+    //             self.lights.get_bind_group(device, layout),
+    //         ),
+    //     ])
+    // }
+    pub fn create_wgpu_data(&mut self, layout: &wgpu::BindGroupLayout, device: &wgpu::Device) {
+        let (globals_bind_group, globals_buffer) = self.globals.get_bind_group(device, layout);
+        self.bind_groups
+            .insert(UniformKind::Globals, globals_bind_group);
+        self.buffers.insert(UniformKind::Globals, globals_buffer);
+        let (lights_bind_group, lights_buffer) = self.lights.get_bind_group(device, layout);
+        self.bind_groups
+            .insert(UniformKind::Lights, lights_bind_group);
+        self.buffers.insert(UniformKind::Lights, lights_buffer);
+    }
+    pub fn write_buffers(&self, queue: &wgpu::Queue) -> Result<(), EngineError> {
+        queue.write_buffer(
+            self.buffers
+                .get(&UniformKind::Globals)
+                .ok_or(EngineError::GraphicsNotReady)?,
+            0,
+            bytemuck::cast_slice(&[self.globals]),
+        );
+        queue.write_buffer(
+            self.buffers
+                .get(&UniformKind::Lights)
+                .ok_or(EngineError::GraphicsNotReady)?,
+            0,
+            bytemuck::cast_slice(&[self.lights]),
+        );
+        Ok(())
     }
 }
 
@@ -48,20 +77,23 @@ impl GlobalsUniform {
         &self,
         device: &wgpu::Device,
         layout: &wgpu::BindGroupLayout,
-    ) -> wgpu::BindGroup {
+    ) -> (wgpu::BindGroup, wgpu::Buffer) {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Global Buffer"),
             contents: bytemuck::cast_slice(&[*self]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout,
-            label: Some("Global Bind Group"),
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: buffer.as_entire_binding(),
-            }],
-        })
+        (
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout,
+                label: Some("Global Bind Group"),
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: buffer.as_entire_binding(),
+                }],
+            }),
+            buffer,
+        )
     }
 }
 
@@ -100,20 +132,23 @@ impl LightsUniform {
         &self,
         device: &wgpu::Device,
         layout: &wgpu::BindGroupLayout,
-    ) -> wgpu::BindGroup {
+    ) -> (wgpu::BindGroup, wgpu::Buffer) {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Light Buffer"),
             contents: bytemuck::cast_slice(&[*self]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout,
-            label: Some("Light Bind Group"),
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: buffer.as_entire_binding(),
-            }],
-        })
+        (
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout,
+                label: Some("Light Bind Group"),
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: buffer.as_entire_binding(),
+                }],
+            }),
+            buffer,
+        )
     }
 }
 
