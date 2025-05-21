@@ -133,7 +133,7 @@ impl SpritePass {
             pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
             for tri in self.triangle_queue.iter() {
-                let end = offset + 3 as u32;
+                let end = offset + 3;
 
                 if current_params != tri.params {
                     // draw the previous batch first

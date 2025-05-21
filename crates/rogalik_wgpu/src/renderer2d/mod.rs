@@ -235,7 +235,12 @@ impl Renderer2d {
         if let Some(pass) = &self.upscale_pass {
             post_process_queue.push(pass);
         }
-        post_process_queue.extend(assets.postprocess.iter());
+        post_process_queue.extend(
+            assets
+                .postprocess
+                .iter()
+                .filter(|p| p.get_strength() > 0.001),
+        );
 
         let mut current_view = if let Some(pass) = post_process_queue.get(0) {
             pass.get_view().ok_or(EngineError::GraphicsNotReady)?

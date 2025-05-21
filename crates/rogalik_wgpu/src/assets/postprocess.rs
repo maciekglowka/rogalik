@@ -39,6 +39,9 @@ impl PostProcessPass {
     pub fn set_strength(&mut self, value: f32) {
         self.uniform_data.strength = value;
     }
+    pub fn get_strength(&self) -> f32 {
+        self.uniform_data.strength
+    }
     pub fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), EngineError> {
         queue.write_buffer(
             self.uniform_buffer
