@@ -1,7 +1,4 @@
-use std::{
-    any::{Any, TypeId},
-    vec::IntoIter,
-};
+use std::any::{Any, TypeId};
 
 use crate::{
     components::{ComponentSet, Components},
@@ -140,7 +137,8 @@ impl<A: 'static, B: 'static> Fetch for (&ComponentSet<A>, &ComponentSet<B>) {
         Self: 'a;
 
     fn get<'a>(&'a self, entity: Entity) -> Self::Item<'a> {
-        (self.0.get(entity).unwrap(), self.1.get(entity).unwrap())
+        let (a, b) = self;
+        (a.get(entity).unwrap(), b.get(entity).unwrap())
     }
 }
 impl<A: 'static, B: 'static> FetchMut for (&mut ComponentSet<A>, &mut ComponentSet<B>) {
@@ -150,9 +148,11 @@ impl<A: 'static, B: 'static> FetchMut for (&mut ComponentSet<A>, &mut ComponentS
         Self: 'a;
 
     fn get_mut<'a>(&'a mut self, entity: Entity) -> Self::Item<'a> {
-        (
-            self.0.get_mut(entity).unwrap(),
-            self.1.get_mut(entity).unwrap(),
-        )
+        let (a, b) = self;
+        // (
+        //     self.0.get_mut(entity).unwrap(),
+        //     self.1.get_mut(entity).unwrap(),
+        // )
+        (a.get_mut(entity).unwrap(), b.get_mut(entity).unwrap())
     }
 }
