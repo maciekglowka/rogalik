@@ -221,8 +221,10 @@ impl GraphicsContext for WgpuContext {
         rows: usize,
         cols: usize,
         padding: Option<(f32, f32)>,
+        shader: Option<ResourceId>,
     ) {
-        self.assets.load_font(name, path, rows, cols, padding);
+        self.assets
+            .load_font(name, path, rows, cols, padding, shader);
     }
     fn add_post_process(&mut self, name: &str, params: rogalik_common::PostProcessParams) {
         self.assets.create_post_process(name, params);

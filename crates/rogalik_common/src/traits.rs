@@ -23,6 +23,7 @@ pub trait GraphicsContext {
         rows: usize,
         cols: usize,
         padding: Option<(f32, f32)>,
+        shader: Option<ResourceId>,
     );
     fn add_post_process(&mut self, name: &str, params: crate::PostProcessParams);
     fn draw_sprite(

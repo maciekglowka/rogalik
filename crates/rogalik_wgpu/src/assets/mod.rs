@@ -291,6 +291,7 @@ impl WgpuAssets {
         rows: usize,
         cols: usize,
         padding: Option<(f32, f32)>,
+        shader: Option<ResourceId>,
     ) {
         let atlas = Some(AtlasParams {
             rows,
@@ -301,6 +302,7 @@ impl WgpuAssets {
         let params = MaterialParams {
             atlas,
             diffuse_texture: Some(self.texture_from_path(path)),
+            shader,
             ..Default::default()
         };
         self.create_material(name, params);
