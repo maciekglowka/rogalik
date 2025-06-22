@@ -10,7 +10,7 @@ use crate::{
     scenes::{update_scenes, SceneManager},
     Context, Game,
 };
-use rogalik_common::GraphicsContext;
+use rogalik_common::{AudioContext, GraphicsContext};
 
 pub struct App<T> {
     pub context: Context,
@@ -57,9 +57,12 @@ impl<T: Game> ApplicationHandler for App<T> {
 
         self.set_inner_size_on_resume();
         log::info!("Inner size set to: {:?}", self.context.inner_size);
+
         self.context
             .graphics
             .create_context(self.window.as_ref().expect("No valid window!").clone());
+        self.context.audio.create_context();
+
         self.game.resume(&mut self.context);
         self.game.resize(&mut self.context);
     }

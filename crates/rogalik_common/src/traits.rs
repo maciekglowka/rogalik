@@ -78,6 +78,18 @@ pub trait GraphicsContext {
     fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId>;
 }
 
+pub trait AudioContext {
+    fn create_context(&mut self);
+    fn has_context(&self) -> bool;
+    fn update_assets(&mut self);
+    fn load_source(&mut self, name: &str, path: &str) -> Result<(), EngineError>;
+    fn play(&mut self, name: &str, looped: bool) -> Result<(), EngineError>;
+    fn stop(&mut self, name: &str) -> Result<(), EngineError>;
+    fn resume(&mut self, name: &str) -> Result<(), EngineError>;
+    fn set_volume(&mut self, name: &str, volume: f32) -> Result<(), EngineError>;
+    fn set_pan(&mut self, name: &str, pan: f32) -> Result<(), EngineError>;
+}
+
 pub trait Camera {
     fn get_target(&self) -> Vector2f;
     fn get_scale(&self) -> f32;
