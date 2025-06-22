@@ -86,3 +86,10 @@ pub trait Camera {
     fn camera_to_world(&self, v: Vector2f) -> Vector2f;
     fn get_bounds(&self) -> (Vector2f, Vector2f);
 }
+
+pub trait AudioContext {
+    fn load_audio(&mut self, name: &str, path: &str) -> Result<(), EngineError>;
+    fn play_audio(&mut self, name: &str) -> Result<(), EngineError>;
+    fn stop_audio(&mut self, name: &str) -> Result<(), EngineError>;
+    fn resume_audio(&mut self, name: &str) -> Result<(), EngineError>;
+}

@@ -1,6 +1,11 @@
 [package]
 name = "rogalik_audio"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
+rogalik_assets = { path = "../rogalik_assets" }
+rogalik_common = { path = "../rogalik_common" }
+symphonia = { version = "0.5.3", features = ["aac", "mp3", "wav", "vorbis", "flac", "isomp4", "ogg"] }
+log = "0.4"
+tinyaudio = "0.1.2"
