@@ -4,7 +4,7 @@ version = "0.3.0"
 edition = "2021"
 
 [workspace]
-members = ["crates/*", "rogalik_audio"]
+members = ["crates/*"]
 
 [workspace.dependencies]
 anyhow = "1.0"
