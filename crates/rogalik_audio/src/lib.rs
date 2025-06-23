@@ -73,7 +73,7 @@ impl AudioContext for AudioEngine {
         self.device.is_some()
     }
     fn update_assets(&mut self) {
-        // TODO
+        self.assets.update_assets();
     }
     fn load_source(&mut self, name: &str, path: &str) -> Result<(), rogalik_common::EngineError> {
         self.assets.load_source(name, path)

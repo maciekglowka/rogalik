@@ -14,14 +14,14 @@ pub(crate) struct AudioAssets {
     pub(crate) sources: Arc<Mutex<Vec<AudioSource>>>,
 }
 impl AudioAssets {
-    pub fn new(asset_store: Arc<Mutex<AssetStore>>) -> Self {
+    pub(crate) fn new(asset_store: Arc<Mutex<AssetStore>>) -> Self {
         Self {
             asset_store,
             source_names: HashMap::new(),
             sources: Arc::new(Mutex::new(Vec::new())),
         }
     }
-    pub fn load_source(&mut self, name: &str, path: &str) -> Result<(), EngineError> {
+    pub(crate) fn load_source(&mut self, name: &str, path: &str) -> Result<(), EngineError> {
         let mut store = self
             .asset_store
             .lock()
@@ -38,7 +38,7 @@ impl AudioAssets {
 
         Ok(())
     }
-    pub fn with_source_mut(
+    pub(crate) fn with_source_mut(
         &self,
         name: &str,
         mut f: impl FnMut(&mut AudioSource),
@@ -54,5 +54,14 @@ impl AudioAssets {
             .ok_or(EngineError::ResourceNotFound)?;
         f(source);
         Ok(())
+    }
+    pub(crate) fn update_assets(&mut self) {
+        let mut store = self
+            .asset_store
+            .lock()
+            .expect("Can't acquire the asset store");
+        for source in self.sources.lock().unwrap().iter_mut() {
+            source.check_update(&mut store);
+        }
     }
 }

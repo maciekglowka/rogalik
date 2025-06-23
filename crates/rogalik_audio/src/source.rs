@@ -4,7 +4,7 @@ use symphonia::core::{
     meta::MetadataOptions, probe::Hint,
 };
 
-use rogalik_assets::{AssetContext, AssetStore};
+use rogalik_assets::{AssetContext, AssetState, AssetStore};
 use rogalik_common::{EngineError, ResourceId};
 
 use super::CHANNEL_COUNT;
@@ -110,8 +110,14 @@ impl AudioSource {
         [l, r]
     }
 
-    pub fn update(&mut self, asset_store: &AssetStore) -> Result<(), EngineError> {
-        self.create_data(asset_store)
+    pub fn check_update(&mut self, asset_store: &mut AssetStore) {
+        if let Some(asset) = asset_store.get(self.asset_id) {
+            if asset.state == AssetState::Updated {
+                let _ = self.create_data(asset_store);
+                #[cfg(debug_assertions)]
+                asset_store.mark_read(self.asset_id);
+            }
+        }
     }
 
     /// Create sample and channel_count data from the asset.
