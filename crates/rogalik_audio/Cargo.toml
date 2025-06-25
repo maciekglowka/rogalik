@@ -1,0 +1,13 @@
+[package]
+name = "rogalik_audio"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+log = { workspace = true }
+symphonia = { version = "0.5", features = ["all-codecs"] }
+tinyaudio = "1.1"
+
+rogalik_assets = { path = "../rogalik_assets" }
+rogalik_common = { path = "../rogalik_common" }

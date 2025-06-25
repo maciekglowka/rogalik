@@ -1,3 +1,5 @@
+use rogalik_audio::AudioEngine;
+use rogalik_common::AudioDeviceParams;
 use rogalik_wgpu::WgpuContext;
 use std::sync::{Arc, Mutex};
 #[cfg(target_os = "android")]
@@ -29,7 +31,8 @@ use rogalik_assets::AssetStore;
 
 pub struct Context {
     pub assets: Arc<Mutex<rogalik_assets::AssetStore>>,
-    pub graphics: rogalik_wgpu::WgpuContext,
+    pub audio: AudioEngine,
+    pub graphics: WgpuContext,
     pub input: input::InputContext,
     pub time: time::Time,
     inner_size: PhysicalSize<u32>,
@@ -56,6 +59,7 @@ pub struct EngineBuilder {
     logical_size: Option<(f32, f32)>,
     resizable: bool,
     fullscreen: bool,
+    audio_params: Option<AudioDeviceParams>,
 }
 impl EngineBuilder {
     pub fn new() -> Self {
@@ -79,6 +83,10 @@ impl EngineBuilder {
     }
     pub fn fullscreen(mut self, val: bool) -> Self {
         self.fullscreen = val;
+        self
+    }
+    pub fn with_audio(mut self, params: AudioDeviceParams) -> Self {
+        self.audio_params = Some(params);
         self
     }
     pub fn build<T>(&self, game: T, scene: Box<dyn traits::Scene<Game = T>>) -> Engine<T>
@@ -114,8 +122,11 @@ impl EngineBuilder {
 
         let assets = Arc::new(Mutex::new(AssetStore::default()));
         let graphics = WgpuContext::new(assets.clone());
+        let audio = AudioEngine::new(assets.clone(), self.audio_params);
+
         let context = Context {
             assets,
+            audio,
             graphics,
             input: input::InputContext::new(),
             time: time::Time::new(),

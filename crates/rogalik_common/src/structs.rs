@@ -11,6 +11,14 @@ impl ResourceId {
     }
 }
 
+#[derive(Debug)]
+pub enum EngineError {
+    InvalidResource,
+    ResourceNotFound,
+    GraphicsInternalError,
+    GraphicsNotReady,
+}
+
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Color(pub u8, pub u8, pub u8, pub u8);
@@ -52,14 +60,6 @@ pub struct SpriteParams {
 #[inline(always)]
 fn srgb_single(v: f32) -> f32 {
     ((v + 0.055) / 1.055).powf(2.4)
-}
-
-#[derive(Debug)]
-pub enum EngineError {
-    InvalidResource,
-    ResourceNotFound,
-    GraphicsInternalError,
-    GraphicsNotReady,
 }
 
 #[derive(Clone, Copy, Default)]
@@ -114,4 +114,18 @@ pub enum BuiltInShader {
     SpriteLit,
     Upscale,
     Lut,
+}
+
+#[derive(Clone, Copy)]
+pub struct AudioDeviceParams {
+    pub sample_rate: usize,
+    pub buffer_secs: f32,
+}
+impl Default for AudioDeviceParams {
+    fn default() -> Self {
+        Self {
+            sample_rate: 44100,
+            buffer_secs: 0.1,
+        }
+    }
 }
