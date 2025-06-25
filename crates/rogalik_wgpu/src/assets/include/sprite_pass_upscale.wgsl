@@ -1,12 +1,10 @@
 struct GlobalsUniform {
     time: f32,
-    rw: u32,
-    rh: u32,
-    vw: u32,
-    vh: u32,
-    _padding_0: f32,
-    _padding_1: f32,
-    _padding_2: f32,
+    _padding_0: u32,
+    render_size: vec2<u32>,
+    viewport_size: vec2<u32>,
+    _padding_1: u32,
+    _padding_2: u32,
 }
 
 struct VertexOutput {
@@ -29,14 +27,14 @@ fn vs_main(
     out.clip_position = vec4<f32>(out.uv * 2.0 - 1.0, 0.0, 1.0);
     out.uv.y = 1.0 - out.uv.y;
 
-    var scale_u = round(f32(globals.vw) / f32(globals.rw));
-    var scaled_rw  = scale_u * f32(globals.rw);
-    var ru = (scaled_rw - f32(globals.vw)) / scaled_rw;
+    var scale_u = round(f32(globals.viewport_size.x) / f32(globals.render_size.x));
+    var scaled_rw  = scale_u * f32(globals.render_size.x);
+    var ru = (scaled_rw - f32(globals.viewport_size.x)) / scaled_rw;
     out.uv.x -= out.uv.x * ru;
 
-    var scale_v = round(f32(globals.vh) / f32(globals.rh));
-    var scaled_rh  = scale_v * f32(globals.rh);
-    var rv = (scaled_rh - f32(globals.vh)) / scaled_rh;
+    var scale_v = round(f32(globals.viewport_size.y) / f32(globals.render_size.y));
+    var scaled_rh  = scale_v * f32(globals.render_size.y);
+    var rv = (scaled_rh - f32(globals.viewport_size.y)) / scaled_rh;
     out.uv.y -= out.uv.y * rv;
     
     return out;

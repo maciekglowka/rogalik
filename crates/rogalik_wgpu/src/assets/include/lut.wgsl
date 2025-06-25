@@ -1,11 +1,3 @@
-struct GlobalsUniform {
-    time: f32,
-    rw: u32,
-    rh: u32,
-    vw: u32,
-    vh: u32,
-}
-
 struct VertexOutput {
     @location(0) uv: vec2<f32>,
     @builtin(position) clip_position: vec4<f32>,
@@ -40,9 +32,6 @@ var lut_image: texture_2d<f32>;
 @group(0)
 @binding(3)
 var lut_sampler: sampler;
-
-@group(1) @binding(0)
-var<uniform> globals: GlobalsUniform;
 
 const LUT_SIZE: f32 = 32.0;
 

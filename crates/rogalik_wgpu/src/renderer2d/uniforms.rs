@@ -50,11 +50,11 @@ impl Uniforms {
 #[derive(Copy, Clone, Debug, Default, bytemuck::NoUninit, bytemuck::Zeroable)]
 pub struct GlobalsUniform {
     pub time: f32,
-    pub rw: u32, // rendering dim
-    pub rh: u32,
-    pub vw: u32, // viewport dim
-    pub vh: u32,
-    _padding: [u32; 3], // for WASM
+    _padding_0: u32,
+    pub render_size: [u32; 2],
+    pub viewport_size: [u32; 2],
+    _padding_1: u32,
+    _padding_2: u32,
 }
 impl GlobalsUniform {
     pub fn get_bind_group(
