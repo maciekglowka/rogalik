@@ -82,6 +82,7 @@ pub trait AudioContext {
     fn create_context(&mut self);
     fn has_context(&self) -> bool;
     fn update_assets(&mut self);
+    fn set_master_volume(&mut self, volume: f32);
     fn load_source(&mut self, name: &str, path: &str) -> Result<(), EngineError>;
     fn play(&mut self, name: &str, looped: bool) -> Result<(), EngineError>;
     fn stop(&mut self, name: &str) -> Result<(), EngineError>;

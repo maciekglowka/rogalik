@@ -9,9 +9,9 @@ mod source;
 const CHANNEL_COUNT: usize = 2;
 
 pub struct AudioEngine {
-    assets: assets::AudioAssets,
     device: Option<OutputDevice>,
     params: Option<AudioDeviceParams>,
+    state: Arc<Mutex<AudioState>>,
 }
 impl AudioEngine {
     /// Create a new AudioEngine instance.
@@ -21,9 +21,12 @@ impl AudioEngine {
         params: Option<AudioDeviceParams>,
     ) -> Self {
         Self {
-            assets: assets::AudioAssets::new(asset_store),
             device: None,
             params,
+            state: Arc::new(Mutex::new(AudioState {
+                assets: assets::AudioAssets::new(asset_store),
+                volume: 1.,
+            })),
         }
     }
 }
@@ -45,10 +48,11 @@ impl AudioContext for AudioEngine {
                     channel_sample_count,
                 },
                 {
-                    let sources = self.assets.sources.clone();
+                    let state = self.state.clone();
                     move |data| {
                         // TODO rethink if can avoid the mutex
-                        let mut sources = sources.lock().unwrap();
+                        let mut state = state.lock().unwrap();
+                        let master_volume = state.volume;
 
                         for data_samples in data.chunks_mut(CHANNEL_COUNT) {
                             // Should get unrolled by the compiler
@@ -56,10 +60,11 @@ impl AudioContext for AudioEngine {
                                 data_samples[i] = 0.;
                             }
 
-                            for source in sources.iter_mut().filter(|s| s.is_playing()) {
+                            for source in state.assets.sources.iter_mut().filter(|s| s.is_playing())
+                            {
                                 let source_samples = source.next();
                                 for i in 0..CHANNEL_COUNT {
-                                    data_samples[i] += source_samples[i];
+                                    data_samples[i] += master_volume * source_samples[i];
                                 }
                             }
                         }
@@ -73,24 +78,52 @@ impl AudioContext for AudioEngine {
         self.device.is_some()
     }
     fn update_assets(&mut self) {
-        self.assets.update_assets();
+        self.state.lock().unwrap().assets.update_assets();
+    }
+    fn set_master_volume(&mut self, volume: f32) {
+        self.state.lock().unwrap().volume = volume;
     }
     fn load_source(&mut self, name: &str, path: &str) -> Result<(), rogalik_common::EngineError> {
-        self.assets.load_source(name, path)
+        self.state.lock().unwrap().assets.load_source(name, path)
     }
     fn play(&mut self, name: &str, looped: bool) -> Result<(), rogalik_common::EngineError> {
-        self.assets.with_source_mut(name, |s| s.play(looped))
+        self.state
+            .lock()
+            .unwrap()
+            .assets
+            .with_source_mut(name, |s| s.play(looped))
     }
     fn stop(&mut self, name: &str) -> Result<(), rogalik_common::EngineError> {
-        self.assets.with_source_mut(name, |s| s.stop())
+        self.state
+            .lock()
+            .unwrap()
+            .assets
+            .with_source_mut(name, |s| s.stop())
     }
     fn resume(&mut self, name: &str) -> Result<(), rogalik_common::EngineError> {
-        self.assets.with_source_mut(name, |s| s.resume())
+        self.state
+            .lock()
+            .unwrap()
+            .assets
+            .with_source_mut(name, |s| s.resume())
     }
     fn set_volume(&mut self, name: &str, volume: f32) -> Result<(), rogalik_common::EngineError> {
-        self.assets.with_source_mut(name, |s| s.set_volume(volume))
+        self.state
+            .lock()
+            .unwrap()
+            .assets
+            .with_source_mut(name, |s| s.set_volume(volume))
     }
     fn set_pan(&mut self, name: &str, pan: f32) -> Result<(), rogalik_common::EngineError> {
-        self.assets.with_source_mut(name, |s| s.set_pan(pan))
+        self.state
+            .lock()
+            .unwrap()
+            .assets
+            .with_source_mut(name, |s| s.set_pan(pan))
     }
+}
+
+struct AudioState {
+    assets: assets::AudioAssets,
+    volume: f32,
 }
