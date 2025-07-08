@@ -150,9 +150,11 @@ impl EngineBuilder {
         log::info!("Created WASM window");
 
         let assets = Arc::new(Mutex::new(AssetStore::default()));
+        let audio = AudioEngine::new(assets.clone(), self.audio_params);
         let graphics = WgpuContext::new(assets.clone());
         let context = Context {
             assets,
+            audio,
             graphics,
             input: input::InputContext::new(),
             time: time::Time::new(),

@@ -61,6 +61,7 @@ impl<T: Game> ApplicationHandler for App<T> {
         self.context
             .graphics
             .create_context(self.window.as_ref().expect("No valid window!").clone());
+
         self.context.audio.create_context();
 
         self.game.resume(&mut self.context);
@@ -126,6 +127,7 @@ impl<T: Game> ApplicationHandler for App<T> {
                         self.context.graphics.create_context(window.clone());
                     }
                 }
+
                 log::info!("Resized: {:?}", physical_size);
                 self.resize(physical_size);
                 self.game.resize(&mut self.context);
