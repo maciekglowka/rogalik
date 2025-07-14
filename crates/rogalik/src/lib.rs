@@ -1,4 +1,4 @@
-#![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../README.md"))]
+#![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "README.md"))]
 
 #[cfg(target_os = "android")]
 mod android;
