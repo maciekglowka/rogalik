@@ -1518,13 +1518,22 @@ checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
 name = "rogalik"
 version = "0.3.0"
 dependencies = [
+ "android_logger",
+ "cfg-if",
+ "console_error_panic_hook",
+ "jni",
+ "log",
+ "ndk-context",
  "rogalik_assets",
  "rogalik_audio",
  "rogalik_common",
- "rogalik_engine",
  "rogalik_math",
  "rogalik_persist",
  "rogalik_wgpu",
+ "serde",
+ "wasm-bindgen",
+ "web-sys",
+ "winit",
 ]
 
 [[package]]
@@ -1552,27 +1561,6 @@ version = "0.1.0"
 dependencies = [
  "rogalik_math",
  "serde",
- "winit",
-]
-
-[[package]]
-name = "rogalik_engine"
-version = "0.1.0"
-dependencies = [
- "android_logger",
- "cfg-if",
- "console_error_panic_hook",
- "jni",
- "log",
- "ndk-context",
- "rogalik_assets",
- "rogalik_audio",
- "rogalik_common",
- "rogalik_math",
- "rogalik_wgpu",
- "serde",
- "wasm-bindgen",
- "web-sys",
  "winit",
 ]
 

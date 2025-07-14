@@ -1,7 +1,15 @@
 [package]
-name = "rogalik_engine"
-version = "0.1.0"
+name = "rogalik"
+version = "0.3.0"
 edition = "2021"
+description = "A simple framework for 2d pixel games"
+authors = ["Maciej Główka <mg@maciejglowka.com>"]
+license = "MIT"
+repository = "https://github.com/maciekglowka/rogalik"
+readme = "README.md"
+publish = true
+keywords = ["gamedev", "game", "wasm"]
+categories = ["games", "game-engines", "game-development"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -9,13 +17,17 @@ crate-type = ["cdylib", "rlib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-serialize = ["dep:serde"]
+serialize = [
+    "dep:serde",
+    "rogalik_math/serialize",
+ ]
 
 [dependencies]
 rogalik_assets = { path = "../rogalik_assets" }
 rogalik_audio = { path = "../rogalik_audio" }
 rogalik_common = { path = "../rogalik_common" }
 rogalik_math = { path = "../rogalik_math" }
+rogalik_persist = { path = "../rogalik_persist" }
 rogalik_wgpu = { path = "../rogalik_wgpu" }
 
 cfg-if = "1"
@@ -23,12 +35,8 @@ log = { workspace = true }
 serde = { workspace = true, optional = true }
 winit = { workspace = true }
 
-# [target.'cfg(not(target_os = "android"))'.dependencies]
-# env_logger = "0.10"
-
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1"
-# console_log = "1.0"
 wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = [
     "Document", "Window", "Element", "HtmlCollection", "Performance"

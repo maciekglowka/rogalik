@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use rogalik_assets::{AssetContext, AssetState, AssetStore};
+use rogalik_assets::{AssetContext, AssetStore};
 use rogalik_common::{EngineError, ResourceId};
 
 use crate::source::AudioSource;
@@ -27,7 +27,7 @@ impl AudioAssets {
             .lock()
             .expect("Can't acquire the asset store!");
 
-        let asset_id = store.load(path).expect(&format!("Can't load {}!", path));
+        let asset_id = store.load(path).expect(&format!("Can't load {path}!"));
 
         let source = AudioSource::new(asset_id, &store)?;
 

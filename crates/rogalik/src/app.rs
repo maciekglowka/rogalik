@@ -7,8 +7,9 @@ use winit::keyboard::PhysicalKey;
 use winit::window::{Window, WindowAttributes, WindowId};
 
 use crate::{
+    engine::Context,
     scenes::{update_scenes, SceneManager},
-    Context, Game,
+    Game,
 };
 use rogalik_common::{AudioContext, GraphicsContext};
 

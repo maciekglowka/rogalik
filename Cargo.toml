@@ -1,18 +1,6 @@
-[package]
-name = "rogalik"
-version = "0.3.0"
-edition = "2021"
-description = "A simple framework for 2d pixel games"
-authors = ["Maciej Główka <mg@maciejglowka.com>"]
-license = "MIT"
-repository = "https://github.com/maciekglowka/rogalik"
-readme = "README.md"
-publish = true
-keywords = ["gamedev", "game", "wasm"]
-categories = ["games", "game-engines", "game-development"]
-
 [workspace]
 members = ["crates/*"]
+resolver = "2"
 
 [workspace.dependencies]
 anyhow = "1.0"
@@ -20,19 +8,3 @@ bincode = "1.3"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 winit = { version = "0.30", features = [ "android-native-activity", "rwh_05" ] }
-
-[features]
-serialize = [
-    "rogalik_math/serialize",
-    "rogalik_engine/serialize"
-]
-
-[dependencies]
-rogalik_assets = { version="0.1.0", path = "crates/rogalik_assets" }
-rogalik_audio = { version="0.1.0", path = "crates/rogalik_audio" }
-rogalik_common = { version="0.1.0", path = "crates/rogalik_common" }
-rogalik_engine = { version="0.1.0", path = "crates/rogalik_engine" }
-rogalik_math = { version="0.1.0", path = "crates/rogalik_math" }
-rogalik_persist = { version="0.1.0", path = "crates/rogalik_persist" }
-rogalik_wgpu = { version="0.1.0", path = "crates/rogalik_wgpu" }
-

@@ -1,6 +1,6 @@
 use crate::{
+    engine::Context,
     traits::{Game, Scene, SceneChange},
-    Context,
 };
 
 pub struct SceneManager<T> {

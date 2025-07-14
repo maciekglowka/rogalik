@@ -2,6 +2,14 @@
 name = "rogalik_persist"
 version = "0.1.0"
 edition = "2021"
+description = "A cross platform persistence backend for the Rogali engine"
+authors = ["Maciej Główka <mg@maciejglowka.com>"]
+license = "MIT"
+repository = "https://github.com/maciekglowka/rogalik"
+readme = "README.md"
+publish = true
+keywords = ["gamedev", "game", "wasm"]
+categories = ["games", "game-engines", "game-development"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

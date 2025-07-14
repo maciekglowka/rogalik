@@ -1,6 +1,3 @@
-use rogalik_audio::AudioEngine;
-use rogalik_common::AudioDeviceParams;
-use rogalik_wgpu::WgpuContext;
 use std::sync::{Arc, Mutex};
 #[cfg(target_os = "android")]
 pub use winit::platform::android::activity::AndroidApp;
@@ -12,31 +9,27 @@ use winit::{
     window::WindowAttributes,
 };
 
-#[cfg(target_os = "android")]
-mod android;
-mod app;
-pub mod input;
-mod scenes;
-mod time;
-pub mod traits;
-
-#[cfg(target_arch = "wasm32")]
-mod wasm;
-
-pub use log;
-pub use time::Instant;
-pub use traits::{Game, Scene, SceneChange};
-
 use rogalik_assets::AssetStore;
+use rogalik_audio::AudioEngine;
+use rogalik_common::AudioDeviceParams;
+use rogalik_wgpu::WgpuContext;
+
+use crate::{
+    app::{get_event_loop, App},
+    input::InputContext,
+    time::Time,
+    traits::Scene,
+    Game,
+};
 
 pub struct Context {
     pub assets: Arc<Mutex<rogalik_assets::AssetStore>>,
     pub audio: AudioEngine,
     pub graphics: WgpuContext,
-    pub input: input::InputContext,
-    pub time: time::Time,
-    inner_size: PhysicalSize<u32>,
-    scale_factor: f64,
+    pub input: InputContext,
+    pub time: Time,
+    pub(crate) inner_size: PhysicalSize<u32>,
+    pub(crate) scale_factor: f64,
     pub os_path: Option<String>,
 }
 impl Context {
@@ -89,7 +82,7 @@ impl EngineBuilder {
         self.audio_params = Some(params);
         self
     }
-    pub fn build<T>(&self, game: T, scene: Box<dyn traits::Scene<Game = T>>) -> Engine<T>
+    pub fn build<T>(&self, game: T, scene: Box<dyn Scene<Game = T>>) -> Engine<T>
     where
         T: Game + 'static,
     {
@@ -98,7 +91,7 @@ impl EngineBuilder {
         // env_logger::init();
 
         // set window
-        let event_loop = app::get_event_loop();
+        let event_loop = get_event_loop();
         let mut window_attributes = WindowAttributes::default();
 
         if let Some(title) = &self.title {
@@ -128,25 +121,25 @@ impl EngineBuilder {
             assets,
             audio,
             graphics,
-            input: input::InputContext::new(),
-            time: time::Time::new(),
+            input: InputContext::new(),
+            time: Time::new(),
             inner_size: PhysicalSize::default(),
             scale_factor: 1.,
             os_path: None,
         };
-        let mut app = app::App::new(game, context, window_attributes);
+        let mut app = App::new(game, context, window_attributes);
         app.scene_manager.push(scene);
         Engine { event_loop, app }
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub fn build_wasm<T>(&self, game: T, scene: Box<dyn traits::Scene<Game = T>>) -> Engine<T>
+    pub fn build_wasm<T>(&self, game: T, scene: Box<dyn Scene<Game = T>>) -> Engine<T>
     where
         T: Game + 'static,
     {
-        wasm::configure_handlers();
+        crate::wasm::configure_handlers();
         log::info!("Logging configured");
-        let event_loop = app::get_event_loop();
+        let event_loop = get_event_loop();
         log::info!("Created WASM window");
 
         let assets = Arc::new(Mutex::new(AssetStore::default()));
@@ -156,16 +149,16 @@ impl EngineBuilder {
             assets,
             audio,
             graphics,
-            input: input::InputContext::new(),
-            time: time::Time::new(),
+            input: InputContext::new(),
+            time: Time::new(),
             inner_size: PhysicalSize::default(),
             scale_factor: 1.,
             os_path: None,
         };
 
-        let canvas = wasm::get_canvas();
+        let canvas = crate::wasm::get_canvas();
         let window_attributes = WindowAttributes::default().with_canvas(Some(canvas));
-        let mut app = app::App::new(game, context, window_attributes);
+        let mut app = App::new(game, context, window_attributes);
         app.scene_manager.push(scene);
 
         Engine { event_loop, app }
@@ -214,8 +207,8 @@ impl EngineBuilder {
 
         let context = Context {
             graphics,
-            input: input::InputContext::new(),
-            time: time::Time::new(),
+            input: InputContext::new(),
+            time: Time::new(),
             inner_size: window.inner_size(),
             scale_factor: window.scale_factor(),
             window,
@@ -234,7 +227,7 @@ pub struct Engine<T>
 where
     T: Game + 'static,
 {
-    app: app::App<T>,
+    app: App<T>,
     event_loop: EventLoop<()>,
 }
 impl<T> Engine<T>
@@ -246,7 +239,7 @@ where
     }
 }
 
-fn run<T>(event_loop: EventLoop<()>, mut app: app::App<T>)
+fn run<T>(event_loop: EventLoop<()>, mut app: App<T>)
 where
     T: Game + 'static,
 {

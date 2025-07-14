@@ -2,6 +2,14 @@
 name = "rogalik_assets"
 version = "0.1.0"
 edition = "2021"
+description = "An asset manager for the Rogalik engine"
+authors = ["Maciej Główka <mg@maciejglowka.com>"]
+license = "MIT"
+repository = "https://github.com/maciekglowka/rogalik"
+readme = "README.md"
+publish = true
+keywords = ["gamedev", "game", "wasm"]
+categories = ["games", "game-engines", "game-development"]
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

@@ -1,6 +1,4 @@
-use rogalik_common::{
-    AtlasParams, EngineError, MaterialParams, ResourceId, TextureFiltering, TextureRepeat,
-};
+use rogalik_common::{AtlasParams, EngineError, MaterialParams, ResourceId};
 
 use super::{atlas::SpriteAtlas, texture::TextureData};
 use crate::utils::{get_wgpu_address_mode, get_wgpu_filter_mode};
