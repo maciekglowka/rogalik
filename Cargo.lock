@@ -1538,7 +1538,7 @@ dependencies = [
 
 [[package]]
 name = "rogalik_assets"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "log",
  "rogalik_common",
@@ -1546,7 +1546,7 @@ dependencies = [
 
 [[package]]
 name = "rogalik_audio"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "log",
  "rogalik_assets",
@@ -1557,7 +1557,7 @@ dependencies = [
 
 [[package]]
 name = "rogalik_common"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "rogalik_math",
  "serde",
@@ -1566,7 +1566,7 @@ dependencies = [
 
 [[package]]
 name = "rogalik_math"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "num-traits",
  "serde",
@@ -1574,7 +1574,7 @@ dependencies = [
 
 [[package]]
 name = "rogalik_persist"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "base64",
@@ -1586,7 +1586,7 @@ dependencies = [
 
 [[package]]
 name = "rogalik_wgpu"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "bytemuck",
  "image",
