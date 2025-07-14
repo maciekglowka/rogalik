@@ -19,18 +19,18 @@ use crate::{
     input::InputContext,
     time::Time,
     traits::Scene,
-    Game,
+    Game, SceneChange,
 };
 
 pub struct Context {
     pub assets: Arc<Mutex<rogalik_assets::AssetStore>>,
     pub audio: AudioEngine,
     pub graphics: WgpuContext,
-    pub input: InputContext,
-    pub time: Time,
     pub(crate) inner_size: PhysicalSize<u32>,
-    pub(crate) scale_factor: f64,
+    pub input: InputContext,
     pub os_path: Option<String>,
+    pub(crate) scale_factor: f64,
+    pub time: Time,
 }
 impl Context {
     pub fn get_physical_size(&self) -> rogalik_math::vectors::Vector2f {
