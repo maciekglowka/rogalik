@@ -23,12 +23,12 @@ serialize = [
  ]
 
 [dependencies]
-rogalik_assets = { path = "../rogalik_assets" }
-rogalik_audio = { path = "../rogalik_audio" }
-rogalik_common = { path = "../rogalik_common" }
-rogalik_math = { path = "../rogalik_math" }
-rogalik_persist = { path = "../rogalik_persist" }
-rogalik_wgpu = { path = "../rogalik_wgpu" }
+rogalik_assets = { path = "../rogalik_assets", version = "0.3.0" }
+rogalik_audio = { path = "../rogalik_audio", version = "0.3.0" }
+rogalik_common = { path = "../rogalik_common", version = "0.3.0" }
+rogalik_math = { path = "../rogalik_math", version = "0.3.0" }
+rogalik_persist = { path = "../rogalik_persist", version = "0.3.0" }
+rogalik_wgpu = { path = "../rogalik_wgpu", version = "0.3.0" }
 
 cfg-if = "1"
 log = { workspace = true }

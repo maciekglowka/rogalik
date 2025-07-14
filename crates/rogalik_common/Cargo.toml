@@ -15,6 +15,7 @@ serialize = ["dep:serde"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
+rogalik_math = { path = "../rogalik_math", version = "0.3.0" }
+
 serde = { workspace = true, optional = true }
-rogalik_math = { path = "../rogalik_math" }
 winit = { workspace = true }

@@ -2,6 +2,9 @@
 members = ["crates/*"]
 resolver = "2"
 
+[workspace.metadata.release]
+rate-limit = { new-packages = 10, existing-packages = 10 }
+
 [workspace.dependencies]
 anyhow = "1.0"
 bincode = "1.3"

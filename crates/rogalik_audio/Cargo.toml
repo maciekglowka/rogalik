@@ -12,9 +12,9 @@ categories = ["games", "game-engines", "game-development"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
+rogalik_assets = { path = "../rogalik_assets", version = "0.3.0" }
+rogalik_common = { path = "../rogalik_common", version = "0.3.0" }
+
 log = { workspace = true }
 symphonia = { version = "0.5", features = ["all-codecs"] }
 tinyaudio = "1.1"
-
-rogalik_assets = { path = "../rogalik_assets" }
-rogalik_common = { path = "../rogalik_common" }

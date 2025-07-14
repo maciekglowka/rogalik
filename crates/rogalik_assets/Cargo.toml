@@ -13,5 +13,6 @@ categories = ["games", "game-engines", "game-development"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
+rogalik_common = { path = "../rogalik_common", version = "0.3.0" }
+
 log = { workspace = true }
-rogalik_common = { path = "../rogalik_common" }

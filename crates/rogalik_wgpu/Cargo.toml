@@ -13,9 +13,9 @@ categories = ["games", "game-engines", "game-development"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rogalik_assets = { path = "../rogalik_assets" }
-rogalik_common = { path = "../rogalik_common" }
-rogalik_math = { path = "../rogalik_math" }
+rogalik_assets = { path = "../rogalik_assets", version = "0.3.0" }
+rogalik_common = { path = "../rogalik_common", version = "0.3.0" }
+rogalik_math = { path = "../rogalik_math", version = "0.3.0" }
 
 bytemuck = { version = "1.12", features = ["derive"] }
 log = { workspace = true }
@@ -23,7 +23,6 @@ pollster = "0.3"
 
 wgpu = "23.0"
 winit = { workspace = true }
-
 
 [dependencies.image]
 version = "0.24"
