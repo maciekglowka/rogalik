@@ -19,7 +19,7 @@ use crate::{
     input::InputContext,
     time::Time,
     traits::Scene,
-    Game, SceneChange,
+    Game,
 };
 
 pub struct Context {
@@ -86,10 +86,6 @@ impl EngineBuilder {
     where
         T: Game + 'static,
     {
-        // set logging
-        // #[cfg(not(target_os = "android"))]
-        // env_logger::init();
-
         // set window
         let event_loop = get_event_loop();
         let mut window_attributes = WindowAttributes::default();
@@ -127,8 +123,7 @@ impl EngineBuilder {
             scale_factor: 1.,
             os_path: None,
         };
-        let mut app = App::new(game, context, window_attributes);
-        app.scene_manager.push(scene);
+        let app = App::new(game, context, scene, window_attributes);
         Engine { event_loop, app }
     }
 
@@ -158,8 +153,7 @@ impl EngineBuilder {
 
         let canvas = crate::wasm::get_canvas();
         let window_attributes = WindowAttributes::default().with_canvas(Some(canvas));
-        let mut app = App::new(game, context, window_attributes);
-        app.scene_manager.push(scene);
+        let app = App::new(game, context, scene, window_attributes);
 
         Engine { event_loop, app }
     }

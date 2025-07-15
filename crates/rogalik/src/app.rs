@@ -9,7 +9,7 @@ use winit::window::{Window, WindowAttributes, WindowId};
 use crate::{
     engine::Context,
     scenes::{update_scenes, SceneManager},
-    Game,
+    Game, Scene,
 };
 use rogalik_common::{AudioContext, GraphicsContext};
 
@@ -21,11 +21,16 @@ pub struct App<T> {
     window_attributes: WindowAttributes,
 }
 impl<T: Game> App<T> {
-    pub fn new(game: T, context: Context, window_attributes: WindowAttributes) -> Self {
+    pub fn new(
+        game: T,
+        context: Context,
+        scene: Box<dyn Scene<Game = T>>,
+        window_attributes: WindowAttributes,
+    ) -> Self {
         Self {
             context,
             game,
-            scene_manager: SceneManager::new(),
+            scene_manager: SceneManager::new(scene),
             window: None,
             window_attributes,
         }

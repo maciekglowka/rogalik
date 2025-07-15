@@ -3,38 +3,62 @@ use crate::{
     traits::{Game, Scene, SceneChange},
 };
 
+const EMPTY_STACK_MSG: &str = "Scene stack is empty!";
+
+pub struct SceneController<T: Game>(Option<SceneChange<T>>);
+impl<T: Game> SceneController<T> {
+    fn new() -> Self {
+        Self(None)
+    }
+    pub fn pop(&mut self) {
+        self.0 = Some(SceneChange::Pop);
+    }
+    pub fn push(&mut self, scene: Box<dyn Scene<Game = T>>) {
+        self.0 = Some(SceneChange::Push(scene));
+    }
+    pub fn switch(&mut self, scene: Box<dyn Scene<Game = T>>) {
+        self.0 = Some(SceneChange::Switch(scene));
+    }
+}
+
 pub struct SceneManager<T> {
     scenes: Vec<Box<dyn Scene<Game = T>>>,
     initialized: bool,
 }
 impl<T> SceneManager<T> {
-    pub fn new() -> Self {
+    pub fn new(scene: Box<dyn Scene<Game = T>>) -> Self {
         Self {
-            scenes: Vec::new(),
+            scenes: vec![scene],
             initialized: false,
         }
     }
 }
 impl<T: Game> SceneManager<T> {
-    pub fn push(&mut self, scene: Box<dyn Scene<Game = T>>) {
+    /// Push new scecne to the stack
+    pub(crate) fn push(&mut self, scene: Box<dyn Scene<Game = T>>) {
         self.scenes.push(scene);
     }
-    pub fn pop(&mut self) -> Option<Box<dyn Scene<Game = T>>> {
-        self.scenes.pop()
+    /// Pop current scene. Panics if scene stack is empty.
+    pub(crate) fn pop(&mut self) -> Box<dyn Scene<Game = T>> {
+        self.scenes.pop().expect(EMPTY_STACK_MSG)
     }
-    pub fn switch(&mut self, scene: Box<dyn Scene<Game = T>>) -> Option<Box<dyn Scene<Game = T>>> {
-        let prev = self.scenes.pop();
+    /// Replace current (top) scene. Panics if scene stack is empty.
+    pub(crate) fn switch(&mut self, scene: Box<dyn Scene<Game = T>>) -> Box<dyn Scene<Game = T>> {
+        let prev = self.scenes.pop().expect(EMPTY_STACK_MSG);
         self.push(scene);
         prev
     }
-    pub fn current_mut(&mut self) -> Option<&mut Box<dyn Scene<Game = T>>> {
-        self.scenes.last_mut()
+    pub(crate) fn current_mut(&mut self) -> &mut Box<dyn Scene<Game = T>> {
+        self.scenes.last_mut().expect(EMPTY_STACK_MSG)
     }
-    pub fn initialize(&mut self, game: &mut T, context: &mut Context) {
+    pub(crate) fn initialize(
+        &mut self,
+        game: &mut T,
+        context: &mut Context,
+        controller: &mut SceneController<T>,
+    ) {
         self.initialized = true;
-        self.current_mut()
-            .expect("No scene found!")
-            .enter(game, context);
+        self.current_mut().enter(game, context, controller);
     }
 }
 
@@ -43,37 +67,40 @@ pub fn update_scenes<T: Game>(
     game: &mut T,
     context: &mut Context,
 ) {
-    // TODO find a better way to enter first scene on start?
-    if !scene_manager.initialized {
-        scene_manager.initialize(game, context);
-        return;
+    let mut controller = SceneController::new();
+
+    match scene_manager.initialized {
+        // TODO find a better way to enter first scene on start?
+        false => {
+            scene_manager.initialize(game, context, &mut controller);
+        }
+        true => {
+            scene_manager
+                .current_mut()
+                .update(game, context, &mut controller);
+        }
     }
 
-    let mut scene_result = None;
-    if let Some(scene) = scene_manager.current_mut() {
-        scene_result = scene.update(game, context);
+    while let Some(change) = controller.0.take() {
+        match change {
+            SceneChange::Pop => {
+                scene_manager.pop().exit(game, context, &mut controller);
+                scene_manager
+                    .current_mut()
+                    .restore(game, context, &mut controller);
+            }
+            SceneChange::Push(mut scene) => {
+                scene.enter(game, context, &mut controller);
+                scene_manager.push(scene);
+            }
+            SceneChange::Switch(new_scene) => {
+                scene_manager
+                    .switch(new_scene)
+                    .exit(game, context, &mut controller);
+                scene_manager
+                    .current_mut()
+                    .enter(game, context, &mut controller);
+            }
+        }
     }
-    match scene_result {
-        None => (),
-        Some(SceneChange::Pop) => {
-            if let Some(mut scene) = scene_manager.pop() {
-                scene.exit(game, context);
-            }
-            if let Some(scene) = scene_manager.current_mut() {
-                scene.restore(game, context);
-            }
-        }
-        Some(SceneChange::Push(mut scene)) => {
-            scene.enter(game, context);
-            scene_manager.push(scene);
-        }
-        Some(SceneChange::Switch(new_scene)) => {
-            if let Some(mut old_scene) = scene_manager.switch(new_scene) {
-                old_scene.exit(game, context)
-            }
-            if let Some(new) = scene_manager.current_mut() {
-                new.enter(game, context)
-            };
-        }
-    };
 }

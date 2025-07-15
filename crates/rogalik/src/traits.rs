@@ -1,4 +1,4 @@
-use crate::engine::Context;
+use crate::{engine::Context, scenes::SceneController};
 
 pub trait Game {
     fn setup(&mut self, context: &mut Context);
@@ -10,17 +10,39 @@ pub trait Game {
 pub trait Scene {
     type Game: Game;
 
-    fn enter(&mut self, _game: &mut Self::Game, _context: &mut Context) {}
-    fn exit(&mut self, _game: &mut Self::Game, _context: &mut Context) {}
-    fn restore(&mut self, _game: &mut Self::Game, _context: &mut Context) {}
+    #[allow(unused_variables)]
+    fn enter(
+        &mut self,
+        game: &mut Self::Game,
+        context: &mut Context,
+        scenes: &mut SceneController<Self::Game>,
+    ) {
+    }
+    #[allow(unused_variables)]
+    fn exit(
+        &mut self,
+        game: &mut Self::Game,
+        context: &mut Context,
+        scenes: &mut SceneController<Self::Game>,
+    ) {
+    }
+    #[allow(unused_variables)]
+    fn restore(
+        &mut self,
+        game: &mut Self::Game,
+        context: &mut Context,
+        scenes: &mut SceneController<Self::Game>,
+    ) {
+    }
     fn update(
         &mut self,
         game: &mut Self::Game,
         context: &mut Context,
-    ) -> Option<SceneChange<Self::Game>>;
+        scenes: &mut SceneController<Self::Game>,
+    );
 }
 
-pub enum SceneChange<T: Game> {
+pub(crate) enum SceneChange<T: Game> {
     Pop,
     Push(Box<dyn Scene<Game = T>>),
     Switch(Box<dyn Scene<Game = T>>),

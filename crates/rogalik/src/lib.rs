@@ -12,8 +12,9 @@ mod traits;
 mod wasm;
 
 pub use log;
+pub use scenes::SceneController;
 pub use time::Instant;
-pub use traits::{Game, Scene, SceneChange};
+pub use traits::{Game, Scene};
 
 pub use rogalik_audio as audio;
 pub use rogalik_math as math;
@@ -22,7 +23,8 @@ pub use rogalik_wgpu as wgpu;
 
 pub mod prelude {
     pub use crate::engine::{Context, EngineBuilder};
-    pub use crate::traits::{Game, Scene, SceneChange};
+    pub use crate::scenes::SceneController;
+    pub use crate::traits::{Game, Scene};
     pub use rogalik_assets::{AssetContext, AssetState};
     pub use rogalik_common::*;
     pub use rogalik_math::vectors::{Vector2f, Vector2i};
