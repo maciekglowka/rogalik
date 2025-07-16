@@ -29,9 +29,9 @@ impl Renderer2d {
         self.sprite_pass.clear_color = color;
     }
     pub fn resize(&mut self, w: u32, h: u32) {
-        self.uniforms.globals.viewport_size = [w, h];
+        self.uniforms.globals.viewport_size = [w as f32, h as f32];
         if self.rendering_resolution.is_none() {
-            self.uniforms.globals.render_size = [w, h];
+            self.uniforms.globals.render_size = [w as f32, h as f32];
         }
     }
     pub fn set_rendering_resolution(
@@ -53,7 +53,7 @@ impl Renderer2d {
                 ..Default::default()
             },
         ));
-        self.uniforms.globals.render_size = [w, h];
+        self.uniforms.globals.render_size = [w as f32, h as f32];
         Ok(())
     }
     pub fn create_upscale_pass(

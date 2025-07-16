@@ -51,10 +51,8 @@ impl Uniforms {
 pub struct GlobalsUniform {
     pub time: f32,
     _padding_0: u32,
-    pub render_size: [u32; 2],
-    pub viewport_size: [u32; 2],
-    _padding_1: u32,
-    _padding_2: u32,
+    pub render_size: [f32; 2],
+    pub viewport_size: [f32; 2],
 }
 impl GlobalsUniform {
     pub fn get_bind_group(
