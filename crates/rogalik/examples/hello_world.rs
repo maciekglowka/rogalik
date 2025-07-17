@@ -1,5 +1,6 @@
 use rogalik::prelude::*;
 
+// Main game object.
 struct GameState;
 impl Game for GameState {
     fn setup(&mut self, context: &mut Context) {
@@ -13,6 +14,7 @@ impl Game for GameState {
     }
 }
 
+// At least one scene is needed.
 struct MainScene;
 impl Scene for MainScene {
     type Game = GameState;

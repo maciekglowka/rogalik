@@ -90,11 +90,14 @@ impl Renderer2d {
     }
     pub fn add_light(
         &mut self,
-        strength: f32,
-        color: Color,
         position: Vector2f,
+        radius: f32,
+        color: Color,
+        falloff: f32,
     ) -> Result<(), EngineError> {
-        self.uniforms.lights.add_light(strength, color, position)
+        self.uniforms
+            .lights
+            .add_light(position, radius, color, falloff)
     }
     pub fn create_wgpu_data(
         &mut self,

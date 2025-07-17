@@ -143,14 +143,16 @@ pub trait GraphicsContext {
     ) -> Result<(), EngineError>;
     /// Adds a point light source to the scene for the current frame.
     /// Lights are reset at the end of each frame.
-    /// `strength`: The intensity of the light.
-    /// `color`: The color of the light.
     /// `position`: The world position of the light source.
+    /// `radius`: The size of the light.
+    /// `color`: The color of the light. (alpha value is discarded)
+    /// `falloff`: The hardness of the light.
     fn add_light(
         &mut self,
-        strength: f32,
-        color: Color,
         position: Vector2f,
+        radius: f32,
+        color: Color,
+        falloff: f32,
     ) -> Result<(), EngineError>;
     /// Sets the global ambient light color for the scene.
     /// `color`: The `Color` representing the ambient light.

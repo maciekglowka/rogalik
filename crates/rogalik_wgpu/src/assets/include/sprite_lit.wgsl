@@ -5,8 +5,9 @@ struct CameraUniform {
 };
 struct PointLight {
     position: vec3<f32>,
-    strength: f32,
-    color: vec4<f32>,
+    radius: f32,
+    color: vec3<f32>,
+    falloff: f32,
 }
 struct LightsUniform {
     light_count: u32,
@@ -61,28 +62,38 @@ var<uniform> lights_uniform: LightsUniform;
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     var color = in.color * textureSample(t_diffuse, s_diffuse, in.tex_coords);
-
     var normal = normalize(textureSample(t_normal, s_normal, in.tex_coords).xyz * 2.0 - 1.0);
-    let a = color[3];
 
-    var light = lights_uniform.ambient;
+    // Keep sprite's alpha
+    let alpha = color[3];
+
+    var total_light = lights_uniform.ambient;
 
     for (var i=0; i<i32(lights_uniform.light_count); i++) {
-        let d = lights_uniform.lights[i].position - in.world_position;
-        let dist = max(1., dot(d, d));
-        let max_dist = pow(lights_uniform.lights[i].strength, 2.);
-        let f = step(dist, max_dist);
+        let diff = lights_uniform.lights[i].position - in.world_position;
+        let dist = max(0., dot(diff, diff));
+        let max_dist = pow(lights_uniform.lights[i].radius, 2.);
 
-        let dir = normalize(vec3(lights_uniform.lights[i].position.xy, 0.) - in.world_position);
-        // UP vector should be netural - scale cos a so pi/2 == 1
-        let n = dot(normal, dir) + 1.;
+        // Apply falloff.
+        let t = max_dist - dist;
+        let strength = smoothstep(0., max_dist * lights_uniform.lights[i].falloff, t);
 
-        let c = n * f * lights_uniform.lights[i].color;
-        light += c;
+        // Light elevation is equal to its radius.
+        let elevated_light = vec3(
+            lights_uniform.lights[i].position.xy,
+            lights_uniform.lights[i].radius
+        );
+        // Normalized direction.
+        let dir = normalize(elevated_light - in.world_position);
+        let n = min(1., max(dot(normal, dir), 0.));
+
+        // Apply the color
+        let light = n * strength * vec4(lights_uniform.lights[i].color, 1.);
+        total_light += light;
     }
     
-    color *= light;
-    color[3] = a;
+    color *= total_light;
+    color[3] = alpha;
     return color;
 }
 

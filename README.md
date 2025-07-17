@@ -26,6 +26,11 @@ A simple framework for 2d pixel games.
 - limited text rendering (currently only ASCII table style bitmap fonts)
 - basic audio
 
+## Examples
+
+You can find some basic usage and simple game examples in the main crate folder:
+<https://github.com/maciekglowka/rogalik/tree/main/crates/rogalik/examples>
+
 ## Todo
 
 - proper font rendering (ttf)

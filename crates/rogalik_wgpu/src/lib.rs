@@ -339,11 +339,12 @@ impl GraphicsContext for WgpuContext {
     }
     fn add_light(
         &mut self,
-        strength: f32,
-        color: rogalik_common::Color,
         position: Vector2f,
+        radius: f32,
+        color: rogalik_common::Color,
+        falloff: f32,
     ) -> Result<(), EngineError> {
-        self.renderer2d.add_light(strength, color, position)
+        self.renderer2d.add_light(position, radius, color, falloff)
     }
     fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f {
         self.assets

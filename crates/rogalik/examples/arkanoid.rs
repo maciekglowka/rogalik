@@ -11,7 +11,7 @@ const BLOCK_HEIGHT: f32 = 8.;
 const BLOCKS_HORIZONTAL: usize = 4;
 const BLOCKS_VERTICAL: usize = 4;
 
-const PADDLE_WIDTH: f32 = 64.;
+const PADDLE_WIDTH: f32 = 32.;
 const PADDLE_HEIGHT: f32 = 8.;
 const PADDLE_OFFSET: f32 = 8.;
 const PADDLE_MOVE: f32 = 4.;

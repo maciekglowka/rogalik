@@ -99,14 +99,15 @@ impl LightsUniform {
     }
     pub fn add_light(
         &mut self,
-        strength: f32,
-        color: Color,
         position: Vector2f,
+        radius: f32,
+        color: Color,
+        falloff: f32,
     ) -> Result<(), EngineError> {
         if self.light_count >= super::MAX_LIGHTS {
             return Err(EngineError::GraphicsInternalError);
         }
-        self.lights[self.light_count as usize] = PointLight::new(position, color, strength);
+        self.lights[self.light_count as usize] = PointLight::new(position, radius, color, falloff);
         self.light_count += 1;
         Ok(())
     }
@@ -138,15 +139,19 @@ impl LightsUniform {
 #[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct PointLight {
     position: [f32; 3],
-    strength: f32,
-    color: [f32; 4],
+    radius: f32,
+    color: [f32; 3],
+    falloff: f32,
 }
 impl PointLight {
-    pub fn new(position: Vector2f, color: Color, strength: f32) -> Self {
+    pub fn new(position: Vector2f, radius: f32, color: Color, falloff: f32) -> Self {
+        let rgba = color.as_srgb();
+
         Self {
             position: [position.x, position.y, 0.],
-            strength,
-            color: color.as_srgb(),
+            radius,
+            color: [rgba[0], rgba[1], rgba[2]],
+            falloff,
         }
     }
 }
