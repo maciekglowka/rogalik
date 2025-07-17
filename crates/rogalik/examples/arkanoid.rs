@@ -23,8 +23,11 @@ const PADDLE_SPRITE: usize = 0;
 const BLOCK_SPRITE: usize = 1;
 const BALL_SPRITE: usize = 2;
 
+const MAX_LIVES: usize = 3;
+
 #[derive(Default)]
 struct GameState {
+    lives: usize,
     width: u32,
     height: u32,
     paddle_origin: Vector2f,
@@ -54,18 +57,13 @@ impl Game for GameState {
             },
         );
 
+        // Load bitmap font
+        context
+            .graphics
+            .load_font("pixel", "examples/font.png", 16, 16, Some((11., 7.)), None);
+
         // Create camera
         context.graphics.create_camera(1., Vector2f::ZERO);
-
-        // Set paddle offset
-        self.paddle_origin.y = PADDLE_OFFSET;
-
-        // Set blocks
-        for col in self.blocks.iter_mut() {
-            for block in col.iter_mut() {
-                *block = true;
-            }
-        }
     }
 
     fn resize(&mut self, context: &mut Context) {
@@ -85,9 +83,33 @@ impl Game for GameState {
     }
 }
 
+/// Main game loop scene
 struct GameScene;
 impl Scene for GameScene {
     type Game = GameState;
+
+    /// Initialize game state
+    fn enter(
+        &mut self,
+        game: &mut Self::Game,
+        context: &mut Context,
+        scenes: &mut SceneController<Self::Game>,
+    ) {
+        // Reset blocks
+        for col in game.blocks.iter_mut() {
+            for block in col.iter_mut() {
+                *block = true;
+            }
+        }
+
+        // Reset paddle and the ball
+        game.paddle_origin = Vector2f::new(0., PADDLE_OFFSET);
+        game.ball_origin = None;
+
+        // Reset player
+        game.lives = MAX_LIVES;
+    }
+
     fn update(
         &mut self,
         game: &mut Self::Game,
@@ -96,7 +118,52 @@ impl Scene for GameScene {
     ) {
         update_ball(game);
         draw_world(&game, context);
+        draw_status(&game, context);
         handle_input(game, context);
+
+        // Loose condition
+        if game.lives == 0 {
+            scenes.switch(Box::new(EndScene("Game Over".to_string())));
+        }
+        // Win condition
+        if !game
+            .blocks
+            .iter()
+            .map(|col| col.iter())
+            .flatten()
+            .any(|b| *b)
+        {
+            scenes.switch(Box::new(EndScene("Congratulations!".to_string())));
+        }
+    }
+}
+
+/// GameOver / Win scene
+struct EndScene(String);
+impl Scene for EndScene {
+    type Game = GameState;
+    fn update(
+        &mut self,
+        game: &mut Self::Game,
+        context: &mut Context,
+        scenes: &mut SceneController<Self::Game>,
+    ) {
+        let bounds = context.graphics.get_current_camera().get_bounds();
+        let center = 0.5 * (bounds.0 + bounds.1);
+        let width = context.graphics.text_dimensions("pixel", &self.0, 9.).x;
+        let _ = context.graphics.draw_text(
+            "pixel",
+            &self.0,
+            center - Vector2f::new(0.5 * width, 0.),
+            10,
+            9.,
+            SpriteParams::default(),
+        );
+
+        // Reset game on key press
+        if context.input.is_key_down(rogalik::input::KeyCode::Space) {
+            scenes.switch(Box::new(GameScene));
+        }
     }
 }
 
@@ -119,6 +186,7 @@ fn update_ball(game: &mut GameState) {
     // Void
     if origin.y + BALL_SIZE <= 0. {
         game.ball_origin = None;
+        game.lives -= 1;
         return;
     }
 
@@ -212,6 +280,18 @@ fn draw_blocks(game: &GameState, context: &mut Context) {
             );
         }
     }
+}
+
+fn draw_status(game: &GameState, context: &mut Context) {
+    let bounds = context.graphics.get_current_camera().get_bounds();
+    let _ = context.graphics.draw_text(
+        "pixel",
+        &"*".repeat(game.lives),
+        bounds.0,
+        10,
+        9.,
+        SpriteParams::default(),
+    );
 }
 
 fn handle_input(game: &mut GameState, context: &mut Context) {

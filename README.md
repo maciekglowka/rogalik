@@ -17,6 +17,8 @@ A simple framework for 2d pixel games.
 - sprite rendering with batching and z-sorting
 - sprite atlases
 - custom 2d meshes
+- 2d point lights
+- normal maps
 - switchable 2d cameras
 - pixel perfect rendering pass
 - custom sprite shaders (no custom uniform buffers though)
