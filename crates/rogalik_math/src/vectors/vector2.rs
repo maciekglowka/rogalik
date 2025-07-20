@@ -14,10 +14,10 @@ pub struct Vector2<T: Num + Copy> {
     pub y: T,
 }
 impl<T: Num + Copy> Vector2<T> {
-    pub fn new(x: T, y: T) -> Self {
+    pub const fn new(x: T, y: T) -> Self {
         Vector2::<T> { x, y }
     }
-    pub fn splat(v: T) -> Self {
+    pub const fn splat(v: T) -> Self {
         Vector2::<T> { x: v, y: v }
     }
     pub fn dot(&self, other: &Self) -> T {
