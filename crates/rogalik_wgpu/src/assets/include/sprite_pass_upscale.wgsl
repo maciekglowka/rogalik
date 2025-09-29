@@ -1,6 +1,8 @@
 struct GlobalsUniform {
     time: f32,
     _padding_0: u32,
+    _padding_1: u32,
+    _padding_2: u32,
     render_size: vec2<f32>,
     viewport_size: vec2<f32>,
 }
