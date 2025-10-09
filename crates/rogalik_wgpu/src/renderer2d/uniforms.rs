@@ -96,8 +96,8 @@ impl LightsUniform {
         self.light_count = 0;
     }
     pub fn set_ambient(&mut self, color: Color) {
-        let srgb = color.as_srgb();
-        self.ambient = srgb;
+        let rgb = color.as_f32();
+        self.ambient = rgb;
     }
     pub fn add_light(
         &mut self,
@@ -147,7 +147,7 @@ pub struct PointLight {
 }
 impl PointLight {
     pub fn new(position: Vector2f, radius: f32, color: Color, falloff: f32) -> Self {
-        let rgba = color.as_srgb();
+        let rgba = color.as_f32();
 
         Self {
             position: [position.x, position.y, 0.],
