@@ -13,7 +13,7 @@ mod wasm;
 
 pub use log;
 pub use scenes::SceneController;
-pub use time::Instant;
+pub use time::{Instant, Timer};
 pub use traits::{Game, Scene};
 
 pub use rogalik_audio as audio;
