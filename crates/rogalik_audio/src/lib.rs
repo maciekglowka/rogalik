@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use tinyaudio::{run_output_device, OutputDevice, OutputDeviceParameters};
 
-use rogalik_common::{AudioContext, AudioDeviceParams};
+use rogalik_common::{AudioContext, AudioDeviceParams, AudioSetup};
 
 mod assets;
 mod source;
@@ -30,7 +30,7 @@ impl AudioEngine {
         }
     }
 }
-impl AudioContext for AudioEngine {
+impl AudioSetup for AudioEngine {
     fn create_context(&mut self) {
         if self.params.is_none() {
             return;
@@ -80,6 +80,8 @@ impl AudioContext for AudioEngine {
     fn update_assets(&mut self) {
         self.state.lock().unwrap().assets.update_assets();
     }
+}
+impl AudioContext for AudioEngine {
     fn set_master_volume(&mut self, volume: f32) {
         self.state.lock().unwrap().volume = volume;
     }

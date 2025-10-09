@@ -4,7 +4,9 @@ use std::sync::{
 };
 use winit::window::Window;
 
-use rogalik_common::{BuiltInShader, EngineError, GraphicsContext, ResourceId, SpriteParams};
+use rogalik_common::{
+    BuiltInShader, EngineError, GraphicsContext, GraphicsSetup, ResourceId, SpriteParams,
+};
 use rogalik_math::vectors::Vector2f;
 
 mod assets;
@@ -108,7 +110,7 @@ impl WgpuContext {
         self.resize_renderer();
     }
 }
-impl GraphicsContext for WgpuContext {
+impl GraphicsSetup for WgpuContext {
     fn has_context(&self) -> bool {
         match self.surface_state.lock() {
             Ok(s) => s.is_some(),
@@ -134,6 +136,8 @@ impl GraphicsContext for WgpuContext {
             }
         }
     }
+}
+impl GraphicsContext for WgpuContext {
     fn set_clear_color(&mut self, color: rogalik_common::Color) {
         self.clear_color = utils::color_to_wgpu(color);
         self.renderer2d.set_clear_color(self.clear_color);

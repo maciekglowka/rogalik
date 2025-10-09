@@ -4,9 +4,7 @@ use winit::window::Window;
 
 use crate::structs::{BuiltInShader, Color, EngineError, ResourceId, ShaderKind, SpriteParams};
 
-/// Defines the interface for interacting with the engine's graphics rendering
-/// capabilities.
-pub trait GraphicsContext {
+pub trait GraphicsSetup {
     /// Creates and initializes the graphics context and surface.
     /// This method should be called once the application window is available.
     /// (called by the engine internally)
@@ -23,6 +21,11 @@ pub trait GraphicsContext {
     /// changed.
     /// (called by the engine internally)
     fn update_assets(&mut self);
+}
+
+/// Defines the interface for interacting with the engine's graphics rendering
+/// capabilities.
+pub trait GraphicsContext {
     /// Sets the color used to clear the rendering target before each frame.
     /// `color`: The `Color` to set as the clear color.
     fn set_clear_color(&mut self, color: Color);
@@ -198,14 +201,17 @@ pub trait GraphicsContext {
     fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId>;
 }
 
-/// Provides an interface for audio operations within the engine.
-pub trait AudioContext {
+pub trait AudioSetup {
     /// Creates and initializes the audio context and device.
     fn create_context(&mut self);
     /// Checks if the audio context has been successfully created.
     fn has_context(&self) -> bool;
     /// Updates audio assets, checking for any changes or reloads.
     fn update_assets(&mut self);
+}
+
+/// Provides an interface for audio operations within the engine.
+pub trait AudioContext {
     /// Sets the global master volume for all audio playback.
     /// `volume`: A value between 0.0 and 1.0.
     fn set_master_volume(&mut self, volume: f32);

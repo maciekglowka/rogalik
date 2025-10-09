@@ -1,4 +1,4 @@
-use num_traits::{Float, Num};
+use num_traits::Num;
 
 use crate::vectors::vector2::Vector2;
 
