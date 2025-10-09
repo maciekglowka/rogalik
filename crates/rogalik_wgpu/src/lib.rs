@@ -5,7 +5,7 @@ use std::sync::{
 use winit::window::Window;
 
 use rogalik_common::{
-    BuiltInShader, EngineError, GraphicsContext, GraphicsSetup, ResourceId, SpriteParams,
+    traits::GraphicsSetup, BuiltInShader, EngineError, GraphicsContext, ResourceId, SpriteParams,
 };
 use rogalik_math::vectors::Vector2f;
 
@@ -360,8 +360,8 @@ impl GraphicsContext for WgpuContext {
         self.assets
             .create_camera(vw as f32, vh as f32, rw as f32, rh as f32, scale, target)
     }
-    fn set_camera(&mut self, id: ResourceId) {
-        self.current_camera_id = id;
+    fn set_camera(&mut self, id: &ResourceId) {
+        self.current_camera_id = *id;
     }
     fn get_current_camera(&self) -> &dyn rogalik_common::Camera {
         self.assets.get_camera(self.current_camera_id).unwrap()
@@ -369,11 +369,11 @@ impl GraphicsContext for WgpuContext {
     fn get_current_camera_mut(&mut self) -> &mut dyn rogalik_common::Camera {
         self.assets.get_camera_mut(self.current_camera_id).unwrap()
     }
-    fn get_camera(&self, id: ResourceId) -> Option<&dyn rogalik_common::Camera> {
-        Some(self.assets.get_camera(id)?)
+    fn get_camera(&self, id: &ResourceId) -> Option<&dyn rogalik_common::Camera> {
+        Some(self.assets.get_camera(*id)?)
     }
-    fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut dyn rogalik_common::Camera> {
-        Some(self.assets.get_camera_mut(id)?)
+    fn get_camera_mut(&mut self, id: &ResourceId) -> Option<&mut dyn rogalik_common::Camera> {
+        Some(self.assets.get_camera_mut(*id)?)
     }
     fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId> {
         self.assets.builtin_shaders.get(&shader).copied()

@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use tinyaudio::{run_output_device, OutputDevice, OutputDeviceParameters};
 
-use rogalik_common::{AudioContext, AudioDeviceParams, AudioSetup};
+use rogalik_common::{traits::AudioSetup, AudioContext, AudioDeviceParams};
 
 mod assets;
 mod source;

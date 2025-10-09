@@ -11,7 +11,10 @@ use crate::{
     scenes::{update_scenes, SceneManager},
     Game, Scene,
 };
-use rogalik_common::{AudioSetup, GraphicsContext, GraphicsSetup};
+use rogalik_common::{
+    traits::{AudioSetup, GraphicsSetup},
+    GraphicsContext,
+};
 
 pub struct App<T> {
     pub context: Context,
