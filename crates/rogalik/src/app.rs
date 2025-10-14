@@ -105,6 +105,9 @@ impl<T: Game> ApplicationHandler for App<T> {
                             self.context.audio.update_assets();
                             self.game.reload_assets(&mut self.context);
                         }
+                        if code == winit::keyboard::KeyCode::F8 {
+                            self.context.graphics.toggle_recording();
+                        }
                     }
                 }
             }

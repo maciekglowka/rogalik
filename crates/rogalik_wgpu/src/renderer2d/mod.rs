@@ -11,6 +11,7 @@ const MAX_LIGHTS: u32 = 16;
 
 pub struct Renderer2d {
     sprite_pass: sprite_pass::SpritePass,
+    recorder: crate::tools::Recorder,
     rendering_resolution: Option<(u32, u32)>, // for pixel perfect renders
     upscale_pass: Option<PostProcessPass>,    // for pixel perfect renders
     uniforms: uniforms::Uniforms,
@@ -20,6 +21,7 @@ impl Renderer2d {
         let sprite_pass = sprite_pass::SpritePass::new(wgpu::Color::BLACK);
         Self {
             sprite_pass,
+            recorder: crate::tools::Recorder::default(),
             rendering_resolution: None,
             upscale_pass: None,
             uniforms: uniforms::Uniforms::default(),
@@ -75,7 +77,7 @@ impl Renderer2d {
                 .ok_or(EngineError::GraphicsInternalError)?
                 .create_wgpu_data(
                     &assets.textures,
-                    &postprocess_layout,
+                    postprocess_layout,
                     w,
                     h,
                     device,
@@ -242,7 +244,7 @@ impl Renderer2d {
                 .filter(|p| p.get_strength() > 0.001),
         );
 
-        let mut current_view = if let Some(pass) = post_process_queue.get(0) {
+        let mut current_view = if let Some(pass) = post_process_queue.first() {
             pass.get_view().ok_or(EngineError::GraphicsNotReady)?
         } else {
             &view
@@ -266,15 +268,30 @@ impl Renderer2d {
             pass.render(
                 assets,
                 &mut encoder,
-                &current_view,
+                current_view,
                 &self.uniforms.bind_groups,
             )?;
         }
 
         queue.submit(std::iter::once(encoder.finish()));
+
+        #[cfg(debug_assertions)]
+        {
+            self.recorder.handle_queue(
+                self.uniforms.globals.viewport_size[0] as u32,
+                self.uniforms.globals.viewport_size[1] as u32,
+                device,
+                queue,
+                &output,
+            );
+        }
+
         output.present();
         self.uniforms.lights.frame_end();
         Ok(())
+    }
+    pub(crate) fn toggle_recording(&mut self) {
+        self.recorder.toggle_recording();
     }
 }
 

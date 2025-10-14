@@ -21,14 +21,6 @@ pub trait GraphicsSetup {
     /// changed.
     /// (called by the engine internally)
     fn update_assets(&mut self);
-}
-
-/// Defines the interface for interacting with the engine's graphics rendering
-/// capabilities.
-pub trait GraphicsContext {
-    /// Sets the color used to clear the rendering target before each frame.
-    /// `color`: The `Color` to set as the clear color.
-    fn set_clear_color(&mut self, color: Color);
     /// Resizes the rendering surface and adjusts internal rendering
     /// resolutions. This should be called when the window size changes.
     /// `w`: The new width of the rendering surface.
@@ -39,6 +31,15 @@ pub trait GraphicsContext {
     /// post-processing effects.
     /// (called by the engine internally)
     fn render(&mut self);
+    fn toggle_recording(&mut self);
+}
+
+/// Defines the interface for interacting with the engine's graphics rendering
+/// capabilities.
+pub trait GraphicsContext {
+    /// Sets the color used to clear the rendering target before each frame.
+    /// `color`: The `Color` to set as the clear color.
+    fn set_clear_color(&mut self, color: Color);
     /// Sets a custom rendering resolution, enabling pixel-perfect rendering and
     /// upscaling. If not set, the rendering resolution defaults to the
     /// viewport size. `w`: The desired width for internal rendering.

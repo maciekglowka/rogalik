@@ -12,6 +12,7 @@ use rogalik_math::vectors::Vector2f;
 mod assets;
 mod renderer2d;
 mod structs;
+mod tools;
 mod utils;
 
 const MAX_TIME: f32 = 3600.;
@@ -136,12 +137,6 @@ impl GraphicsSetup for WgpuContext {
             }
         }
     }
-}
-impl GraphicsContext for WgpuContext {
-    fn set_clear_color(&mut self, color: rogalik_common::Color) {
-        self.clear_color = utils::color_to_wgpu(color);
-        self.renderer2d.set_clear_color(self.clear_color);
-    }
     fn resize(&mut self, width: u32, height: u32) {
         if width > 0 && height > 0 {
             if let Ok(mut state) = self.surface_state.lock() {
@@ -185,6 +180,15 @@ impl GraphicsContext for WgpuContext {
                 );
             }
         }
+    }
+    fn toggle_recording(&mut self) {
+        self.renderer2d.toggle_recording();
+    }
+}
+impl GraphicsContext for WgpuContext {
+    fn set_clear_color(&mut self, color: rogalik_common::Color) {
+        self.clear_color = utils::color_to_wgpu(color);
+        self.renderer2d.set_clear_color(self.clear_color);
     }
     fn set_rendering_resolution(&mut self, w: u32, h: u32) {
         log::debug!("Setting rendering resolution at: {}x{}", w, h);
@@ -449,7 +453,8 @@ async fn create_surface_state(
     log::debug!("WGPU present mode: {:?}", present_mode);
 
     let config = wgpu::SurfaceConfiguration {
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        // COPY_SRC needed only for recordings -> disable for --release ?
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
         format: surface_format,
         width: size.0,
         height: size.1,

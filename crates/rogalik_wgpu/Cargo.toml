@@ -18,6 +18,7 @@ rogalik_common = { path = "../rogalik_common", version = "0.3.0" }
 rogalik_math = { path = "../rogalik_math", version = "0.3.0" }
 
 bytemuck = { version = "1.12", features = ["derive"] }
+gif = "0.13" # TODO make optional?
 log = { workspace = true }
 pollster = "0.3"
 
