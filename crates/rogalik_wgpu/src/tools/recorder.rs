@@ -6,7 +6,7 @@ use std::{
 #[derive(Default)]
 pub(crate) struct Recorder {
     buffer: Option<wgpu::Buffer>,
-    frames: Vec<Vec<u8>>,
+    frames: Vec<u8>,
     is_recording: bool,
     width: u32,
     height: u32,
@@ -79,7 +79,7 @@ impl Recorder {
             device.poll(wgpu::Maintain::Wait);
 
             let data = buffer_slice.get_mapped_range();
-            self.frames.push(data.iter().copied().collect());
+            self.frames.extend(data.iter().copied());
         }
 
         self.buffer.as_ref().unwrap().unmap();
@@ -136,18 +136,11 @@ impl Recorder {
                 .spawn()
                 .unwrap();
 
-            let mut buf = Vec::with_capacity((bytes_per_row * height) as usize);
+            frames
+                .chunks(padded_bytes_per_row as usize)
+                .map(|a| &a[..bytes_per_row as usize])
+                .for_each(|a| pipe_writer.write_all(a).unwrap());
 
-            for frame_data in frames.iter() {
-                // Remove padding bytes
-                buf.clear();
-                frame_data
-                    .chunks(padded_bytes_per_row as usize)
-                    .map(|a| &a[..bytes_per_row as usize])
-                    .for_each(|a| buf.extend(a));
-
-                pipe_writer.write_all(&buf).unwrap();
-            }
             drop(pipe_writer);
             cmd.wait().unwrap();
             log::info!("Video file saved");
