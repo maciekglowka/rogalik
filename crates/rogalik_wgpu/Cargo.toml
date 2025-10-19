@@ -12,6 +12,9 @@ categories = ["games", "game-engines", "game-development"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+video = []
+
 [dependencies]
 rogalik_assets = { path = "../rogalik_assets", version = "0.3.0" }
 rogalik_common = { path = "../rogalik_common", version = "0.3.0" }

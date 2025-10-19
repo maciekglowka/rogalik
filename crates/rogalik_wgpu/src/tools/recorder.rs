@@ -1,3 +1,8 @@
+use std::{
+    io::{pipe, Write},
+    process::Command,
+};
+
 #[derive(Default)]
 pub(crate) struct Recorder {
     buffer: Option<wgpu::Buffer>,
@@ -11,8 +16,9 @@ impl Recorder {
         if self.is_recording {
             self.is_recording = false;
             log::info!("Recording disabled");
-            self.save_gif(&format!(
-                "{}.gif",
+
+            self.save_video(&format!(
+                "{}.mp4",
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap()
@@ -21,7 +27,6 @@ impl Recorder {
             return;
         }
 
-        self.frames.clear();
         self.is_recording = true;
         log::info!("Recording enabled");
     }
@@ -37,14 +42,15 @@ impl Recorder {
             return;
         };
 
-        if self.buffer.is_none() || width != self.width || height != self.height {
+        if self.buffer.is_none() {
             self.create_buffer(width, height, device);
-            self.frames.clear();
         }
 
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Recording encoder"),
         });
+
+        let (_, padded_bytes_per_row) = Self::get_bytes_per_row(width);
 
         encoder.copy_texture_to_buffer(
             wgpu::ImageCopyTexture {
@@ -57,7 +63,7 @@ impl Recorder {
                 buffer: self.buffer.as_ref().unwrap(),
                 layout: wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: Some(Self::get_bytes_per_row(width)),
+                    bytes_per_row: Some(padded_bytes_per_row),
                     rows_per_image: Some(height),
                 },
             },
@@ -71,6 +77,7 @@ impl Recorder {
             buffer_slice.map_async(wgpu::MapMode::Read, |_| {});
 
             device.poll(wgpu::Maintain::Wait);
+
             let data = buffer_slice.get_mapped_range();
             self.frames.push(data.iter().copied().collect());
         }
@@ -89,31 +96,49 @@ impl Recorder {
         self.height = height;
     }
     fn get_buffer_size(width: u32, height: u32) -> wgpu::BufferAddress {
-        (Self::get_bytes_per_row(width) * height) as wgpu::BufferAddress
+        let (_, padded_bytes_per_row) = Self::get_bytes_per_row(width);
+        (padded_bytes_per_row * height) as wgpu::BufferAddress
     }
-    fn get_bytes_per_row(width: u32) -> u32 {
+    fn get_bytes_per_row(width: u32) -> (u32, u32) {
         let pixel_size = std::mem::size_of::<[u8; 4]>() as u32;
         let bytes_per_row = pixel_size * width;
         let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
         let padding = (align - bytes_per_row % align) % align;
-        bytes_per_row + padding
+        (bytes_per_row, bytes_per_row + padding)
     }
-    fn save_gif(&mut self, path: &str) {
-        let mut frames = self.frames.clone();
-        let path = path.to_string();
+    fn save_video(&mut self, path: &str) {
+        let frames = self.frames.clone();
         let width = self.width;
         let height = self.height;
+        let path = path.to_string();
+
+        let (bytes_per_row, padded_bytes_per_row) = Self::get_bytes_per_row(width);
 
         let _ = std::thread::spawn(move || {
-            let mut image = std::fs::File::create(path).unwrap();
-            let mut encoder =
-                gif::Encoder::new(&mut image, width as u16, height as u16, &[]).unwrap();
-            let padded_bytes_per_row = Self::get_bytes_per_row(width);
-            let bytes_per_row = std::mem::size_of::<[u8; 4]>() as u32 * width;
+            let (pipe_reader, mut pipe_writer) = pipe().unwrap();
+            let mut cmd = Command::new("ffmpeg")
+                .args([
+                    "-f",
+                    "rawvideo",
+                    "-video_size",
+                    &format!("{width}x{height}"),
+                    "-pixel_format",
+                    "rgb32",
+                    "-r",
+                    "60",
+                    "-i",
+                    "pipe:",
+                    "-c:v",
+                    "h264",
+                    &path,
+                ])
+                .stdin(pipe_reader)
+                .spawn()
+                .unwrap();
 
             let mut buf = Vec::with_capacity((bytes_per_row * height) as usize);
 
-            for frame_data in frames.iter_mut() {
+            for frame_data in frames.iter() {
                 // Remove padding bytes
                 buf.clear();
                 frame_data
@@ -121,12 +146,11 @@ impl Recorder {
                     .map(|a| &a[..bytes_per_row as usize])
                     .for_each(|a| buf.extend(a));
 
-                let mut frame =
-                    gif::Frame::from_rgba_speed(width as u16, height as u16, &mut buf, 20);
-                frame.delay = 1;
-                let _ = encoder.write_frame(&frame);
+                pipe_writer.write_all(&buf).unwrap();
             }
-            log::info!("Gif file saved");
+            drop(pipe_writer);
+            cmd.wait().unwrap();
+            log::info!("Video file saved");
         });
     }
 }

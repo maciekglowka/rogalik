@@ -21,6 +21,9 @@ serialize = [
     "dep:serde",
     "rogalik_math/serialize",
  ]
+video = [
+    "rogalik_wgpu/video",
+]
 
 [dependencies]
 rogalik_assets = { path = "../rogalik_assets", version = "0.3.0" }
