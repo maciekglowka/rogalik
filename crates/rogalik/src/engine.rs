@@ -168,7 +168,7 @@ impl EngineBuilder {
     where
         T: Game + 'static,
     {
-        use winit::event_loop::EventLoop;
+        use winit::event_loop::{ControlFlow, EventLoop};
         use winit::platform::android::EventLoopBuilderExtAndroid;
 
         let os_path = app
@@ -180,7 +180,7 @@ impl EngineBuilder {
             .build()
             .expect("Can't create the event loop!");
 
-        // event_loop.set_control_flow(ControlFlow::Poll);
+        event_loop.set_control_flow(ControlFlow::Poll);
 
         let mut window_attributes = WindowAttributes::default();
         if let Some(title) = &self.title {
