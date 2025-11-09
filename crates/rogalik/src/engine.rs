@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 #[cfg(target_os = "android")]
-pub use winit::platform::android::activity::AndroidApp;
+use winit::platform::android::activity::AndroidApp;
 #[cfg(target_arch = "wasm32")]
 use winit::platform::web::WindowAttributesExtWebSys;
 use winit::{
@@ -159,61 +159,57 @@ impl EngineBuilder {
     }
 
     #[cfg(target_os = "android")]
-    pub fn build_android<G, T>(&self, game: T, app: AndroidApp) -> Engine<G, T>
+    pub fn build_android<T>(
+        &self,
+        game: T,
+        scene: Box<dyn Scene<Game = T>>,
+        app: AndroidApp,
+    ) -> Engine<T>
     where
-        G: GraphicsContext + 'static,
-        T: Game<G> + 'static,
+        T: Game + 'static,
     {
-        use winit::event_loop::EventLoopBuilder;
+        use winit::event_loop::EventLoop;
         use winit::platform::android::EventLoopBuilderExtAndroid;
-
-        android_logger::init_once(
-            android_logger::Config::default()
-                .with_max_level(log::LevelFilter::Info)
-                .with_tag("Rogalik"),
-        );
 
         let os_path = app
             .internal_data_path()
             .map_or(None, |a| a.to_str().map(|a| a.to_string()));
 
-        // set window
-        let event_loop = EventLoopBuilder::new()
+        let event_loop = EventLoop::builder()
             .with_android_app(app)
             .build()
             .expect("Can't create the event loop!");
 
-        let mut window_builder = WindowBuilder::new();
+        // event_loop.set_control_flow(ControlFlow::Poll);
 
+        let mut window_attributes = WindowAttributes::default();
         if let Some(title) = &self.title {
-            window_builder = window_builder.with_title(title);
+            window_attributes = window_attributes.with_title(title);
         }
 
-        let window = window_builder
-            .build(&event_loop)
-            .expect("Can't create window!");
-
+        log::info!("Creating asset store");
+        let assets = Arc::new(Mutex::new(AssetStore::default()));
         log::info!("Creating graphics context");
-        let graphics = GraphicsContext::new();
-        log::info!("Graphics created");
+        let graphics = WgpuContext::new(assets.clone());
+        log::info!("Creating audio context");
+        let audio = AudioEngine::new(assets.clone(), self.audio_params);
 
-        android::hide_ui();
+        // crate::android::hide_ui();
 
         let context = Context {
+            assets,
+            audio,
             graphics,
             input: InputContext::new(),
             time: Time::new(),
-            inner_size: window.inner_size(),
-            scale_factor: window.scale_factor(),
-            window,
+            inner_size: PhysicalSize::default(),
+            scale_factor: 1.,
             os_path,
         };
+
+        let app = App::new(game, context, scene, window_attributes);
         log::info!("Creating Engine");
-        Engine {
-            event_loop,
-            game,
-            context,
-        }
+        Engine { event_loop, app }
     }
 }
 

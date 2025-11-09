@@ -45,7 +45,6 @@ web-sys = { version = "0.3", features = [
     "Document", "Window", "Element", "HtmlCollection", "Performance"
 ]}
 
-[target.'cfg(target_os = "android")'.dependencies]
-android_logger = "0.13"
-jni = "0.21"
-ndk-context = "0.1"
+# [target.'cfg(target_os = "android")'.dependencies]
+# jni = "0.21"
+# ndk-context = "0.1"

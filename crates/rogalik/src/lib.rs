@@ -11,6 +11,9 @@ mod traits;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
+#[cfg(target_os = "android")]
+pub use winit::platform::android::activity::AndroidApp;
+
 pub use log;
 pub use scenes::SceneController;
 pub use time::{Instant, Timer};
