@@ -77,10 +77,9 @@ impl<T: Game> ApplicationHandler for App<T> {
         self.game.resize(&mut self.context);
     }
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        self.window
-            .as_ref()
-            .expect("No window found!")
-            .request_redraw();
+        if let Some(window) = &self.window {
+            window.request_redraw();
+        }
     }
     fn window_event(
         &mut self,
