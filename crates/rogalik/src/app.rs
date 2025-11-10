@@ -124,7 +124,6 @@ impl<T: Game> ApplicationHandler for App<T> {
                 id,
                 ..
             }) => {
-                log::info!("Engine touch: {}, {:?}", id, phase);
                 self.context
                     .input
                     .handle_touch(id, phase, location, &self.context.inner_size);
