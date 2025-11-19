@@ -1,3 +1,4 @@
+use rogalik_wgpu::WgpuContext;
 use std::sync::Arc;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;

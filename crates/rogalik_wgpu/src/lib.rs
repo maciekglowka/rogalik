@@ -81,6 +81,7 @@ impl WgpuContext {
         }
     }
     fn post_surface_state(&mut self) {
+        log::debug!("Executing post surface state creation actions");
         if let Ok(state) = self.surface_state.lock() {
             if let Some(state) = state.as_ref() {
                 let w = state.config.width;
@@ -109,6 +110,11 @@ impl WgpuContext {
         }
         self.resize_cameras();
         self.resize_renderer();
+    }
+    fn handle_surface_refresh(&mut self) {
+        if SURFACE_REFRESH.load(Ordering::Relaxed) {
+            self.post_surface_state();
+        }
     }
 }
 impl GraphicsSetup for WgpuContext {
@@ -166,9 +172,7 @@ impl GraphicsSetup for WgpuContext {
         }
     }
     fn render(&mut self) {
-        if SURFACE_REFRESH.load(Ordering::Relaxed) {
-            self.post_surface_state();
-        }
+        self.handle_surface_refresh();
         if let Ok(state) = self.surface_state.lock() {
             if let Some(state) = state.as_ref() {
                 let _ = self.renderer2d.render(
@@ -192,6 +196,8 @@ impl GraphicsContext for WgpuContext {
     }
     fn set_rendering_resolution(&mut self, w: u32, h: u32) {
         log::debug!("Setting rendering resolution at: {}x{}", w, h);
+        self.handle_surface_refresh();
+
         self.rendering_resolution = Some((w, h));
         if self
             .renderer2d
@@ -475,6 +481,7 @@ async fn create_surface_state(
             config,
         });
     };
+    log::debug!("Surface refresh set to true");
     SURFACE_REFRESH.store(true, Ordering::Relaxed);
 }
 
