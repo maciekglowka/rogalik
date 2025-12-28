@@ -458,9 +458,14 @@ async fn create_surface_state(
     };
     log::debug!("WGPU present mode: {:?}", present_mode);
 
+    // COPY_SRC needed only for recordings
+    #[cfg(debug_assertions)]
+    let usage = wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC;
+    #[cfg(not(debug_assertions))]
+    let usage = wgpu::TextureUsages::RENDER_ATTACHMENT;
+
     let config = wgpu::SurfaceConfiguration {
-        // COPY_SRC needed only for recordings -> disable for --release ?
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        usage,
         format: surface_format,
         width: size.0,
         height: size.1,
