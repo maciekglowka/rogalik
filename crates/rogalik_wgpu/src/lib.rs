@@ -402,7 +402,6 @@ async fn create_surface_state(
     }
 
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-        // backends: wgpu::Backends::all(),
         backends: get_backends(),
         ..Default::default()
     });
@@ -507,5 +506,7 @@ fn get_limits() -> wgpu::Limits {
 fn get_limits() -> wgpu::Limits {
     let mut limits = wgpu::Limits::downlevel_webgl2_defaults();
     limits.max_color_attachments = 4;
+    limits.max_texture_dimension_1d = 4096;
+    limits.max_texture_dimension_2d = 4096;
     limits
 }
