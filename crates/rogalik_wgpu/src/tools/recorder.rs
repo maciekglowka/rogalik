@@ -123,7 +123,7 @@ impl Recorder {
                     "-video_size",
                     &format!("{width}x{height}"),
                     "-pixel_format",
-                    "rgb32",
+                    "bgr32",
                     "-r",
                     "60",
                     "-i",
