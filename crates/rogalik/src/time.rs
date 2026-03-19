@@ -6,6 +6,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use rogalik_common::ResourceId;
 
 pub struct Time {
+    // Game engine start ts
+    start: Instant,
     delta: f32,
     timers: HashMap<ResourceId, Timer>,
     next_timer_id: usize,
@@ -14,6 +16,7 @@ pub struct Time {
 impl Time {
     pub fn new() -> Self {
         Self {
+            start: Instant::now(),
             delta: 1.0,
             timers: HashMap::default(),
             next_timer_id: 0,
@@ -42,6 +45,10 @@ impl Time {
     }
     pub fn get_timer(&self, id: ResourceId) -> Option<&Timer> {
         self.timers.get(&id)
+    }
+    /// Returns the amount of seconds ca. since the game start.
+    pub fn elapsed(&self) -> f32 {
+        self.start.elapsed()
     }
 }
 
