@@ -10,6 +10,7 @@ pub trait Game {
 pub trait Scene {
     type Game: Game;
 
+    /// Triggered when the scene is first entered.
     #[allow(unused_variables)]
     fn enter(
         &mut self,
@@ -18,6 +19,7 @@ pub trait Scene {
         scenes: &mut SceneController<Self::Game>,
     ) {
     }
+    /// Triggered when the scene is destroyed (via either `pop` or `switch`)
     #[allow(unused_variables)]
     fn exit(
         &mut self,
@@ -26,6 +28,18 @@ pub trait Scene {
         scenes: &mut SceneController<Self::Game>,
     ) {
     }
+    /// Triggered when the scene is temporarily pushed to background
+    /// when another scene is pushed on top of it.
+    #[allow(unused_variables)]
+    fn stop(
+        &mut self,
+        game: &mut Self::Game,
+        context: &mut Context,
+        scenes: &mut SceneController<Self::Game>,
+    ) {
+    }
+    /// Triggered when the scene is restored from the background
+    /// (scene on top of it is popped).
     #[allow(unused_variables)]
     fn restore(
         &mut self,

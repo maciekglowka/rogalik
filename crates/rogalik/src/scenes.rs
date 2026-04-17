@@ -90,6 +90,9 @@ pub fn update_scenes<T: Game>(
                     .restore(game, context, &mut controller);
             }
             SceneChange::Push(mut scene) => {
+                scene_manager
+                    .current_mut()
+                    .stop(game, context, &mut controller);
                 scene.enter(game, context, &mut controller);
                 scene_manager.push(scene);
             }
