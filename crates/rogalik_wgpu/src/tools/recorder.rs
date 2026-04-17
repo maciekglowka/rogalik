@@ -107,7 +107,7 @@ impl Recorder {
         (bytes_per_row, bytes_per_row + padding)
     }
     fn save_video(&mut self, path: &str) {
-        let frames = self.frames.clone();
+        let frames = std::mem::take(&mut self.frames);
         let width = self.width;
         let height = self.height;
         let path = path.to_string();
@@ -123,13 +123,15 @@ impl Recorder {
                     "-video_size",
                     &format!("{width}x{height}"),
                     "-pixel_format",
-                    "bgr32",
-                    "-r",
-                    "60",
+                    "rgb32",
+                    // "-r",
+                    // "60",
                     "-i",
                     "pipe:",
                     "-c:v",
                     "h264",
+                    "-b:v",
+                    "20M",
                     &path,
                 ])
                 .stdin(pipe_reader)
