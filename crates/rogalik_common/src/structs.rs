@@ -18,6 +18,17 @@ pub enum EngineError {
     GraphicsInternalError,
     GraphicsNotReady,
 }
+impl std::fmt::Display for EngineError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidResource => f.write_str("Invalid resource"),
+            Self::ResourceNotFound => f.write_str("Resource not found"),
+            Self::GraphicsInternalError => f.write_str("Graphics internal error"),
+            Self::GraphicsNotReady => f.write_str("Graphics not ready"),
+        }
+    }
+}
+impl std::error::Error for EngineError {}
 
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
