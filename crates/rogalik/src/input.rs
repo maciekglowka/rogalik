@@ -11,6 +11,8 @@ pub use winit::{
     keyboard::KeyCode,
 };
 
+use crate::Instant;
+
 #[derive(Clone, Copy, Debug)]
 pub struct Touch {
     pub position: Vector2f,
@@ -21,7 +23,7 @@ pub struct InputContext {
     keys_down: HashSet<KeyCode>,
     keys_pressed: HashSet<KeyCode>,
     keys_released: HashSet<KeyCode>,
-    mouse_buttons_down: HashSet<MouseButton>,
+    mouse_buttons_down: HashMap<MouseButton, Instant>,
     mouse_buttons_pressed: HashSet<MouseButton>,
     mouse_buttons_released: HashSet<MouseButton>,
     mouse_physical_position: Vector2f,
@@ -35,7 +37,7 @@ impl InputContext {
             keys_down: HashSet::new(),
             keys_pressed: HashSet::new(),
             keys_released: HashSet::new(),
-            mouse_buttons_down: HashSet::new(),
+            mouse_buttons_down: HashMap::new(),
             mouse_buttons_pressed: HashSet::new(),
             mouse_buttons_released: HashSet::new(),
             mouse_physical_position: Vector2f::ZERO,
@@ -48,7 +50,8 @@ impl InputContext {
         self.keys_released.clear();
         self.mouse_buttons_pressed.clear();
         self.mouse_buttons_released.clear();
-        // self.touches.retain(|_, t| t.phase != TouchPhase::Ended && t.phase != TouchPhase::Cancelled);
+        // self.touches.retain(|_, t| t.phase != TouchPhase::Ended && t.phase !=
+        // TouchPhase::Cancelled);
         self.touches.clear();
     }
     fn calculate_position(
@@ -87,8 +90,8 @@ impl InputContext {
     pub fn handle_mouse_button(&mut self, button: &MouseButton, state: &ElementState) {
         match state {
             ElementState::Pressed => {
-                if !self.mouse_buttons_down.contains(button) {
-                    self.mouse_buttons_down.insert(*button);
+                if !self.mouse_buttons_down.contains_key(button) {
+                    self.mouse_buttons_down.insert(*button, Instant::now());
                     self.mouse_buttons_pressed.insert(*button);
                 }
             }
@@ -142,13 +145,19 @@ impl InputContext {
         self.keys_released.contains(&code)
     }
     pub fn is_mouse_button_down(&self, button: MouseButton) -> bool {
-        self.mouse_buttons_down.contains(&button)
+        self.mouse_buttons_down.contains_key(&button)
     }
     pub fn is_mouse_button_pressed(&self, button: MouseButton) -> bool {
         self.mouse_buttons_pressed.contains(&button)
     }
     pub fn is_mouse_button_released(&self, button: MouseButton) -> bool {
         self.mouse_buttons_released.contains(&button)
+    }
+    pub fn is_mouse_button_held(&self, button: MouseButton, thresh_secs: f32) -> bool {
+        self.mouse_buttons_down
+            .get(&button)
+            .map(|start| start.elapsed() > thresh_secs)
+            .unwrap_or(false)
     }
     pub fn get_touches(&self) -> &HashMap<u64, Touch> {
         &self.touches
