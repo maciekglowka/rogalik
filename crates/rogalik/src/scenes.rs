@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use crate::{
     engine::Context,
     traits::{Game, Scene, SceneChange},
@@ -5,19 +7,19 @@ use crate::{
 
 const EMPTY_STACK_MSG: &str = "Scene stack is empty!";
 
-pub struct SceneController<T: Game>(Option<SceneChange<T>>);
+pub struct SceneController<T: Game>(VecDeque<SceneChange<T>>);
 impl<T: Game> SceneController<T> {
     fn new() -> Self {
-        Self(None)
+        Self(VecDeque::new())
     }
     pub fn pop(&mut self) {
-        self.0 = Some(SceneChange::Pop);
+        self.0.push_back(SceneChange::Pop);
     }
     pub fn push(&mut self, scene: Box<dyn Scene<Game = T>>) {
-        self.0 = Some(SceneChange::Push(scene));
+        self.0.push_back(SceneChange::Push(scene));
     }
     pub fn switch(&mut self, scene: Box<dyn Scene<Game = T>>) {
-        self.0 = Some(SceneChange::Switch(scene));
+        self.0.push_back(SceneChange::Switch(scene));
     }
 }
 
@@ -81,7 +83,7 @@ pub fn update_scenes<T: Game>(
         }
     }
 
-    while let Some(change) = controller.0.take() {
+    while let Some(change) = controller.0.pop_front() {
         match change {
             SceneChange::Pop => {
                 scene_manager.pop().exit(game, context, &mut controller);

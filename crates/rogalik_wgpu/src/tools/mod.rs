@@ -1,3 +1,4 @@
+#[cfg(feature = "video")]
 pub(crate) mod recorder;
 
 #[cfg(feature = "video")]

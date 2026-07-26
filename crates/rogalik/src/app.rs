@@ -1,5 +1,5 @@
-use rogalik_wgpu::WgpuContext;
 use std::sync::Arc;
+
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, WindowEvent};
@@ -12,10 +12,7 @@ use crate::{
     scenes::{update_scenes, SceneManager},
     Game, Scene,
 };
-use rogalik_common::{
-    traits::{AudioSetup, GraphicsSetup},
-    GraphicsContext,
-};
+use rogalik_common::traits::{AudioSetup, GraphicsSetup};
 
 pub struct App<T> {
     pub context: Context,
