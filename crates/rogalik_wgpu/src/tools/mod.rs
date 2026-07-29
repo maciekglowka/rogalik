@@ -1,5 +1,5 @@
-#[cfg(feature = "video")]
+#[cfg(feature = "capture")]
 pub(crate) mod recorder;
 
-#[cfg(feature = "video")]
+#[cfg(feature = "capture")]
 pub(crate) use recorder::Recorder;

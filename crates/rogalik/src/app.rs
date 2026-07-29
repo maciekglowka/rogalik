@@ -2,11 +2,13 @@ use std::sync::Arc;
 
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
-use winit::event::{ElementState, WindowEvent};
+use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::PhysicalKey;
 use winit::window::{Window, WindowAttributes, WindowId};
 
+#[cfg(feature = "remote")]
+use crate::remote::{RemoteHandle, RemoteResponse};
 use crate::{
     engine::Context,
     scenes::{update_scenes, SceneManager},
@@ -20,6 +22,8 @@ pub struct App<T> {
     pub scene_manager: SceneManager<T>,
     window: Option<Arc<Window>>,
     window_attributes: WindowAttributes,
+    #[cfg(feature = "remote")]
+    pub(crate) remote_handle: Option<RemoteHandle>,
 }
 impl<T: Game> App<T> {
     pub fn new(
@@ -34,6 +38,8 @@ impl<T: Game> App<T> {
             scene_manager: SceneManager::new(scene),
             window: None,
             window_attributes,
+            #[cfg(feature = "remote")]
+            remote_handle: None,
         }
     }
     fn set_inner_size_on_resume(&mut self) {
@@ -47,7 +53,7 @@ impl<T: Game> App<T> {
     }
 }
 
-impl<T: Game> ApplicationHandler for App<T> {
+impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         log::info!("App resume");
         self.window = Some(Arc::new(
@@ -163,10 +169,35 @@ impl<T: Game> ApplicationHandler for App<T> {
             _ => (),
         }
     }
+    /// At the moment handles only requests from the remote controller.
+    fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: ExternalEvent) {
+        match event {
+            ExternalEvent::MouseButton(button, state) => {
+                self.context.input.handle_mouse_button(&button, &state)
+            }
+            ExternalEvent::MouseMove(x, y) => {
+                self.context.input.handle_mouse_move(
+                    winit::dpi::PhysicalPosition {
+                        x: x as f64,
+                        y: y as f64,
+                    },
+                    &self.context.inner_size,
+                );
+            }
+        }
+    }
 }
 
-pub fn get_event_loop() -> EventLoop<()> {
-    let event_loop = EventLoop::new().expect("Can't create the event loop!");
+#[derive(Debug)]
+pub(crate) enum ExternalEvent {
+    MouseButton(MouseButton, ElementState),
+    MouseMove(u32, u32),
+}
+
+pub fn get_event_loop() -> EventLoop<ExternalEvent> {
+    let event_loop = EventLoop::with_user_event()
+        .build()
+        .expect("Can't create the event loop!");
     #[cfg(not(target_arch = "wasm32"))]
     event_loop.set_control_flow(ControlFlow::Poll);
     #[cfg(target_arch = "wasm32")]

@@ -15,7 +15,7 @@ use rogalik_common::AudioDeviceParams;
 use rogalik_wgpu::WgpuContext;
 
 use crate::{
-    app::{get_event_loop, App},
+    app::{get_event_loop, App, ExternalEvent},
     input::InputContext,
     time::Time,
     traits::Scene,
@@ -218,7 +218,7 @@ where
     T: Game + 'static,
 {
     app: App<T>,
-    event_loop: EventLoop<()>,
+    event_loop: EventLoop<ExternalEvent>,
 }
 impl<T> Engine<T>
 where
@@ -229,10 +229,15 @@ where
     }
 }
 
-fn run<T>(event_loop: EventLoop<()>, mut app: App<T>)
+fn run<T>(event_loop: EventLoop<ExternalEvent>, mut app: App<T>)
 where
     T: Game + 'static,
 {
+    #[cfg(feature = "remote")]
+    if let Ok(handle) = crate::remote::spawn_remote_controller(event_loop.create_proxy()) {
+        app.remote_handle = Some(handle);
+    }
+
     app.game.setup(&mut app.context);
     let _ = event_loop.run_app(&mut app);
 }

@@ -5,6 +5,8 @@ mod android;
 mod app;
 mod engine;
 pub mod input;
+#[cfg(feature = "remote")]
+mod remote;
 mod scenes;
 mod time;
 mod traits;

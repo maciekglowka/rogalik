@@ -11,7 +11,7 @@ const MAX_LIGHTS: u32 = 16;
 
 pub struct Renderer2d {
     sprite_pass: sprite_pass::SpritePass,
-    #[cfg(feature = "video")]
+    #[cfg(feature = "capture")]
     recorder: crate::tools::Recorder,
     rendering_resolution: Option<(u32, u32)>, // for pixel perfect renders
     upscale_pass: Option<PostProcessPass>,    // for pixel perfect renders
@@ -22,7 +22,7 @@ impl Renderer2d {
         let sprite_pass = sprite_pass::SpritePass::new(wgpu::Color::BLACK);
         Self {
             sprite_pass,
-            #[cfg(feature = "video")]
+            #[cfg(feature = "capture")]
             recorder: crate::tools::Recorder::default(),
             rendering_resolution: None,
             upscale_pass: None,
@@ -277,7 +277,8 @@ impl Renderer2d {
 
         queue.submit(std::iter::once(encoder.finish()));
 
-        #[cfg(all(debug_assertions, feature = "video"))]
+        // #[cfg(all(debug_assertions, feature = "capture"))]
+        #[cfg(feature = "capture")]
         {
             self.recorder.handle_queue(
                 self.uniforms.globals.viewport_size[0] as u32,
@@ -293,7 +294,7 @@ impl Renderer2d {
         Ok(())
     }
     pub(crate) fn toggle_recording(&mut self) {
-        #[cfg(feature = "video")]
+        #[cfg(feature = "capture")]
         self.recorder.toggle_recording();
     }
 }
