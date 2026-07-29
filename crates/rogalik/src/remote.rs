@@ -2,12 +2,12 @@ use std::{
     net::TcpListener,
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc::{Receiver, Sender},
+        mpsc::Sender,
         Arc,
     },
 };
 
-use tungstenite::{accept, Message};
+use tungstenite::{handshake::server::NoCallback, Message, ServerHandshake};
 use winit::{
     event::{ElementState, MouseButton},
     event_loop::EventLoopProxy,
@@ -86,28 +86,41 @@ pub(crate) fn spawn_remote_controller(
     let handle_state = Arc::clone(&state);
 
     let handle = std::thread::spawn(move || {
-        for stream in server.incoming() {
+        server
+            .set_nonblocking(true)
+            .expect("Can't set remote listener as non-blocking");
+
+        'outer: for stream in server.incoming() {
             if state.halt.load(Ordering::Relaxed) {
                 return;
             }
 
             let stream = match stream {
                 Ok(s) => s,
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    std::thread::sleep(std::time::Duration::from_millis(IDLE_DELAY_MS));
+                    continue;
+                }
                 Err(e) => {
                     log::error!("Invalid remote connection: {e}");
                     continue;
                 }
             };
-            let mut ws = match accept(stream) {
-                Ok(ws) => {
-                    log::info!("Remote server accepted new client stream");
-                    ws
-                }
-                Err(e) => {
-                    log::error!("Remote handshake failed: {e}");
-                    continue;
+
+            // Do manual handshaking instead of using `accept` - to avoid
+            // interrupted handshakes due to non-blocking mode of the TCP stream.
+            let mut mid_handshake = ServerHandshake::start(stream, NoCallback, None);
+            let mut ws = loop {
+                match mid_handshake.handshake() {
+                    Ok(ws) => break ws,
+                    Err(tungstenite::HandshakeError::Interrupted(m)) => mid_handshake = m,
+                    Err(e) => {
+                        log::error!("Remote handshake failed: {e}");
+                        continue 'outer;
+                    }
                 }
             };
+
             if let Err(e) = ws.get_mut().set_nonblocking(true) {
                 log::error!("Remote websocket nonblocking mode failed: {e}");
                 continue;
@@ -116,6 +129,10 @@ pub(crate) fn spawn_remote_controller(
             state.connected.store(true, Ordering::Relaxed);
 
             loop {
+                if state.halt.load(Ordering::Relaxed) {
+                    return;
+                }
+
                 let mut idle = true;
 
                 match ws.read() {
@@ -128,12 +145,16 @@ pub(crate) fn spawn_remote_controller(
                                 state.expects_screenshot.store(true, Ordering::Relaxed);
                             }
 
-                            event_loop.send_event(event);
+                            // If there is no event loop, there is nothing to recover.
+                            event_loop.send_event(event).unwrap();
                         } else {
                             log::warn!("Invalid ws text message: {msg}");
                         }
                     }
-                    Ok(Message::Close(_)) => (),
+                    Ok(Message::Close(_)) => {
+                        log::info!("Remote connection is closed");
+                        break;
+                    }
                     Ok(msg) => {
                         idle = false;
                         log::warn!("Invalid ws message: {msg}");
@@ -149,8 +170,12 @@ pub(crate) fn spawn_remote_controller(
 
                 match rx.try_recv() {
                     Ok(RemoteResponse::ScreenShot(buf)) => {
-                        ws.send(Message::Binary(buf.into()));
+                        if let Err(e) = ws.send(Message::Binary(buf.into())) {
+                            log::error!("Cannot send remote response: {e}. Disconnecting");
+                            break;
+                        };
                         idle = false;
+                        state.expects_screenshot.store(false, Ordering::Relaxed);
                     }
                     Err(std::sync::mpsc::TryRecvError::Empty) => (),
                     Err(std::sync::mpsc::TryRecvError::Disconnected) => {
@@ -164,6 +189,8 @@ pub(crate) fn spawn_remote_controller(
             }
 
             state.reset();
+            // Just in case, clear any pending requests.
+            while rx.try_recv().is_ok() {}
         }
     });
 

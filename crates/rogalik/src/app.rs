@@ -51,6 +51,13 @@ impl<T: Game> App<T> {
             .graphics
             .resize(physical_size.width, physical_size.height);
     }
+    fn can_accept_input(&self) -> bool {
+        #[cfg(feature = "remote")]
+        if let Some(remote) = &self.remote_handle {
+            return !remote.is_connected();
+        }
+        true
+    }
 }
 
 impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
@@ -93,6 +100,7 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
     ) {
         match event {
             WindowEvent::KeyboardInput { event, .. } => {
+                // TODO check if can accept input when remote keyboard commands are impl.
                 self.context.input.handle_keyboard(&event);
 
                 // reload assets
@@ -115,12 +123,16 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
                 }
             }
             WindowEvent::MouseInput { button, state, .. } => {
-                self.context.input.handle_mouse_button(&button, &state);
+                if self.can_accept_input() {
+                    self.context.input.handle_mouse_button(&button, &state);
+                }
             }
             WindowEvent::CursorMoved { position, .. } => {
-                self.context
-                    .input
-                    .handle_mouse_move(position, &self.context.inner_size);
+                if self.can_accept_input() {
+                    self.context
+                        .input
+                        .handle_mouse_move(position, &self.context.inner_size);
+                }
             }
             WindowEvent::Touch(winit::event::Touch {
                 phase,
@@ -128,9 +140,11 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
                 id,
                 ..
             }) => {
-                self.context
-                    .input
-                    .handle_touch(id, phase, location, &self.context.inner_size);
+                if self.can_accept_input() {
+                    self.context
+                        .input
+                        .handle_touch(id, phase, location, &self.context.inner_size);
+                }
             }
             WindowEvent::CloseRequested => {
                 event_loop.exit();
@@ -165,11 +179,13 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
                 //     1. / start.elapsed().as_secs_f32(),
                 //     start.elapsed().as_secs_f32()
                 // );
+
                 #[cfg(feature = "capture")]
                 if let Some(handle) = &self.remote_handle {
                     if handle.is_expecting_screenshot() {
                         if let Some(buf) = self.context.graphics.take_screenshot() {
-                            handle.tx.send(RemoteResponse::ScreenShot(buf));
+                            // TODO handle error.
+                            let _ = handle.tx.send(RemoteResponse::ScreenShot(buf));
                         }
                     }
                 }

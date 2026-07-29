@@ -9,6 +9,7 @@ pub(crate) struct Recorder {
     buffer: Option<wgpu::Buffer>,
     screen_shot: Option<Vec<u8>>,
     frames: Vec<u8>,
+    channel_swap: bool,
     is_recording: bool,
     is_taking_screenshot: bool,
     width: u32,
@@ -87,7 +88,8 @@ impl Recorder {
 
             device.poll(wgpu::Maintain::Wait);
 
-            let channel_swap = matches!(
+            // This can be done only once - however should be cheap.
+            self.channel_swap = matches!(
                 output.texture.format(),
                 wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Bgra8UnormSrgb
             );
@@ -106,7 +108,7 @@ impl Recorder {
                     .flat_map(|a| &a[..bytes_per_row as usize])
                     .copied()
                     .collect::<Vec<_>>();
-                if channel_swap {
+                if self.channel_swap {
                     bytes.chunks_exact_mut(4).for_each(|c| c.swap(0, 2));
                 }
 
@@ -151,12 +153,13 @@ impl Recorder {
         (bytes_per_row, bytes_per_row + padding)
     }
     fn save_video(&mut self, path: &str) {
-        let frames = std::mem::take(&mut self.frames);
+        let mut frames = std::mem::take(&mut self.frames);
         let width = self.width;
         let height = self.height;
         let path = path.to_string();
 
         let (bytes_per_row, padded_bytes_per_row) = Self::get_bytes_per_row(width);
+        let channel_swap = self.channel_swap;
 
         let _ = std::thread::spawn(move || {
             let (pipe_reader, mut pipe_writer) = pipe().unwrap();
@@ -182,11 +185,16 @@ impl Recorder {
                 .spawn()
                 .unwrap();
 
-            // TODO fix color channel order.
             frames
-                .chunks(padded_bytes_per_row as usize)
-                .map(|a| &a[..bytes_per_row as usize])
-                .for_each(|a| pipe_writer.write_all(a).unwrap());
+                .chunks_mut(padded_bytes_per_row as usize)
+                .map(|a| &mut a[..bytes_per_row as usize])
+                .for_each(|a| {
+                    println!("{channel_swap}");
+                    if channel_swap {
+                        a.chunks_exact_mut(4).for_each(|c| c.swap(0, 2));
+                    }
+                    pipe_writer.write_all(a).unwrap()
+                });
 
             drop(pipe_writer);
             cmd.wait().unwrap();
