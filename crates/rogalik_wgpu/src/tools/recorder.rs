@@ -87,6 +87,11 @@ impl Recorder {
 
             device.poll(wgpu::Maintain::Wait);
 
+            let channel_swap = matches!(
+                output.texture.format(),
+                wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Bgra8UnormSrgb
+            );
+
             let data = buffer_slice.get_mapped_range();
             if self.is_recording {
                 self.frames.extend(data.iter().copied());
@@ -96,13 +101,18 @@ impl Recorder {
                 let encoder = image::codecs::png::PngEncoder::new(&mut buf);
                 let (bytes_per_row, padded_bytes_per_row) = Self::get_bytes_per_row(width);
 
+                let mut bytes = data
+                    .chunks(padded_bytes_per_row as usize)
+                    .flat_map(|a| &a[..bytes_per_row as usize])
+                    .copied()
+                    .collect::<Vec<_>>();
+                if channel_swap {
+                    bytes.chunks_exact_mut(4).for_each(|c| c.swap(0, 2));
+                }
+
                 // TODO is vec collect necessary?
                 if let Err(e) = encoder.write_image(
-                    data.chunks(padded_bytes_per_row as usize)
-                        .flat_map(|a| &a[..bytes_per_row as usize])
-                        .copied()
-                        .collect::<Vec<_>>()
-                        .as_slice(),
+                    bytes.as_slice(),
                     self.width,
                     self.height,
                     image::ColorType::Rgba8,
@@ -172,6 +182,7 @@ impl Recorder {
                 .spawn()
                 .unwrap();
 
+            // TODO fix color channel order.
             frames
                 .chunks(padded_bytes_per_row as usize)
                 .map(|a| &a[..bytes_per_row as usize])
