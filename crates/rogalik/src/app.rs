@@ -14,7 +14,7 @@ use crate::{
     scenes::{update_scenes, SceneManager},
     Game, Scene,
 };
-use rogalik_common::traits::{AudioSetup, GraphicsSetup};
+use rogalik_common::traits::{AudioSetup, GraphicsContext, GraphicsSetup};
 
 pub struct App<T> {
     pub context: Context,
@@ -165,6 +165,14 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
                 //     1. / start.elapsed().as_secs_f32(),
                 //     start.elapsed().as_secs_f32()
                 // );
+                #[cfg(feature = "capture")]
+                if let Some(handle) = &self.remote_handle {
+                    if handle.is_expecting_screenshot() {
+                        if let Some(buf) = self.context.graphics.take_screenshot() {
+                            handle.tx.send(RemoteResponse::ScreenShot(buf));
+                        }
+                    }
+                }
             }
             _ => (),
         }
@@ -184,6 +192,9 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
                     &self.context.inner_size,
                 );
             }
+            ExternalEvent::ScreenShot => {
+                self.context.graphics.request_screenshot();
+            }
         }
     }
 }
@@ -192,6 +203,7 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
 pub(crate) enum ExternalEvent {
     MouseButton(MouseButton, ElementState),
     MouseMove(u32, u32),
+    ScreenShot,
 }
 
 pub fn get_event_loop() -> EventLoop<ExternalEvent> {

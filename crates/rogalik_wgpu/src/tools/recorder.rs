@@ -1,3 +1,4 @@
+use image::ImageEncoder;
 use std::{
     io::{pipe, Write},
     process::Command,
@@ -6,8 +7,10 @@ use std::{
 #[derive(Default)]
 pub(crate) struct Recorder {
     buffer: Option<wgpu::Buffer>,
+    screen_shot: Option<Vec<u8>>,
     frames: Vec<u8>,
     is_recording: bool,
+    is_taking_screenshot: bool,
     width: u32,
     height: u32,
 }
@@ -30,6 +33,12 @@ impl Recorder {
         self.is_recording = true;
         log::info!("Recording enabled");
     }
+    pub(crate) fn request_screenshot(&mut self) {
+        self.is_taking_screenshot = true;
+    }
+    pub(crate) fn take_screenshot(&mut self) -> Option<Vec<u8>> {
+        self.screen_shot.take()
+    }
     pub(crate) fn handle_queue(
         &mut self,
         width: u32,
@@ -38,7 +47,7 @@ impl Recorder {
         queue: &wgpu::Queue,
         output: &wgpu::SurfaceTexture,
     ) {
-        if !self.is_recording {
+        if !self.is_recording && !self.is_taking_screenshot {
             return;
         };
 
@@ -79,7 +88,32 @@ impl Recorder {
             device.poll(wgpu::Maintain::Wait);
 
             let data = buffer_slice.get_mapped_range();
-            self.frames.extend(data.iter().copied());
+            if self.is_recording {
+                self.frames.extend(data.iter().copied());
+            }
+            if self.is_taking_screenshot {
+                let mut buf = Vec::new();
+                let encoder = image::codecs::png::PngEncoder::new(&mut buf);
+                let (bytes_per_row, padded_bytes_per_row) = Self::get_bytes_per_row(width);
+
+                // TODO is vec collect necessary?
+                if let Err(e) = encoder.write_image(
+                    data.chunks(padded_bytes_per_row as usize)
+                        .flat_map(|a| &a[..bytes_per_row as usize])
+                        .copied()
+                        .collect::<Vec<_>>()
+                        .as_slice(),
+                    self.width,
+                    self.height,
+                    image::ColorType::Rgba8,
+                ) {
+                    log::error!("Screenshot encoding error {e}");
+                } else {
+                    log::info!("Screenshot successfully captured");
+                    self.screen_shot = Some(buf);
+                }
+                self.is_taking_screenshot = false;
+            }
         }
 
         self.buffer.as_ref().unwrap().unmap();

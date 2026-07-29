@@ -185,9 +185,6 @@ impl GraphicsSetup for WgpuContext {
             }
         }
     }
-    fn toggle_recording(&mut self) {
-        self.renderer2d.toggle_recording();
-    }
 }
 impl GraphicsContext for WgpuContext {
     fn set_clear_color(&mut self, color: rogalik_common::Color) {
@@ -387,6 +384,18 @@ impl GraphicsContext for WgpuContext {
     }
     fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId> {
         self.assets.builtin_shaders.get(&shader).copied()
+    }
+    fn toggle_recording(&mut self) {
+        #[cfg(feature = "capture")]
+        self.renderer2d.recorder.toggle_recording();
+    }
+    fn request_screenshot(&mut self) {
+        #[cfg(feature = "capture")]
+        self.renderer2d.recorder.request_screenshot();
+    }
+    fn take_screenshot(&mut self) -> Option<Vec<u8>> {
+        #[cfg(feature = "capture")]
+        self.renderer2d.recorder.take_screenshot()
     }
 }
 

@@ -18,21 +18,41 @@ use crate::app::ExternalEvent;
 const IDLE_DELAY_MS: u64 = 10;
 
 pub(crate) enum RemoteResponse {
-    ScreenShot,
+    ScreenShot(Vec<u8>),
 }
 
 pub(crate) struct RemoteHandle {
     handle: Option<std::thread::JoinHandle<()>>,
-    halt: Arc<AtomicBool>,
-    connected: Arc<AtomicBool>,
-    tx: Sender<RemoteResponse>,
+    state: Arc<ControllerState>,
+    pub(crate) tx: Sender<RemoteResponse>,
+}
+impl RemoteHandle {
+    pub(crate) fn is_connected(&self) -> bool {
+        self.state.connected.load(Ordering::Relaxed)
+    }
+    pub(crate) fn is_expecting_screenshot(&self) -> bool {
+        self.state.expects_screenshot.load(Ordering::Relaxed)
+    }
 }
 impl Drop for RemoteHandle {
     fn drop(&mut self) {
-        self.halt.store(true, Ordering::Relaxed);
+        self.state.halt.store(true, Ordering::Relaxed);
         if let Some(handle) = self.handle.take() {
             let _ = handle.join();
         }
+    }
+}
+
+struct ControllerState {
+    connected: AtomicBool,
+    halt: AtomicBool,
+    expects_screenshot: AtomicBool,
+}
+impl ControllerState {
+    /// Called after client disconnects.
+    fn reset(&self) {
+        self.connected.store(false, Ordering::Relaxed);
+        self.expects_screenshot.store(false, Ordering::Relaxed);
     }
 }
 
@@ -58,12 +78,16 @@ pub(crate) fn spawn_remote_controller(
 
     let (tx, rx) = std::sync::mpsc::channel();
 
-    let halt = Arc::new(AtomicBool::new(false));
-    let thread_halt = Arc::clone(&halt);
+    let state = Arc::new(ControllerState {
+        halt: AtomicBool::new(false),
+        connected: AtomicBool::new(false),
+        expects_screenshot: AtomicBool::new(false),
+    });
+    let handle_state = Arc::clone(&state);
 
     let handle = std::thread::spawn(move || {
         for stream in server.incoming() {
-            if thread_halt.load(Ordering::Relaxed) {
+            if state.halt.load(Ordering::Relaxed) {
                 return;
             }
 
@@ -89,6 +113,8 @@ pub(crate) fn spawn_remote_controller(
                 continue;
             }
 
+            state.connected.store(true, Ordering::Relaxed);
+
             loop {
                 let mut idle = true;
 
@@ -97,6 +123,11 @@ pub(crate) fn spawn_remote_controller(
                         idle = false;
                         if let Some(event) = parse_request(msg.as_str()) {
                             log::info!("Received remote event {event:?}");
+
+                            if matches!(event, ExternalEvent::ScreenShot) {
+                                state.expects_screenshot.store(true, Ordering::Relaxed);
+                            }
+
                             event_loop.send_event(event);
                         } else {
                             log::warn!("Invalid ws text message: {msg}");
@@ -117,9 +148,9 @@ pub(crate) fn spawn_remote_controller(
                 }
 
                 match rx.try_recv() {
-                    Ok(RemoteResponse::ScreenShot) => {
+                    Ok(RemoteResponse::ScreenShot(buf)) => {
+                        ws.send(Message::Binary(buf.into()));
                         idle = false;
-                        // TODO send the screenshot
                     }
                     Err(std::sync::mpsc::TryRecvError::Empty) => (),
                     Err(std::sync::mpsc::TryRecvError::Disconnected) => {
@@ -131,12 +162,14 @@ pub(crate) fn spawn_remote_controller(
                     std::thread::sleep(std::time::Duration::from_millis(IDLE_DELAY_MS));
                 }
             }
+
+            state.reset();
         }
     });
 
     Ok(RemoteHandle {
         handle: Some(handle),
-        halt,
+        state: handle_state,
         tx,
     })
 }
@@ -153,6 +186,7 @@ fn parse_request(request: &str) -> Option<ExternalEvent> {
             MouseButton::Left,
             ElementState::Released,
         )),
+        ["screenshot"] => Some(ExternalEvent::ScreenShot),
         _ => None,
     }
 }

@@ -31,7 +31,6 @@ pub trait GraphicsSetup {
     /// post-processing effects.
     /// (called by the engine internally)
     fn render(&mut self);
-    fn toggle_recording(&mut self);
 }
 
 /// Defines the interface for interacting with the engine's graphics rendering
@@ -200,6 +199,9 @@ pub trait GraphicsContext {
     /// `shader`: The `BuiltInShader` enum variant identifying the desired
     /// shader.
     fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId>;
+    fn toggle_recording(&mut self);
+    fn request_screenshot(&mut self);
+    fn take_screenshot(&mut self) -> Option<Vec<u8>>;
 }
 
 pub trait AudioSetup {

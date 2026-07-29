@@ -12,7 +12,7 @@ const MAX_LIGHTS: u32 = 16;
 pub struct Renderer2d {
     sprite_pass: sprite_pass::SpritePass,
     #[cfg(feature = "capture")]
-    recorder: crate::tools::Recorder,
+    pub(crate) recorder: crate::tools::Recorder,
     rendering_resolution: Option<(u32, u32)>, // for pixel perfect renders
     upscale_pass: Option<PostProcessPass>,    // for pixel perfect renders
     uniforms: uniforms::Uniforms,
@@ -292,10 +292,6 @@ impl Renderer2d {
         output.present();
         self.uniforms.lights.frame_end();
         Ok(())
-    }
-    pub(crate) fn toggle_recording(&mut self) {
-        #[cfg(feature = "capture")]
-        self.recorder.toggle_recording();
     }
 }
 
