@@ -175,7 +175,7 @@ impl EngineBuilder {
             .internal_data_path()
             .map_or(None, |a| a.to_str().map(|a| a.to_string()));
 
-        let event_loop = EventLoop::builder()
+        let event_loop = EventLoop::with_user_event()
             .with_android_app(app)
             .build()
             .expect("Can't create the event loop!");
