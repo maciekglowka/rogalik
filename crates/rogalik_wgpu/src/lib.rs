@@ -193,6 +193,11 @@ impl GraphicsContext for WgpuContext {
     }
     fn set_rendering_resolution(&mut self, w: u32, h: u32) {
         log::debug!("Setting rendering resolution at: {}x{}", w, h);
+        if w == 0 || h == 0 {
+            log::warn!("Invalid rendering resolution. Aborting");
+            return;
+        }
+
         self.handle_surface_refresh();
 
         self.rendering_resolution = Some((w, h));
