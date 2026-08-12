@@ -1,6 +1,25 @@
+use std::collections::HashMap;
+
 use crate::structs::Vertex;
 use rogalik_common::SpriteParams;
 use rogalik_math::vectors::Vector2f;
+
+pub(crate) struct Font {
+    kind: FontKind,
+}
+
+pub(crate) enum FontKind {
+    /// Single atlas.
+    Bitmap(String),
+    /// Atlases by font size.
+    Ttf(HashMap<f32, String>),
+}
+
+/// Maps char (index) to sprite atlas index.
+///
+/// Uses u16 for mem optimization.
+/// In case of high mem usage, consider hybrid vec / hashmap solution.
+struct CharMap(Vec<u16>);
 
 pub fn get_text_sprites(
     text: &str,

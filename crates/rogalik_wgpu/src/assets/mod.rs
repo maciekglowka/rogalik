@@ -5,8 +5,8 @@ use std::{
 
 use rogalik_assets::{AssetContext, AssetState, AssetStore};
 use rogalik_common::{
-    AtlasParams, BuiltInShader, EngineError, MaterialParams, PostProcessParams, ResourceId,
-    ShaderKind,
+    AtlasParams, BuiltInShader, EngineError, FontParams, MaterialParams, PostProcessParams,
+    ResourceId, ShaderKind,
 };
 use rogalik_math::vectors::Vector2f;
 
@@ -284,25 +284,18 @@ impl WgpuAssets {
         self.cameras.push(camera);
         id
     }
-    pub fn load_font(
+    pub fn load_font_atlas(
         &mut self,
         name: &str,
         path: &str,
-        rows: usize,
-        cols: usize,
-        padding: Option<(f32, f32)>,
-        shader: Option<ResourceId>,
+        atlas: AtlasParams,
+        params: FontParams,
     ) {
-        let atlas = Some(AtlasParams {
-            rows,
-            cols,
-            padding,
-        });
-
         let params = MaterialParams {
-            atlas,
+            atlas: Some(atlas),
             diffuse_texture: Some(self.texture_from_path(path)),
-            shader,
+            shader: params.shader,
+            filtering: params.filtering,
             ..Default::default()
         };
         self.create_material(name, params);

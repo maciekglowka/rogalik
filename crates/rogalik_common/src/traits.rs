@@ -57,22 +57,24 @@ pub trait GraphicsContext {
     /// `kind`: The type of shader (e.g., `Sprite`, `PostProcess`).
     /// `path`: The file path to the shader source code (WGSL).
     fn load_shader(&mut self, kind: ShaderKind, path: &str) -> ResourceId;
+    /// Loads a font from a TTF file.
+    /// `name`: A unique identifier for the font.
+    /// `path`: The file path to the font texture atlas.
+    /// `params`:
+    fn load_font(&mut self, name: &str, path: &str, params: crate::FontParams);
     /// Loads a font from a texture atlas, allowing text rendering.
     /// `name`: A unique identifier for the font.
     /// `path`: The file path to the font texture atlas.
     /// `rows`: The number of rows in the font atlas.
     /// `cols`: The number of columns in the font atlas.
     /// `padding`: Optional padding around each character in the atlas (x, y).
-    /// `shader`: Optional `ResourceId` of a custom shader to use for text
-    /// rendering.
-    fn load_font(
+    /// `params`:
+    fn load_font_atlas(
         &mut self,
         name: &str,
         path: &str,
-        rows: usize,
-        cols: usize,
-        padding: Option<(f32, f32)>,
-        shader: Option<ResourceId>,
+        atlas: crate::AtlasParams,
+        params: crate::FontParams,
     );
     /// Adds a post-processing effect to be applied after the main scene
     /// rendering. `name`: A unique identifier for the post-process effect.

@@ -64,7 +64,7 @@ pub struct SpriteParams {
     pub flip_x: bool,
     pub flip_y: bool,
     pub rotate: Option<f32>,
-    // slice size in px, base sprite size
+    /// Slice (size in px, base sprite size)
     pub slice: Option<(usize, Vector2f)>,
 }
 
@@ -98,6 +98,19 @@ pub struct AtlasParams {
     pub padding: Option<(f32, f32)>,
 }
 
+#[derive(Clone, Copy, Debug, Default)]
+pub struct FontParams<'a> {
+    /// Used only for atlas fonts.
+    pub atlas_offset: usize,
+    /// For TTF determines which glyphs should be rendered into atlas.
+    /// For bitmap fonts specifies the order of glyphs on the provided atlas.
+    ///
+    /// If not provided ASCII mapping is used.
+    pub charset: Option<&'a [char]>,
+    pub filtering: TextureFiltering,
+    pub shader: Option<ResourceId>,
+}
+
 #[derive(Clone, Copy, Default)]
 pub enum TextureRepeat {
     #[default]
@@ -106,7 +119,7 @@ pub enum TextureRepeat {
     MirrorRepeat,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum TextureFiltering {
     #[default]
     Nearest,

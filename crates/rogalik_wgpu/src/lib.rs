@@ -5,7 +5,8 @@ use std::sync::{
 use winit::window::Window;
 
 use rogalik_common::{
-    traits::GraphicsSetup, BuiltInShader, EngineError, GraphicsContext, ResourceId, SpriteParams,
+    traits::GraphicsSetup, AtlasParams, BuiltInShader, EngineError, FontParams, GraphicsContext,
+    ResourceId, SpriteParams,
 };
 use rogalik_math::vectors::Vector2f;
 
@@ -225,17 +226,12 @@ impl GraphicsContext for WgpuContext {
         // TODO if self.surface_state build pipeline
         self.assets.create_shader(kind, path)
     }
-    fn load_font(
-        &mut self,
-        name: &str,
-        path: &str,
-        rows: usize,
-        cols: usize,
-        padding: Option<(f32, f32)>,
-        shader: Option<ResourceId>,
-    ) {
-        self.assets
-            .load_font(name, path, rows, cols, padding, shader);
+    fn load_font(&mut self, name: &str, path: &str, params: FontParams) {
+        // self.assets
+        //     .load_font(name, path, rows, cols, padding, shader);
+    }
+    fn load_font_atlas(&mut self, name: &str, path: &str, atlas: AtlasParams, params: FontParams) {
+        self.assets.load_font_atlas(name, path, atlas, params);
     }
     fn add_post_process(&mut self, name: &str, params: rogalik_common::PostProcessParams) {
         self.assets.create_post_process(name, params);
@@ -395,7 +391,13 @@ impl GraphicsContext for WgpuContext {
     }
     fn take_screenshot(&mut self) -> Option<Vec<u8>> {
         #[cfg(feature = "capture")]
-        self.renderer2d.recorder.take_screenshot()
+        {
+            self.renderer2d.recorder.take_screenshot()
+        }
+        #[cfg(not(feature = "capture"))]
+        {
+            None
+        }
     }
 }
 
