@@ -1,10 +1,12 @@
 use rogalik_common::{Color, EngineError, PostProcessParams, ResourceId, SpriteParams};
 use rogalik_math::vectors::Vector2f;
 
+use crate::assets::font::get_text_sprites;
 use crate::assets::{material::Material, postprocess::PostProcessPass, WgpuAssets};
 use crate::structs::BindParams;
 
 mod sprite_pass;
+mod text;
 pub(crate) mod uniforms;
 
 const MAX_LIGHTS: u32 = 16;
@@ -16,6 +18,7 @@ pub struct Renderer2d {
     rendering_resolution: Option<(u32, u32)>, // for pixel perfect renders
     upscale_pass: Option<PostProcessPass>,    // for pixel perfect renders
     uniforms: uniforms::Uniforms,
+    text_cache: text::TextCache,
 }
 impl Renderer2d {
     pub fn new() -> Self {
@@ -27,6 +30,7 @@ impl Renderer2d {
             rendering_resolution: None,
             upscale_pass: None,
             uniforms: uniforms::Uniforms::default(),
+            text_cache: Default::default(),
         }
     }
     pub fn set_clear_color(&mut self, color: wgpu::Color) {
@@ -161,6 +165,16 @@ impl Renderer2d {
         };
         Ok(())
     }
+    pub(crate) fn get_text_dimensions(
+        &mut self,
+        assets: &WgpuAssets,
+        font: &str,
+        text: &str,
+        size: u32,
+    ) -> Option<Vector2f> {
+        let layout = self.text_cache.get(assets, font, text, size);
+        Some(Vector2f::new(layout.width, layout.height))
+    }
     pub fn draw_text(
         &mut self,
         assets: &WgpuAssets,
@@ -172,20 +186,24 @@ impl Renderer2d {
         size: u32,
         params: SpriteParams,
     ) -> Result<(), EngineError> {
-        let (material_id, material) = get_material(font, assets)?;
-        // let atlas = material.atlas.ok_or(EngineError::InvalidResource)?;
+        let layout = self.text_cache.get(assets, font, text, size);
+        let sprites = get_text_sprites(assets, layout, position, params);
+        println!("{sprites:?}");
+
+        let material = assets
+            .get_material(layout.material_id)
+            .ok_or(EngineError::ResourceNotFound)?;
 
         let bind_params = BindParams {
             camera_id,
-            material_id,
+            material_id: layout.material_id,
             shader_id: material.shader_id,
         };
 
-        // FIXME
-        // for s in crate::assets::font::get_text_sprites(text, atlas, position, size,
-        // params) {     self.sprite_pass
-        //         .add_to_queue(&s.0, &s.1, z_index, bind_params);
-        // }
+        for s in sprites {
+            self.sprite_pass
+                .add_to_queue(&s.0, &s.1, z_index, bind_params);
+        }
         Ok(())
     }
     pub fn draw_mesh(

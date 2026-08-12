@@ -1,8 +1,6 @@
 #[cfg(feature = "serialize")]
 use serde::{Deserialize, Serialize};
 
-use rogalik_math::vectors::Vector2f;
-
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub struct ResourceId(pub usize);
 impl ResourceId {
@@ -94,7 +92,7 @@ pub struct PostProcessParams {
 pub struct AtlasParams {
     pub cols: usize,
     pub rows: usize,
-    pub padding: Option<(f32, f32)>,
+    pub padding: Option<(u32, u32)>,
 }
 
 #[derive(Clone, Copy, Debug, Default)]

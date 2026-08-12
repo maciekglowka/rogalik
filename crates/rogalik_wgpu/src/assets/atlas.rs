@@ -1,50 +1,48 @@
 use rogalik_math::vectors::Vector2f;
 
-use crate::structs::Vertex;
+use crate::structs::{Quad, Vertex};
 use rogalik_common::SpriteParams;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct AtlasEntry {
-    u_min: f32,
-    u_max: f32,
-    v_min: f32,
-    v_max: f32,
+    pub(crate) u: f32,
+    pub(crate) u_size: f32,
+    pub(crate) v: f32,
+    pub(crate) v_size: f32,
+    pub(crate) w: u32,
+    pub(crate) h: u32,
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct SpriteAtlas {
     entries: Vec<AtlasEntry>,
-    texture_size: (u32, u32), /* cols: usize,
-                               * pub u_step: f32,
-                               * pub v_step: f32,
-                               * u_size: f32,
-                               * v_size: f32,
-                               * sprite_w: f32,
-                               * sprite_h: f32, */
+    texture_size: (u32, u32),
 }
 impl SpriteAtlas {
     pub fn from_grid(
         texture_size: (u32, u32),
         rows: usize,
         cols: usize,
-        padding: Option<(f32, f32)>,
+        padding: Option<(u32, u32)>,
     ) -> Self {
         let (sp_w, sp_h) =
             grid_sprite_pixel_size(texture_size.0, texture_size.1, rows, cols, padding);
 
         let u_step = 1.0 / cols as f32;
         let v_step = 1.0 / rows as f32;
-        let u_size = sp_w / texture_size.0 as f32;
-        let v_size = sp_h / texture_size.1 as f32;
+        let u_size = sp_w as f32 / texture_size.0 as f32;
+        let v_size = sp_h as f32 / texture_size.1 as f32;
 
         let mut entries = vec![];
         for col in 0..cols {
             for row in 0..rows {
                 entries.push(AtlasEntry {
-                    u_min: col as f32 * u_step,
-                    u_max: col as f32 * u_step + u_size,
-                    v_min: row as f32 * v_step,
-                    v_max: row as f32 * v_step + v_size,
+                    u: col as f32 * u_step,
+                    u_size,
+                    v: row as f32 * v_step,
+                    v_size,
+                    w: sp_w,
+                    h: sp_h,
                 })
             }
         }
@@ -52,40 +50,26 @@ impl SpriteAtlas {
         Self {
             entries,
             texture_size,
-            // cols,
-            // u_step: 1.0 / cols as f32,
-            // v_step: 1.0 / rows as f32,
-            // u_size: sp_w / texture_size.0 as f32,
-            // v_size: sp_h / texture_size.1 as f32,
-            // sprite_w: sp_w,
-            // sprite_h: sp_h,
         }
     }
-    // pub fn get_sprite_size(&self) -> (f32, f32) {
-    //     (self.sprite_w, self.sprite_h)
-    // }
+    pub(crate) fn get_entry(&self, index: usize) -> Option<&AtlasEntry> {
+        self.entries.get(index)
+    }
+
     pub fn get_sprite(
         &self,
         index: usize,
         position: Vector2f,
         size: Vector2f,
         params: SpriteParams,
-    ) -> ([Vertex; 4], [u16; 6]) {
-        // let row = index / self.cols;
-        // let col = index % self.cols;
-        // let u = self.u_step * col as f32;
-        // let v = self.v_step * row as f32;
+    ) -> Quad {
         let entry = &self.entries[index];
 
         let color = params.color.as_srgb();
-        // let l = u;
-        // let r = u + self.u_size;
-        // let b = v + self.v_size;
-        // let t = v;
-        let l = entry.u_min;
-        let r = entry.u_max;
-        let b = entry.v_max;
-        let t = entry.v_min;
+        let l = entry.u;
+        let r = entry.u + entry.u_size;
+        let b = entry.v;
+        let t = entry.v + entry.v_size;
 
         let mut uvs = [[l, b], [r, b], [r, t], [l, t]];
 
@@ -148,39 +132,32 @@ impl SpriteAtlas {
         size: Vector2f,
         params: SpriteParams,
     ) -> ([Vertex; 16], [u16; 54]) {
-        // let row = index / self.cols;
-        // let col = index % self.cols;
-        // let u = self.u_step * col as f32;
-        // let v = self.v_step * row as f32;
-
         let entry = &self.entries[index];
-        let u_size = entry.u_max - entry.u_min;
-        let v_size = entry.v_max - entry.v_min;
 
         let color = params.color.as_srgb();
 
         let slice_dim = params.slice.unwrap();
 
-        let sprite_w = self.texture_size.0 as f32 * u_size;
-        let sprite_h = self.texture_size.1 as f32 * v_size;
+        let sprite_w = self.texture_size.0 as f32 * entry.u_size;
+        let sprite_h = self.texture_size.1 as f32 * entry.v_size;
 
         let ratio_w = slice_dim as f32 / sprite_w;
         let ratio_h = slice_dim as f32 / sprite_h;
 
-        let u_slice = ratio_w * u_size;
-        let v_slice = ratio_h * v_size;
+        let u_slice = ratio_w * entry.u_size;
+        let v_slice = ratio_h * entry.v_size;
 
         let mut us = [
-            entry.u_min,
-            entry.u_min + u_slice,
-            entry.u_max - u_slice,
-            entry.u_max,
+            entry.u,
+            entry.u + u_slice,
+            entry.u + entry.u_size - u_slice,
+            entry.u + entry.u_size,
         ];
         let mut vs = [
-            entry.v_max,
-            entry.v_max - v_slice,
-            entry.v_min + v_slice,
-            entry.v_min,
+            entry.v + entry.v_size,
+            entry.v + entry.v_size - v_slice,
+            entry.v + v_slice,
+            entry.v,
         ];
 
         let xs = [
@@ -237,10 +214,10 @@ fn grid_sprite_pixel_size(
     texture_h: u32,
     rows: usize,
     cols: usize,
-    padding: Option<(f32, f32)>,
-) -> (f32, f32) {
-    let grid_width = (texture_w as f32) / (cols as f32);
-    let grid_height = (texture_h as f32) / (rows as f32);
+    padding: Option<(u32, u32)>,
+) -> (u32, u32) {
+    let grid_width = texture_w / cols as u32;
+    let grid_height = texture_h / rows as u32;
 
     match padding {
         None => (grid_width, grid_height),

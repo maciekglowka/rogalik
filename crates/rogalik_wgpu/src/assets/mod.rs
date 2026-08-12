@@ -307,20 +307,14 @@ impl WgpuAssets {
         let font = Font::new_from_atlas(&params, material_id);
         self.fonts.insert(name.to_string(), font);
     }
-    pub fn get_text_dimensions(&self, font: &str, text: &str, size: f32) -> Option<Vector2f> {
-        let material = self.get_material(*self.get_material_id(font)?)?;
-        // let (w, h) = material.atlas.as_ref()?.get_sprite_size();
-        // let ratio = w / h;
-        // FIXME
-        let ratio = 1.;
-        let l = text.chars().count();
-        Some(size * Vector2f::new(ratio * l as f32, 1.))
-    }
     pub fn get_material_id(&self, name: &str) -> Option<&ResourceId> {
         self.material_names.get(name)
     }
     pub fn get_material(&self, id: ResourceId) -> Option<&material::Material> {
         self.materials.get(id.0)
+    }
+    pub fn get_font(&self, name: &str) -> Option<&Font> {
+        self.fonts.get(name)
     }
     pub fn get_shader(&self, id: ResourceId) -> Option<&shader::Shader> {
         self.shaders.get(id.0)

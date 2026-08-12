@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{assets::WgpuAssets, structs::Vertex};
+use crate::{assets::WgpuAssets, structs::Quad};
 use rogalik_common::{FontParams, ResourceId, SpriteParams};
 use rogalik_math::vectors::Vector2f;
 
@@ -50,16 +50,42 @@ pub(crate) enum FontKind {
 /// In case of high mem usage, consider hybrid vec / hashmap solution.
 struct CharMap(Vec<u16>);
 
-/// Get text sprites from an existing atlas.
+#[derive(Debug)]
+pub(crate) struct LayoutChar {
+    w: f32,
+    h: f32,
+    offset: Vector2f,
+    sprite_index: usize,
+}
+pub(crate) struct TextLayout {
+    chars: Vec<LayoutChar>,
+    pub(crate) width: f32,
+    pub(crate) height: f32,
+    pub(crate) material_id: ResourceId,
+}
+// impl TextSprites {
+//     pub(crate) fn translated(&self, origin: Vector2f) -> impl Iterator<Item =
+// Quad> + use<'_> {         let vert = move |mut v: Vertex| {
+//             v.position[0] += origin.x;
+//             v.position[1] += origin.y;
+//             v
+//         };
+
+//         self.sprites
+//             .iter()
+//             .map(move |(v, t)| ([vert(v[0]), vert(v[1]), vert(v[2]),
+// vert(v[3])], *t))     }
+// }
+
+/// Get base text layout from an existing atlas.
 ///
 /// Does not check if an atlas for requested size exists.
-pub(crate) fn get_text_sprites(
+pub(crate) fn get_text_layout(
+    assets: &WgpuAssets,
     text: &str,
     font: &Font,
     size: u32,
-    params: SpriteParams,
-    assets: &WgpuAssets,
-) {
+) -> TextLayout {
     let material_id = match &font.kind {
         FontKind::Bitmap(id) => *id,
         FontKind::Ttf(map) => map[&size],
@@ -67,33 +93,58 @@ pub(crate) fn get_text_sprites(
     let material = assets.get_material(material_id).unwrap();
     let atlas = material.atlas.as_ref().unwrap();
 
-    // let (w, h) = atlas.get_sprite_size();
-    // let ratio = w / h;
-}
-
-pub fn get_text_sprites_(
-    text: &str,
-    atlas: super::atlas::SpriteAtlas,
-    position: Vector2f,
-    size: f32,
-    params: SpriteParams,
-) -> Vec<([Vertex; 4], [u16; 6])> {
-    // TODO take flip_h into account?
     let mut offset = Vector2f::new(0., 0.);
-    let mut sprites = Vec::new();
-    // let (w, h) = atlas.get_sprite_size();
-    // let ratio = w / h;
-    let ratio = 1.;
+    let mut chars = Vec::new();
+
     for c in text.chars() {
-        sprites.push(atlas.get_sprite(
-            c as usize,
-            position + offset,
-            Vector2f::new(ratio * size, size),
-            params,
-        ));
-        offset += Vector2f::new(ratio * size, 0.);
+        let sprite_index = font.char_map.0.get(c as usize).copied().unwrap_or(0) as usize;
+        let Some(entry) = atlas.get_entry(sprite_index) else {
+            continue;
+        };
+        let h = size as f32;
+        let w = (entry.w as f32 / entry.h as f32) * h;
+
+        chars.push(LayoutChar {
+            w,
+            h,
+            offset,
+            sprite_index,
+        });
+
+        offset += Vector2f::new(w, 0.);
     }
-    sprites
+    println!("{chars:?}");
+    TextLayout {
+        chars,
+        width: offset.x,
+        height: size as f32,
+        material_id,
+    }
+}
+/// Get text sprites from an existing atlas.
+///
+/// Does not check if an atlas for requested size exists.
+pub(crate) fn get_text_sprites(
+    assets: &WgpuAssets,
+    layout: &TextLayout,
+    position: Vector2f,
+    params: SpriteParams,
+) -> Vec<Quad> {
+    let material = assets.get_material(layout.material_id).unwrap();
+    let atlas = material.atlas.as_ref().unwrap();
+
+    layout
+        .chars
+        .iter()
+        .map(|char| {
+            atlas.get_sprite(
+                char.sprite_index,
+                position + char.offset,
+                Vector2f::new(char.w, char.h),
+                params,
+            )
+        })
+        .collect()
 }
 
 /// Returns standard ascii mapping shifted

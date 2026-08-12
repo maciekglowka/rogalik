@@ -1,5 +1,7 @@
 use rogalik_common::ResourceId;
 
+pub(crate) type Quad = ([Vertex; 4], [u16; 6]);
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {

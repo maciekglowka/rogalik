@@ -11,12 +11,9 @@ impl Game for GameState {
             AtlasParams {
                 cols: 16,
                 rows: 16,
-                padding: Some((11., 7.)),
+                padding: Some((12, 7)),
             },
-            FontParams {
-                atlas_offset: 0x20,
-                ..Default::default()
-            },
+            FontParams::default(),
         );
 
         // Create camera
@@ -35,8 +32,9 @@ impl Scene for MainScene {
         context: &mut Context,
         _scenes: &mut SceneController<Self::Game>,
     ) {
-        let text = "Hello World!";
-        let font_size = 36.;
+        // let text = "Hello World!";
+        let text = "H";
+        let font_size = 36;
 
         let width = context.graphics.text_dimensions("pixel", text, font_size).x;
 

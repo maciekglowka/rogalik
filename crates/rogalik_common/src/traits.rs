@@ -174,7 +174,7 @@ pub trait GraphicsContext {
     /// of the font (material) to use for calculation. `text`: The string
     /// whose dimensions are to be measured. `size`: The desired height of
     /// the text. Returns a `Vector2f` representing the width and height.
-    fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f;
+    fn text_dimensions(&mut self, font: &str, text: &str, size: u32) -> Vector2f;
     /// Creates a new 2D camera with a specified scale and target position.
     /// Returns a `ResourceId` for the newly created camera.
     /// `scale`: The zoom level of the camera (e.g., 1.0 is no zoom).

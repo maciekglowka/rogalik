@@ -353,9 +353,9 @@ impl GraphicsContext for WgpuContext {
     ) -> Result<(), EngineError> {
         self.renderer2d.add_light(position, radius, color, falloff)
     }
-    fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f {
-        self.assets
-            .get_text_dimensions(font, text, size)
+    fn text_dimensions(&mut self, font: &str, text: &str, size: u32) -> Vector2f {
+        self.renderer2d
+            .get_text_dimensions(&self.assets, font, text, size)
             .unwrap_or(Vector2f::ZERO)
     }
     fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId {
