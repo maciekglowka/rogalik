@@ -281,7 +281,7 @@ impl GraphicsContext for WgpuContext {
         text: &str,
         position: Vector2f,
         z_index: i32,
-        size: f32,
+        size: u32,
         params: SpriteParams,
     ) -> Result<(), EngineError> {
         self.renderer2d.draw_text(

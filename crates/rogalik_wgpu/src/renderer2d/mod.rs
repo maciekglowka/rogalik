@@ -145,6 +145,7 @@ impl Renderer2d {
         if let Some(_) = params.slice {
             let s = material
                 .atlas
+                .as_ref()
                 .ok_or(EngineError::InvalidResource)?
                 .get_sliced_sprite(index, position, size, params);
             self.sprite_pass
@@ -152,6 +153,7 @@ impl Renderer2d {
         } else {
             let s = material
                 .atlas
+                .as_ref()
                 .ok_or(EngineError::InvalidResource)?
                 .get_sprite(index, position, size, params);
             self.sprite_pass
@@ -167,11 +169,11 @@ impl Renderer2d {
         camera_id: ResourceId,
         position: Vector2f,
         z_index: i32,
-        size: f32,
+        size: u32,
         params: SpriteParams,
     ) -> Result<(), EngineError> {
         let (material_id, material) = get_material(font, assets)?;
-        let atlas = material.atlas.ok_or(EngineError::InvalidResource)?;
+        // let atlas = material.atlas.ok_or(EngineError::InvalidResource)?;
 
         let bind_params = BindParams {
             camera_id,
@@ -179,10 +181,11 @@ impl Renderer2d {
             shader_id: material.shader_id,
         };
 
-        for s in crate::assets::font::get_text_sprites(text, atlas, position, size, params) {
-            self.sprite_pass
-                .add_to_queue(&s.0, &s.1, z_index, bind_params);
-        }
+        // FIXME
+        // for s in crate::assets::font::get_text_sprites(text, atlas, position, size,
+        // params) {     self.sprite_pass
+        //         .add_to_queue(&s.0, &s.1, z_index, bind_params);
+        // }
         Ok(())
     }
     pub fn draw_mesh(

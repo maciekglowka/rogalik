@@ -59,7 +59,7 @@ impl Material {
         ));
 
         if let Some(atlas_params) = self.atlas_params {
-            self.atlas = Some(SpriteAtlas::new(
+            self.atlas = Some(SpriteAtlas::from_grid(
                 diffuse_texture.dim,
                 atlas_params.rows,
                 atlas_params.cols,
@@ -67,7 +67,7 @@ impl Material {
             ))
         } else {
             // Create 1x1 atlas for compatibility.
-            self.atlas = Some(SpriteAtlas::new(diffuse_texture.dim, 1, 1, None));
+            self.atlas = Some(SpriteAtlas::from_grid(diffuse_texture.dim, 1, 1, None));
         }
 
         Ok(())

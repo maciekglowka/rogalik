@@ -128,7 +128,7 @@ pub trait GraphicsContext {
         text: &str,
         position: Vector2f,
         z_index: i32,
-        size: f32,
+        size: u32,
         params: SpriteParams,
     ) -> Result<(), EngineError>;
     /// Queues a custom mesh for drawing.

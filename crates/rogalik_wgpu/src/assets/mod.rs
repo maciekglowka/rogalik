@@ -10,6 +10,8 @@ use rogalik_common::{
 };
 use rogalik_math::vectors::Vector2f;
 
+use crate::assets::font::Font;
+
 pub mod atlas;
 pub mod bind_groups;
 pub mod camera;
@@ -27,6 +29,7 @@ pub struct WgpuAssets {
     pub(crate) default_shader: ResourceId,
     pub(crate) default_normal: ResourceId,
     pub(crate) default_diffuse: ResourceId,
+    pub(crate) fonts: HashMap<String, Font>,
     pub pipeline_layouts: HashMap<ShaderKind, wgpu::PipelineLayout>,
     material_names: HashMap<String, ResourceId>, // lookup
     materials: Vec<material::Material>,
@@ -46,6 +49,7 @@ impl WgpuAssets {
             default_shader: ResourceId::default(),
             default_normal: ResourceId::default(),
             default_diffuse: ResourceId::default(),
+            fonts: HashMap::new(),
             material_names: HashMap::new(),
             materials: Vec::new(),
             pipeline_layouts: HashMap::new(),
@@ -142,7 +146,7 @@ impl WgpuAssets {
         for pass in self.postprocess.iter_mut() {
             pass.create_wgpu_data(
                 &self.textures,
-                &postprocess_layout,
+                postprocess_layout,
                 w,
                 h,
                 device,
@@ -222,7 +226,7 @@ impl WgpuAssets {
         self.shaders.push(shader);
         shader_id
     }
-    pub fn create_material(&mut self, name: &str, params: MaterialParams) {
+    pub fn create_material(&mut self, name: &str, params: MaterialParams) -> ResourceId {
         let diffuse_id = params.diffuse_texture.unwrap_or(self.default_diffuse);
         let normal_id = params.normal_texture.unwrap_or(self.default_normal);
         let shader_id = params.shader.unwrap_or(self.default_shader);
@@ -231,6 +235,7 @@ impl WgpuAssets {
         let material_id = self.get_next_material_id();
         self.material_names.insert(name.to_string(), material_id);
         self.materials.push(material);
+        material_id
     }
     pub fn create_post_process(&mut self, name: &str, params: PostProcessParams) {
         let texture_id = params.texture.unwrap_or(self.default_diffuse);
@@ -291,19 +296,23 @@ impl WgpuAssets {
         atlas: AtlasParams,
         params: FontParams,
     ) {
-        let params = MaterialParams {
+        let material_params = MaterialParams {
             atlas: Some(atlas),
             diffuse_texture: Some(self.texture_from_path(path)),
             shader: params.shader,
             filtering: params.filtering,
             ..Default::default()
         };
-        self.create_material(name, params);
+        let material_id = self.create_material(name, material_params);
+        let font = Font::new_from_atlas(&params, material_id);
+        self.fonts.insert(name.to_string(), font);
     }
     pub fn get_text_dimensions(&self, font: &str, text: &str, size: f32) -> Option<Vector2f> {
         let material = self.get_material(*self.get_material_id(font)?)?;
-        let (w, h) = material.atlas?.get_sprite_size();
-        let ratio = w / h;
+        // let (w, h) = material.atlas.as_ref()?.get_sprite_size();
+        // let ratio = w / h;
+        // FIXME
+        let ratio = 1.;
         let l = text.chars().count();
         Some(size * Vector2f::new(ratio * l as f32, 1.))
     }

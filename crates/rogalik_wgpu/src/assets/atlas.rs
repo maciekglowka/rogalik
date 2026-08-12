@@ -3,37 +3,67 @@ use rogalik_math::vectors::Vector2f;
 use crate::structs::Vertex;
 use rogalik_common::SpriteParams;
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct AtlasEntry {
+    u_min: f32,
+    u_max: f32,
+    v_min: f32,
+    v_max: f32,
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct SpriteAtlas {
-    cols: usize,
-    pub u_step: f32,
-    pub v_step: f32,
-    u_size: f32,
-    v_size: f32,
-    sprite_w: f32,
-    sprite_h: f32,
+    entries: Vec<AtlasEntry>,
+    texture_size: (u32, u32), /* cols: usize,
+                               * pub u_step: f32,
+                               * pub v_step: f32,
+                               * u_size: f32,
+                               * v_size: f32,
+                               * sprite_w: f32,
+                               * sprite_h: f32, */
 }
 impl SpriteAtlas {
-    pub fn new(
+    pub fn from_grid(
         texture_size: (u32, u32),
         rows: usize,
         cols: usize,
         padding: Option<(f32, f32)>,
     ) -> Self {
-        let (sp_w, sp_h) = sprite_pixel_size(texture_size.0, texture_size.1, rows, cols, padding);
+        let (sp_w, sp_h) =
+            grid_sprite_pixel_size(texture_size.0, texture_size.1, rows, cols, padding);
+
+        let u_step = 1.0 / cols as f32;
+        let v_step = 1.0 / rows as f32;
+        let u_size = sp_w / texture_size.0 as f32;
+        let v_size = sp_h / texture_size.1 as f32;
+
+        let mut entries = vec![];
+        for col in 0..cols {
+            for row in 0..rows {
+                entries.push(AtlasEntry {
+                    u_min: col as f32 * u_step,
+                    u_max: col as f32 * u_step + u_size,
+                    v_min: row as f32 * v_step,
+                    v_max: row as f32 * v_step + v_size,
+                })
+            }
+        }
+
         Self {
-            cols,
-            u_step: 1.0 / cols as f32,
-            v_step: 1.0 / rows as f32,
-            u_size: sp_w / texture_size.0 as f32,
-            v_size: sp_h / texture_size.1 as f32,
-            sprite_w: sp_w,
-            sprite_h: sp_h,
+            entries,
+            texture_size,
+            // cols,
+            // u_step: 1.0 / cols as f32,
+            // v_step: 1.0 / rows as f32,
+            // u_size: sp_w / texture_size.0 as f32,
+            // v_size: sp_h / texture_size.1 as f32,
+            // sprite_w: sp_w,
+            // sprite_h: sp_h,
         }
     }
-    pub fn get_sprite_size(&self) -> (f32, f32) {
-        (self.sprite_w, self.sprite_h)
-    }
+    // pub fn get_sprite_size(&self) -> (f32, f32) {
+    //     (self.sprite_w, self.sprite_h)
+    // }
     pub fn get_sprite(
         &self,
         index: usize,
@@ -41,16 +71,21 @@ impl SpriteAtlas {
         size: Vector2f,
         params: SpriteParams,
     ) -> ([Vertex; 4], [u16; 6]) {
-        let row = index / self.cols;
-        let col = index % self.cols;
-        let u = self.u_step * col as f32;
-        let v = self.v_step * row as f32;
+        // let row = index / self.cols;
+        // let col = index % self.cols;
+        // let u = self.u_step * col as f32;
+        // let v = self.v_step * row as f32;
+        let entry = &self.entries[index];
 
         let color = params.color.as_srgb();
-        let l = u;
-        let r = u + self.u_size;
-        let b = v + self.v_size;
-        let t = v;
+        // let l = u;
+        // let r = u + self.u_size;
+        // let b = v + self.v_size;
+        // let t = v;
+        let l = entry.u_min;
+        let r = entry.u_max;
+        let b = entry.v_max;
+        let t = entry.v_min;
 
         let mut uvs = [[l, b], [r, b], [r, t], [l, t]];
 
@@ -113,33 +148,51 @@ impl SpriteAtlas {
         size: Vector2f,
         params: SpriteParams,
     ) -> ([Vertex; 16], [u16; 54]) {
-        let row = index / self.cols;
-        let col = index % self.cols;
-        let u = self.u_step * col as f32;
-        let v = self.v_step * row as f32;
+        // let row = index / self.cols;
+        // let col = index % self.cols;
+        // let u = self.u_step * col as f32;
+        // let v = self.v_step * row as f32;
+
+        let entry = &self.entries[index];
+        let u_size = entry.u_max - entry.u_min;
+        let v_size = entry.v_max - entry.v_min;
 
         let color = params.color.as_srgb();
 
-        let (slice_dim, base_size) = params.slice.unwrap();
+        let slice_dim = params.slice.unwrap();
 
-        let ratio_w = slice_dim as f32 / self.sprite_w;
-        let ratio_h = slice_dim as f32 / self.sprite_h;
-        let u_slice = ratio_w * self.u_size;
-        let v_slice = ratio_h * self.v_size;
-        let w_slice = ratio_w * base_size.x;
-        let h_slice = ratio_h * base_size.y;
-        let mut us = [u, u + u_slice, u + self.u_size - u_slice, u + self.u_size];
-        let mut vs = [v + self.v_size, v + self.v_size - v_slice, v + v_slice, v];
+        let sprite_w = self.texture_size.0 as f32 * u_size;
+        let sprite_h = self.texture_size.1 as f32 * v_size;
+
+        let ratio_w = slice_dim as f32 / sprite_w;
+        let ratio_h = slice_dim as f32 / sprite_h;
+
+        let u_slice = ratio_w * u_size;
+        let v_slice = ratio_h * v_size;
+
+        let mut us = [
+            entry.u_min,
+            entry.u_min + u_slice,
+            entry.u_max - u_slice,
+            entry.u_max,
+        ];
+        let mut vs = [
+            entry.v_max,
+            entry.v_max - v_slice,
+            entry.v_min + v_slice,
+            entry.v_min,
+        ];
+
         let xs = [
             position.x,
-            position.x + w_slice,
-            position.x + size.x - w_slice,
+            position.x + slice_dim as f32,
+            position.x + size.x - slice_dim as f32,
             position.x + size.x,
         ];
         let ys = [
             position.y,
-            position.y + h_slice,
-            position.y + size.y - h_slice,
+            position.y + slice_dim as f32,
+            position.y + size.y - slice_dim as f32,
             position.y + size.y,
         ];
 
@@ -178,7 +231,8 @@ impl SpriteAtlas {
     }
 }
 
-pub fn sprite_pixel_size(
+/// Calculate single sprite size for an even-grid atlas.
+fn grid_sprite_pixel_size(
     texture_w: u32,
     texture_h: u32,
     rows: usize,

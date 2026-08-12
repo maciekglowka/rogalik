@@ -64,8 +64,7 @@ pub struct SpriteParams {
     pub flip_x: bool,
     pub flip_y: bool,
     pub rotate: Option<f32>,
-    /// Slice (size in px, base sprite size)
-    pub slice: Option<(usize, Vector2f)>,
+    pub slice: Option<usize>,
 }
 
 #[inline(always)]
@@ -100,8 +99,6 @@ pub struct AtlasParams {
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct FontParams<'a> {
-    /// Used only for atlas fonts.
-    pub atlas_offset: usize,
     /// For TTF determines which glyphs should be rendered into atlas.
     /// For bitmap fonts specifies the order of glyphs on the provided atlas.
     ///
