@@ -34,8 +34,8 @@ impl SpriteAtlas {
         let v_size = sp_h as f32 / texture_size.1 as f32;
 
         let mut entries = vec![];
-        for col in 0..cols {
-            for row in 0..rows {
+        for row in 0..rows {
+            for col in 0..cols {
                 entries.push(AtlasEntry {
                     u: col as f32 * u_step,
                     u_size,
@@ -43,7 +43,7 @@ impl SpriteAtlas {
                     v_size,
                     w: sp_w,
                     h: sp_h,
-                })
+                });
             }
         }
 
@@ -68,8 +68,8 @@ impl SpriteAtlas {
         let color = params.color.as_srgb();
         let l = entry.u;
         let r = entry.u + entry.u_size;
-        let b = entry.v;
-        let t = entry.v + entry.v_size;
+        let b = entry.v + entry.v_size;
+        let t = entry.v;
 
         let mut uvs = [[l, b], [r, b], [r, t], [l, t]];
 
@@ -114,12 +114,12 @@ impl SpriteAtlas {
                 tex_coords: uvs[3],
             },
         ];
-        if let Some(rotate) = params.rotate {
+        if params.rotate != 0. {
             // not tested for performance :)
             // perhaps should be moved to the shader
             let cx = position.x + 0.5 * size.x;
             let cy = position.y + 0.5 * size.y;
-            rotate_verts(&mut vertices, rotate, cx, cy);
+            rotate_verts(&mut vertices, params.rotate, cx, cy);
         }
         let indices = [0, 1, 2, 0, 2, 3];
         (vertices, indices)
@@ -198,10 +198,10 @@ impl SpriteAtlas {
             3, 7,
         ];
 
-        if let Some(rotate) = params.rotate {
+        if params.rotate != 0. {
             let cx = position.x + 0.5 * size.x;
             let cy = position.y + 0.5 * size.y;
-            rotate_verts(&mut vertices, rotate, cx, cy);
+            rotate_verts(&mut vertices, params.rotate, cx, cy);
         }
 
         (vertices, indices)

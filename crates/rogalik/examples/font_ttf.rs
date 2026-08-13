@@ -5,19 +5,9 @@ struct GameState;
 impl Game for GameState {
     fn setup(&mut self, context: &mut Context) {
         // Load a default font
-        context.graphics.load_font_atlas(
-            "pixel",
-            "examples/font.png",
-            AtlasParams {
-                cols: 16,
-                rows: 16,
-                padding: Some((12, 7)),
-            },
-            FontParams {
-                character_spacing: Some(0.125),
-                ..Default::default()
-            },
-        );
+        context
+            .graphics
+            .load_font("pixel", "examples/m5x7.ttf", FontParams::default());
 
         // Create camera
         context.graphics.create_camera(1., Vector2f::ZERO);

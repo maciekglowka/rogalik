@@ -227,8 +227,7 @@ impl GraphicsContext for WgpuContext {
         self.assets.create_shader(kind, path)
     }
     fn load_font(&mut self, name: &str, path: &str, params: FontParams) {
-        // self.assets
-        //     .load_font(name, path, rows, cols, padding, shader);
+        self.assets.load_font(name, path, params);
     }
     fn load_font_atlas(&mut self, name: &str, path: &str, atlas: AtlasParams, params: FontParams) {
         self.assets.load_font_atlas(name, path, atlas, params);

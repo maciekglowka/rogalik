@@ -61,8 +61,8 @@ pub struct SpriteParams {
     pub color: Color,
     pub flip_x: bool,
     pub flip_y: bool,
-    pub rotate: Option<f32>,
-    pub slice: Option<usize>,
+    pub rotate: f32,
+    pub slice: Option<u32>,
 }
 
 #[inline(always)]
@@ -104,6 +104,15 @@ pub struct FontParams<'a> {
     pub charset: Option<&'a [char]>,
     pub filtering: TextureFiltering,
     pub shader: Option<ResourceId>,
+    /// Horizontal spacing between characters.
+    ///
+    /// Typically this only should be set for bitmap atlas fonts.
+    ///
+    /// Relative to font size.
+    /// E.g. spacing value 0.25 will result in 2px gap
+    /// on 8px font and 4px gap on 16px font.
+    pub character_spacing: Option<f32>,
+    // TODO custom shader
 }
 
 #[derive(Clone, Copy, Default)]

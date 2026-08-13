@@ -188,7 +188,6 @@ impl Renderer2d {
     ) -> Result<(), EngineError> {
         let layout = self.text_cache.get(assets, font, text, size);
         let sprites = get_text_sprites(assets, layout, position, params);
-        println!("{sprites:?}");
 
         let material = assets
             .get_material(layout.material_id)

@@ -289,6 +289,11 @@ impl WgpuAssets {
         self.cameras.push(camera);
         id
     }
+    pub fn load_font(&mut self, name: &str, path: &str, params: FontParams) {
+        let asset_id = self.load_asset(path);
+        let font = Font::new_from_ttf(&params, asset_id);
+        self.fonts.insert(name.to_string(), font);
+    }
     pub fn load_font_atlas(
         &mut self,
         name: &str,
