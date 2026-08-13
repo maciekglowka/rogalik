@@ -8,7 +8,7 @@ impl Game for GameState {
         context.graphics.load_font_atlas(
             "pixel",
             "examples/font.png",
-            AtlasParams {
+            AtlasParams::Grid {
                 cols: 16,
                 rows: 16,
                 padding: Some((12, 7)),

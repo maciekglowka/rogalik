@@ -36,7 +36,7 @@ impl Material {
     }
     pub fn create_wgpu_data(
         &mut self,
-        textures: &Vec<TextureData>,
+        textures: &[TextureData],
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         bind_group_layout: &wgpu::BindGroupLayout,
@@ -49,8 +49,8 @@ impl Material {
             .ok_or(EngineError::ResourceNotFound)?;
 
         self.bind_group = Some(get_material_bind_group(
-            &diffuse_texture,
-            &normal_texture,
+            diffuse_texture,
+            normal_texture,
             device,
             queue,
             bind_group_layout,
@@ -58,16 +58,26 @@ impl Material {
             self.filter_mode,
         ));
 
-        if let Some(atlas_params) = self.atlas_params {
-            self.atlas = Some(SpriteAtlas::from_grid(
-                diffuse_texture.dim,
-                atlas_params.rows,
-                atlas_params.cols,
-                atlas_params.padding,
-            ))
-        } else {
-            // Create 1x1 atlas for compatibility.
-            self.atlas = Some(SpriteAtlas::from_grid(diffuse_texture.dim, 1, 1, None));
+        match &self.atlas_params {
+            None => {
+                // Create 1x1 atlas for compatibility.
+                self.atlas = Some(SpriteAtlas::from_grid(diffuse_texture.dim, 1, 1, None));
+            }
+            Some(AtlasParams::Grid {
+                cols,
+                rows,
+                padding,
+            }) => {
+                self.atlas = Some(SpriteAtlas::from_grid(
+                    diffuse_texture.dim,
+                    *rows,
+                    *cols,
+                    *padding,
+                ))
+            }
+            Some(AtlasParams::Free(entries)) => {
+                self.atlas = Some(SpriteAtlas::from_entries(entries, diffuse_texture.dim));
+            }
         }
 
         Ok(())

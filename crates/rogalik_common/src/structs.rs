@@ -11,6 +11,7 @@ impl ResourceId {
 
 #[derive(Debug)]
 pub enum EngineError {
+    NameConflict,
     InvalidResource,
     ResourceNotFound,
     GraphicsInternalError,
@@ -19,6 +20,7 @@ pub enum EngineError {
 impl std::fmt::Display for EngineError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::NameConflict => f.write_str("Name conflict"),
             Self::InvalidResource => f.write_str("Invalid resource"),
             Self::ResourceNotFound => f.write_str("Resource not found"),
             Self::GraphicsInternalError => f.write_str("Graphics internal error"),
@@ -70,7 +72,7 @@ fn srgb_single(v: f32) -> f32 {
     ((v + 0.055) / 1.055).powf(2.4)
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Default)]
 pub struct MaterialParams {
     pub atlas: Option<AtlasParams>,
     pub diffuse_texture: Option<ResourceId>,
@@ -88,11 +90,27 @@ pub struct PostProcessParams {
     pub filtering: TextureFiltering,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct AtlasParams {
-    pub cols: usize,
-    pub rows: usize,
-    pub padding: Option<(u32, u32)>,
+#[derive(Copy, Clone, Debug)]
+pub struct AtlasPosition {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+}
+impl AtlasPosition {
+    pub fn new(x: u32, y: u32, w: u32, h: u32) -> Self {
+        Self { x, y, w, h }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum AtlasParams {
+    Grid {
+        cols: usize,
+        rows: usize,
+        padding: Option<(u32, u32)>,
+    },
+    Free(Vec<AtlasPosition>),
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -112,7 +130,6 @@ pub struct FontParams<'a> {
     /// E.g. spacing value 0.25 will result in 2px gap
     /// on 8px font and 4px gap on 16px font.
     pub character_spacing: Option<f32>,
-    // TODO custom shader
 }
 
 #[derive(Clone, Copy, Default)]

@@ -1,14 +1,20 @@
 use std::collections::HashMap;
 
-use crate::{assets::WgpuAssets, structs::Quad};
-use rogalik_common::{EngineError, FontParams, ResourceId, SpriteParams};
+use rogalik_common::{
+    structs::AtlasPosition, AtlasParams, EngineError, FontParams, ResourceId, SpriteParams,
+    TextureFiltering,
+};
 use rogalik_math::vectors::Vector2f;
 
+use crate::{assets::WgpuAssets, structs::Quad};
+
 pub(crate) struct Font {
-    charset: Vec<char>,
+    pub(crate) charset: Vec<char>,
     charmap: CharMap,
-    kind: FontKind,
+    pub(crate) kind: FontKind,
     character_spacing: Option<f32>,
+    pub(crate) filtering: TextureFiltering,
+    pub(crate) shader: Option<ResourceId>,
 }
 impl Font {
     pub(crate) fn new_from_atlas(params: &FontParams, material_id: ResourceId) -> Self {
@@ -23,6 +29,8 @@ impl Font {
             charmap,
             kind: FontKind::Bitmap(material_id),
             character_spacing: params.character_spacing,
+            filtering: params.filtering,
+            shader: params.shader,
         }
     }
 
@@ -41,20 +49,8 @@ impl Font {
                 material_ids: HashMap::new(),
             },
             character_spacing: params.character_spacing,
-        }
-    }
-
-    pub(crate) fn ensure_size(&mut self, assets: &mut WgpuAssets, size: u32) {
-        match &mut self.kind {
-            FontKind::Bitmap(_) => (),
-            FontKind::Ttf {
-                asset_id,
-                material_ids,
-            } => {
-                if material_ids.contains_key(&size) {
-                    return;
-                }
-            }
+            filtering: params.filtering,
+            shader: params.shader,
         }
     }
 }
@@ -124,7 +120,11 @@ pub(crate) fn get_text_layout(
             continue;
         };
         let h = size as f32;
-        let w = (entry.w as f32 / entry.h as f32) * h;
+
+        let mut w = (entry.w as f32 / entry.h as f32) * h;
+        if w.is_nan() {
+            w = 0.;
+        };
 
         chars.push(LayoutChar {
             w,
@@ -188,7 +188,12 @@ fn get_charmap(charset: &[char]) -> CharMap {
     CharMap(mapping)
 }
 
-fn render_glyphs(charset: &[char], font_data: &[u8], size: f32) -> Result<(), EngineError> {
+/// Returns (buffer, atlas_params, (width, height)).
+pub(crate) fn render_ttf_glyphs(
+    charset: &[char],
+    font_data: &[u8],
+    size: f32,
+) -> Result<(Vec<u8>, AtlasParams, (u32, u32)), EngineError> {
     let ttf = fontdue::Font::from_bytes(font_data, fontdue::FontSettings::default())
         .inspect_err(|e| log::error!("Error while loading TTF: {e}"))
         .map_err(|_| EngineError::InvalidResource)?;
@@ -198,8 +203,8 @@ fn render_glyphs(charset: &[char], font_data: &[u8], size: f32) -> Result<(), En
         .ok_or(EngineError::InvalidResource)?;
 
     // Use fixed height for simplicity (bit wasteful).
-    let h = line_metrics.ascent + line_metrics.descent;
-    let baseline_offset = line_metrics.ascent;
+    let h = (line_metrics.ascent - line_metrics.descent + 1.) as usize;
+    let baseline_offset = line_metrics.ascent as usize;
 
     let data = charset
         .iter()
@@ -212,33 +217,58 @@ fn render_glyphs(charset: &[char], font_data: &[u8], size: f32) -> Result<(), En
 
     let texture_w = data
         .chunks(col_no)
-        .map(|row| row.iter().map(|(m, _)| m.width).sum::<usize>())
+        // Sum row characters + 1px gap.
+        .map(|row| row.iter().map(|(m, _)| m.width).sum::<usize>() + row.len())
         .max()
         .ok_or(EngineError::InvalidResource)?;
 
-    let texture_h = h as usize * row_no;
-    let texture_data = vec![[0; 0; 0; 0;]; texture_w * texture_h];
+    let texture_h = h * row_no;
+    let mut texture_data = vec![0; 4 * texture_w * texture_h];
+    let mut atlas_positions = vec![];
 
-    let rows = vec![];
     let mut col = 0;
+    let mut offset_x = 0;
+    let mut offset_y = 0;
 
-    for chr in charset {
-        let (metrics, bitmap) = ttf.rasterize(*chr, size);
+    for (metrics, bitmap) in data {
+        let top_offset = ((baseline_offset as i32) - metrics.ymin) as usize - metrics.height;
+
+        // Blit
+        if metrics.width > 0 {
+            for (y, row) in bitmap.chunks(metrics.width).enumerate() {
+                let base = 4 * ((y + offset_y + top_offset) * texture_w + offset_x);
+                for (x, b) in row.iter().enumerate() {
+                    let color = if *b == 0 { [0; 4] } else { [255, 255, 255, *b] };
+                    texture_data[base + 4 * x..base + 4 * x + 4].copy_from_slice(&color);
+                }
+            }
+        }
+
+        atlas_positions.push(AtlasPosition::new(
+            offset_x as u32,
+            (offset_y + top_offset) as u32,
+            metrics.width as u32,
+            metrics.height as u32,
+        ));
+
         col += 1;
+        offset_x += metrics.width + 1;
+
+        if col == col_no {
+            col = 0;
+            offset_x = 0;
+            offset_y += h;
+        }
     }
 
-    // println!("{metrics:?}");
+    log::debug!("created font glyphs at size: {size}, texture ({texture_w} x {texture_h})");
+    println!("created font glyphs at size: {size}, texture ({texture_w} x {texture_h})");
 
-    // // println!("{bitmap:?}");
+    let atlas_params = AtlasParams::Free(atlas_positions);
 
-    // for line in bitmap.chunks(metrics.width) {
-    //     // println!("{line:?}");
-    //     for c in line {
-    //         let cc = if *c > 0 { "@" } else { " " };
-    //         print!("{cc}");
-    //     }
-    //     println!("");
-    // }
-
-    Ok(())
+    Ok((
+        texture_data,
+        atlas_params,
+        (texture_w as u32, texture_h as u32),
+    ))
 }

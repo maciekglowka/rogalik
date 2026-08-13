@@ -1,7 +1,7 @@
 use rogalik_math::vectors::Vector2f;
 
 use crate::structs::{Quad, Vertex};
-use rogalik_common::SpriteParams;
+use rogalik_common::{structs::AtlasPosition, SpriteParams};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct AtlasEntry {
@@ -16,7 +16,7 @@ pub(crate) struct AtlasEntry {
 #[derive(Clone, Debug, Default)]
 pub struct SpriteAtlas {
     entries: Vec<AtlasEntry>,
-    texture_size: (u32, u32),
+    pub(crate) texture_size: (u32, u32),
 }
 impl SpriteAtlas {
     pub fn from_grid(
@@ -46,6 +46,24 @@ impl SpriteAtlas {
                 });
             }
         }
+
+        Self {
+            entries,
+            texture_size,
+        }
+    }
+    pub(crate) fn from_entries(entries: &[AtlasPosition], texture_size: (u32, u32)) -> Self {
+        let entries = entries
+            .iter()
+            .map(|e| AtlasEntry {
+                w: e.w,
+                h: e.h,
+                u: e.x as f32 / texture_size.0 as f32,
+                v: e.y as f32 / texture_size.1 as f32,
+                u_size: e.w as f32 / texture_size.0 as f32,
+                v_size: e.h as f32 / texture_size.1 as f32,
+            })
+            .collect();
 
         Self {
             entries,

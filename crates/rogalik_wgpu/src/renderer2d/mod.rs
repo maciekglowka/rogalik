@@ -167,7 +167,7 @@ impl Renderer2d {
     }
     pub(crate) fn get_text_dimensions(
         &mut self,
-        assets: &WgpuAssets,
+        assets: &mut WgpuAssets,
         font: &str,
         text: &str,
         size: u32,
@@ -177,8 +177,8 @@ impl Renderer2d {
     }
     pub fn draw_text(
         &mut self,
-        assets: &WgpuAssets,
-        font: &str,
+        assets: &mut WgpuAssets,
+        font_name: &str,
         text: &str,
         camera_id: ResourceId,
         position: Vector2f,
@@ -186,7 +186,7 @@ impl Renderer2d {
         size: u32,
         params: SpriteParams,
     ) -> Result<(), EngineError> {
-        let layout = self.text_cache.get(assets, font, text, size);
+        let layout = self.text_cache.get(assets, font_name, text, size);
         let sprites = get_text_sprites(assets, layout, position, params);
 
         let material = assets
@@ -200,9 +200,11 @@ impl Renderer2d {
         };
 
         for s in sprites {
+            // println!("{s:?}");
             self.sprite_pass
                 .add_to_queue(&s.0, &s.1, z_index, bind_params);
         }
+
         Ok(())
     }
     pub fn draw_mesh(

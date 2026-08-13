@@ -117,6 +117,17 @@ impl WgpuContext {
             self.post_surface_state();
         }
     }
+    fn ensure_font_size(&mut self, font: &str, size: u32) -> Result<(), EngineError> {
+        if matches!(self.assets.has_font_size(font, size), Ok(false)) {
+            if let Ok(state) = self.surface_state.lock() {
+                if let Some(state) = state.as_ref() {
+                    self.assets
+                        .create_font_size(font, size, &state.device, &state.queue)?;
+                }
+            }
+        }
+        Ok(())
+    }
 }
 impl GraphicsSetup for WgpuContext {
     fn has_context(&self) -> bool {
@@ -283,8 +294,9 @@ impl GraphicsContext for WgpuContext {
         size: u32,
         params: SpriteParams,
     ) -> Result<(), EngineError> {
+        self.ensure_font_size(font, size)?;
         self.renderer2d.draw_text(
-            &self.assets,
+            &mut self.assets,
             font,
             text,
             self.current_camera_id,
@@ -353,8 +365,12 @@ impl GraphicsContext for WgpuContext {
         self.renderer2d.add_light(position, radius, color, falloff)
     }
     fn text_dimensions(&mut self, font: &str, text: &str, size: u32) -> Vector2f {
+        if self.ensure_font_size(font, size).is_err() {
+            return Vector2f::ZERO;
+        }
+
         self.renderer2d
-            .get_text_dimensions(&self.assets, font, text, size)
+            .get_text_dimensions(&mut self.assets, font, text, size)
             .unwrap_or(Vector2f::ZERO)
     }
     fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId {

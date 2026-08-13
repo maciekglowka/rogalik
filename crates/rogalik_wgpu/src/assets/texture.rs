@@ -1,26 +1,40 @@
 use image::{GenericImageView, ImageBuffer, Rgba};
-use rogalik_common::ResourceId;
+use rogalik_common::{EngineError, ResourceId};
 
 pub(crate) struct TextureData {
-    pub asset_id: ResourceId,
+    /// Asset handle used for hot reloading.
+    pub asset_id: Option<ResourceId>,
     pub buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
     pub dim: (u32, u32),
 }
 impl TextureData {
-    pub fn from_bytes(asset_id: ResourceId, bytes: &[u8]) -> Self {
-        let (rgba, dim) = TextureData::get_buffer(bytes);
-        Self {
+    pub(crate) fn from_file_bytes(
+        asset_id: Option<ResourceId>,
+        bytes: &[u8],
+    ) -> Result<Self, EngineError> {
+        let (rgba, dim) = TextureData::get_buffer_from_file(bytes)?;
+        Ok(Self {
             dim,
             buffer: rgba,
             asset_id,
-        }
+        })
     }
-    pub fn update_bytes(&mut self, bytes: &[u8]) {
-        let (rgba, dim) = TextureData::get_buffer(bytes);
+    pub(crate) fn from_raw(bytes: &[u8], width: u32, height: u32) -> Result<Self, EngineError> {
+        let (rgba, dim) = TextureData::get_buffer_from_raw(bytes, width, height)?;
+        Ok(Self {
+            dim,
+            buffer: rgba,
+            asset_id: None,
+        })
+    }
+    pub(crate) fn update_bytes(&mut self, bytes: &[u8]) {
+        let Ok((rgba, dim)) = TextureData::get_buffer_from_file(bytes) else {
+            return;
+        };
         self.buffer = rgba;
         self.dim = dim;
     }
-    pub fn to_wgpu_texture(
+    pub(crate) fn to_wgpu_texture(
         &self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -64,10 +78,25 @@ impl TextureData {
         texture
     }
 
-    fn get_buffer(bytes: &[u8]) -> (ImageBuffer<Rgba<u8>, Vec<u8>>, (u32, u32)) {
-        let img = image::load_from_memory(bytes).expect("Failed to load texture!");
+    fn get_buffer_from_file(
+        bytes: &[u8],
+    ) -> Result<(ImageBuffer<Rgba<u8>, Vec<u8>>, (u32, u32)), EngineError> {
+        let img = image::load_from_memory(bytes)
+            .inspect_err(|e| log::error!("Failed to load texture: {e}"))
+            .map_err(|_| EngineError::InvalidResource)?;
         let rgba = img.to_rgba8();
         let dim = img.dimensions();
-        (rgba, dim)
+
+        Ok((rgba, dim))
+    }
+    /// Expects rgba.
+    fn get_buffer_from_raw(
+        bytes: &[u8],
+        width: u32,
+        height: u32,
+    ) -> Result<(ImageBuffer<Rgba<u8>, Vec<u8>>, (u32, u32)), EngineError> {
+        let buf = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(width, height, bytes.to_vec())
+            .ok_or(EngineError::InvalidResource)?;
+        Ok((buf, (width, height)))
     }
 }

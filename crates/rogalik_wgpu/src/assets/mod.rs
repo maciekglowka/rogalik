@@ -10,7 +10,7 @@ use rogalik_common::{
 };
 use rogalik_math::vectors::Vector2f;
 
-use crate::assets::font::Font;
+use crate::assets::font::{render_ttf_glyphs, Font};
 
 pub mod atlas;
 pub mod bind_groups;
@@ -22,15 +22,15 @@ pub mod shader;
 mod texture;
 
 pub struct WgpuAssets {
-    asset_store: Arc<Mutex<AssetStore>>,
-    pub bind_group_layouts: HashMap<bind_groups::BindGroupLayoutKind, wgpu::BindGroupLayout>,
+    pub(crate) asset_store: Arc<Mutex<AssetStore>>,
+    pub(crate) bind_group_layouts: HashMap<bind_groups::BindGroupLayoutKind, wgpu::BindGroupLayout>,
     pub(crate) builtin_shaders: HashMap<BuiltInShader, ResourceId>,
     pub(crate) cameras: Vec<camera::Camera2D>,
     pub(crate) default_shader: ResourceId,
     pub(crate) default_normal: ResourceId,
     pub(crate) default_diffuse: ResourceId,
     pub(crate) fonts: HashMap<String, Font>,
-    pub pipeline_layouts: HashMap<ShaderKind, wgpu::PipelineLayout>,
+    pub(crate) pipeline_layouts: HashMap<ShaderKind, wgpu::PipelineLayout>,
     material_names: HashMap<String, ResourceId>, // lookup
     materials: Vec<material::Material>,
     pub(crate) postprocess: Vec<postprocess::PostProcessPass>,
@@ -175,14 +175,14 @@ impl WgpuAssets {
         let mut updated_textures = HashSet::new();
 
         for (i, texture) in self.textures.iter_mut().enumerate() {
-            if let Some(asset) = store.get(texture.asset_id) {
+            if let Some(asset) = texture.asset_id.and_then(|id| store.get(id)) {
                 if asset.state == AssetState::Updated {
                     log::debug!("Updating texture {}, Asset: {:?}", i, texture.asset_id);
                     texture.update_bytes(asset.data.get());
                     updated_textures.insert(i);
 
                     #[cfg(debug_assertions)]
-                    store.mark_read(texture.asset_id);
+                    store.mark_read(texture.asset_id.unwrap());
                 }
             }
         }
@@ -226,7 +226,14 @@ impl WgpuAssets {
         self.shaders.push(shader);
         shader_id
     }
-    pub fn create_material(&mut self, name: &str, params: MaterialParams) -> ResourceId {
+    pub fn create_material(
+        &mut self,
+        name: &str,
+        params: MaterialParams,
+    ) -> Result<ResourceId, EngineError> {
+        if self.material_names.contains_key(name) {
+            return Err(EngineError::NameConflict);
+        }
         let diffuse_id = params.diffuse_texture.unwrap_or(self.default_diffuse);
         let normal_id = params.normal_texture.unwrap_or(self.default_normal);
         let shader_id = params.shader.unwrap_or(self.default_shader);
@@ -235,7 +242,7 @@ impl WgpuAssets {
         let material_id = self.get_next_material_id();
         self.material_names.insert(name.to_string(), material_id);
         self.materials.push(material);
-        material_id
+        Ok(material_id)
     }
     pub fn create_post_process(&mut self, name: &str, params: PostProcessParams) {
         let texture_id = params.texture.unwrap_or(self.default_diffuse);
@@ -246,21 +253,8 @@ impl WgpuAssets {
             .insert(name.to_string(), postprocess_id);
     }
     pub(crate) fn texture_from_path(&mut self, path: &str) -> ResourceId {
-        let asset_id = self.load_asset(path);
-        self.create_texture(asset_id)
-    }
-    fn texture_from_bytes(&mut self, bytes: &'static [u8]) -> ResourceId {
-        let asset_id = {
-            let mut store = self
-                .asset_store
-                .lock()
-                .expect("Can't acquire the asset store!");
-            store.from_bytes(bytes)
-        };
-        self.create_texture(asset_id)
-    }
-    fn create_texture(&mut self, asset_id: ResourceId) -> ResourceId {
         let texture = {
+            let asset_id = self.load_asset(path);
             let store = self
                 .asset_store
                 .lock()
@@ -269,8 +263,17 @@ impl WgpuAssets {
                 .get(asset_id)
                 .ok_or(EngineError::ResourceNotFound)
                 .expect("Invalid texture asset!");
-            texture::TextureData::from_bytes(asset_id, asset.data.get())
+
+            // TODO error handling.
+            texture::TextureData::from_file_bytes(Some(asset_id), asset.data.get()).unwrap()
         };
+        self.add_texture(texture)
+    }
+    fn texture_from_bytes(&mut self, bytes: &[u8]) -> ResourceId {
+        // TODO error handling
+        self.add_texture(texture::TextureData::from_file_bytes(None, bytes).unwrap())
+    }
+    fn add_texture(&mut self, texture: texture::TextureData) -> ResourceId {
         let texture_id = self.get_next_texture_id();
         self.textures.push(texture);
         texture_id
@@ -289,10 +292,20 @@ impl WgpuAssets {
         self.cameras.push(camera);
         id
     }
-    pub fn load_font(&mut self, name: &str, path: &str, params: FontParams) {
+    pub fn load_font(
+        &mut self,
+        name: &str,
+        path: &str,
+        params: FontParams,
+    ) -> Result<(), EngineError> {
+        if self.fonts.contains_key(name) {
+            return Err(EngineError::NameConflict);
+        }
+
         let asset_id = self.load_asset(path);
         let font = Font::new_from_ttf(&params, asset_id);
         self.fonts.insert(name.to_string(), font);
+        Ok(())
     }
     pub fn load_font_atlas(
         &mut self,
@@ -300,7 +313,11 @@ impl WgpuAssets {
         path: &str,
         atlas: AtlasParams,
         params: FontParams,
-    ) {
+    ) -> Result<(), EngineError> {
+        if self.fonts.contains_key(name) {
+            return Err(EngineError::NameConflict);
+        }
+
         let material_params = MaterialParams {
             atlas: Some(atlas),
             diffuse_texture: Some(self.texture_from_path(path)),
@@ -308,9 +325,83 @@ impl WgpuAssets {
             filtering: params.filtering,
             ..Default::default()
         };
-        let material_id = self.create_material(name, material_params);
+        let material_id = self.create_material(name, material_params)?;
         let font = Font::new_from_atlas(&params, material_id);
         self.fonts.insert(name.to_string(), font);
+        Ok(())
+    }
+    pub(crate) fn has_font_size(&self, name: &str, size: u32) -> Result<bool, EngineError> {
+        let font = self.fonts.get(name).ok_or(EngineError::InvalidResource)?;
+
+        match &font.kind {
+            font::FontKind::Bitmap(_) => Ok(true),
+            font::FontKind::Ttf { material_ids, .. } => Ok(material_ids.contains_key(&size)),
+        }
+    }
+    pub(crate) fn create_font_size(
+        &mut self,
+        name: &str,
+        size: u32,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Result<(), EngineError> {
+        let font = self.fonts.get(name).ok_or(EngineError::ResourceNotFound)?;
+
+        let asset_id = if let font::FontKind::Ttf { asset_id, .. } = font.kind {
+            asset_id
+        } else {
+            return Err(EngineError::InvalidResource);
+        };
+
+        let (bytes, atlas_params, texture_size) = {
+            let store = self
+                .asset_store
+                .lock()
+                .expect("Can't acquire the asset store!");
+
+            let asset = store
+                .get(asset_id)
+                .ok_or(EngineError::ResourceNotFound)
+                .expect("Invalid font asset!");
+
+            render_ttf_glyphs(&font.charset, asset.data.get(), size as f32)
+        }?;
+
+        let mut material_params = MaterialParams {
+            atlas: Some(atlas_params),
+            diffuse_texture: None,
+            shader: font.shader,
+            filtering: font.filtering,
+            ..Default::default()
+        };
+
+        let texture = texture::TextureData::from_raw(&bytes, texture_size.0, texture_size.1)?;
+        let texture_id = self.add_texture(texture);
+
+        material_params.diffuse_texture = Some(texture_id);
+
+        // FIXME name
+        let material_id = self.create_material(&format!("{name}_{size}"), material_params)?;
+
+        if let font::FontKind::Ttf { material_ids, .. } =
+            &mut self.fonts.get_mut(name).unwrap().kind
+        {
+            material_ids.insert(size, material_id);
+        }
+
+        let material_layout = self
+            .bind_group_layouts
+            .get(&bind_groups::BindGroupLayoutKind::Sprite)
+            .ok_or(EngineError::GraphicsInternalError)?;
+
+        self.materials
+            .get_mut(material_id.0)
+            .unwrap()
+            .create_wgpu_data(&self.textures, device, queue, material_layout)?;
+
+        println!("@@@");
+
+        Ok(())
     }
     pub fn get_material_id(&self, name: &str) -> Option<&ResourceId> {
         self.material_names.get(name)
