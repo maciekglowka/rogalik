@@ -11,16 +11,6 @@ impl Game for GameState {
 
         // Create camera
         context.graphics.create_camera(1., Vector2f::ZERO);
-
-        // let _ = context.graphics.draw_text(
-        //     "pixel",
-        //     "aa",
-        //     // Vector2f::new(-0.5 * width, 0.),
-        //     Vector2f::ZERO,
-        //     0,
-        //     36,
-        //     SpriteParams::default(),
-        // );
     }
 }
 
@@ -35,8 +25,8 @@ impl Scene for MainScene {
         context: &mut Context,
         _scenes: &mut SceneController<Self::Game>,
     ) {
-        let text = "Hello World";
-        let font_size = 36;
+        let text = "Hello World jy?!@ <> []&";
+        let font_size = 64;
 
         let width = context.graphics.text_dimensions("pixel", text, font_size).x;
 
@@ -51,17 +41,6 @@ impl Scene for MainScene {
                 SpriteParams::default(),
             )
             .unwrap();
-        // context
-        //     .graphics
-        //     .draw_atlas_sprite(
-        //         "pixel_36",
-        //         '(' as usize - 0x20,
-        //         Vector2f::ZERO,
-        //         0,
-        //         Vector2f::new(12., 36.),
-        //         SpriteParams::default(),
-        //     )
-        //     .unwrap();
     }
 }
 

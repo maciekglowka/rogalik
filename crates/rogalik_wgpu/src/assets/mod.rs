@@ -10,7 +10,7 @@ use rogalik_common::{
 };
 use rogalik_math::vectors::Vector2f;
 
-use crate::assets::font::{render_ttf_glyphs, Font};
+use crate::assets::font::{render_ttf_glyphs, Font, FontSize, TtfGlyphs};
 
 pub mod atlas;
 pub mod bind_groups;
@@ -335,7 +335,7 @@ impl WgpuAssets {
 
         match &font.kind {
             font::FontKind::Bitmap(_) => Ok(true),
-            font::FontKind::Ttf { material_ids, .. } => Ok(material_ids.contains_key(&size)),
+            font::FontKind::Ttf { sizes, .. } => Ok(sizes.contains_key(&size)),
         }
     }
     pub(crate) fn create_font_size(
@@ -353,7 +353,7 @@ impl WgpuAssets {
             return Err(EngineError::InvalidResource);
         };
 
-        let (bytes, atlas_params, texture_size) = {
+        let glyphs = {
             let store = self
                 .asset_store
                 .lock()
@@ -368,25 +368,32 @@ impl WgpuAssets {
         }?;
 
         let mut material_params = MaterialParams {
-            atlas: Some(atlas_params),
+            atlas: Some(glyphs.atlas_params),
             diffuse_texture: None,
             shader: font.shader,
             filtering: font.filtering,
             ..Default::default()
         };
 
-        let texture = texture::TextureData::from_raw(&bytes, texture_size.0, texture_size.1)?;
+        let texture = texture::TextureData::from_raw(
+            &glyphs.texture_data,
+            glyphs.texture_size.0,
+            glyphs.texture_size.1,
+        )?;
         let texture_id = self.add_texture(texture);
 
         material_params.diffuse_texture = Some(texture_id);
 
-        // FIXME name
         let material_id = self.create_material(&format!("{name}_{size}"), material_params)?;
 
-        if let font::FontKind::Ttf { material_ids, .. } =
-            &mut self.fonts.get_mut(name).unwrap().kind
-        {
-            material_ids.insert(size, material_id);
+        if let font::FontKind::Ttf { sizes, .. } = &mut self.fonts.get_mut(name).unwrap().kind {
+            sizes.insert(
+                size,
+                FontSize {
+                    material_id,
+                    char_metrics: glyphs.char_metrics,
+                },
+            );
         }
 
         let material_layout = self
@@ -398,8 +405,6 @@ impl WgpuAssets {
             .get_mut(material_id.0)
             .unwrap()
             .create_wgpu_data(&self.textures, device, queue, material_layout)?;
-
-        println!("@@@");
 
         Ok(())
     }

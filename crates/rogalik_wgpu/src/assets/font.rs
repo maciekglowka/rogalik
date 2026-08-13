@@ -46,13 +46,22 @@ impl Font {
             charmap,
             kind: FontKind::Ttf {
                 asset_id,
-                material_ids: HashMap::new(),
+                sizes: HashMap::new(),
             },
             character_spacing: params.character_spacing,
             filtering: params.filtering,
             shader: params.shader,
         }
     }
+}
+
+pub(crate) struct CharMetric {
+    gap: u32,
+}
+
+pub(crate) struct FontSize {
+    pub(crate) material_id: ResourceId,
+    pub(crate) char_metrics: Vec<CharMetric>,
 }
 
 pub(crate) enum FontKind {
@@ -62,7 +71,7 @@ pub(crate) enum FontKind {
         /// Ttf source file.
         asset_id: ResourceId,
         /// Material ids by font size.
-        material_ids: HashMap<u32, ResourceId>,
+        sizes: HashMap<u32, FontSize>,
     },
 }
 
@@ -88,6 +97,13 @@ pub(crate) struct TextLayout {
     pub(crate) material_id: ResourceId,
 }
 
+pub(crate) struct TtfGlyphs {
+    pub(crate) texture_data: Vec<u8>,
+    pub(crate) texture_size: (u32, u32),
+    pub(crate) atlas_params: AtlasParams,
+    pub(crate) char_metrics: Vec<CharMetric>,
+}
+
 /// Get base text layout from an existing atlas.
 ///
 /// Does not check if an atlas for requested size exists.
@@ -97,9 +113,9 @@ pub(crate) fn get_text_layout(
     font: &Font,
     size: u32,
 ) -> TextLayout {
-    let material_id = match &font.kind {
-        FontKind::Bitmap(id) => *id,
-        FontKind::Ttf { material_ids, .. } => material_ids[&size],
+    let (material_id, metrics) = match &font.kind {
+        FontKind::Bitmap(id) => (*id, None),
+        FontKind::Ttf { sizes, .. } => (sizes[&size].material_id, Some(&sizes[&size].char_metrics)),
     };
     let material = assets.get_material(material_id).unwrap();
     let atlas = material.atlas.as_ref().unwrap();
@@ -108,11 +124,14 @@ pub(crate) fn get_text_layout(
     let mut offset = Vector2f::new(0., -(size as f32));
     let mut chars = Vec::new();
 
-    let gap = font
+    let base_gap = font
         .character_spacing
         .map(|s| s * size as f32)
         .unwrap_or(0.)
         .round();
+
+    // Keep the last gap for width calculation.
+    let mut gap = base_gap;
 
     for c in text.chars() {
         let sprite_index = font.charmap.0.get(c as usize).copied().unwrap_or(0) as usize;
@@ -132,6 +151,10 @@ pub(crate) fn get_text_layout(
             offset,
             sprite_index,
         });
+
+        if let Some(metrics) = metrics {
+            gap = base_gap + metrics[sprite_index].gap as f32;
+        }
 
         offset += Vector2f::new(w + gap, 0.);
     }
@@ -193,7 +216,7 @@ pub(crate) fn render_ttf_glyphs(
     charset: &[char],
     font_data: &[u8],
     size: f32,
-) -> Result<(Vec<u8>, AtlasParams, (u32, u32)), EngineError> {
+) -> Result<TtfGlyphs, EngineError> {
     let ttf = fontdue::Font::from_bytes(font_data, fontdue::FontSettings::default())
         .inspect_err(|e| log::error!("Error while loading TTF: {e}"))
         .map_err(|_| EngineError::InvalidResource)?;
@@ -203,7 +226,8 @@ pub(crate) fn render_ttf_glyphs(
         .ok_or(EngineError::InvalidResource)?;
 
     // Use fixed height for simplicity (bit wasteful).
-    let h = (line_metrics.ascent - line_metrics.descent + 1.) as usize;
+    let h = (line_metrics.ascent - line_metrics.descent) as usize;
+    let h_step = h + 1;
     let baseline_offset = line_metrics.ascent as usize;
 
     let data = charset
@@ -222,9 +246,11 @@ pub(crate) fn render_ttf_glyphs(
         .max()
         .ok_or(EngineError::InvalidResource)?;
 
-    let texture_h = h * row_no;
+    let texture_h = h_step * row_no;
+
     let mut texture_data = vec![0; 4 * texture_w * texture_h];
     let mut atlas_positions = vec![];
+    let mut char_metrics = vec![];
 
     let mut col = 0;
     let mut offset_x = 0;
@@ -246,10 +272,14 @@ pub(crate) fn render_ttf_glyphs(
 
         atlas_positions.push(AtlasPosition::new(
             offset_x as u32,
-            (offset_y + top_offset) as u32,
+            offset_y as u32,
             metrics.width as u32,
-            metrics.height as u32,
+            h as u32,
         ));
+
+        char_metrics.push(CharMetric {
+            gap: metrics.advance_width as u32 - metrics.width as u32,
+        });
 
         col += 1;
         offset_x += metrics.width + 1;
@@ -257,18 +287,18 @@ pub(crate) fn render_ttf_glyphs(
         if col == col_no {
             col = 0;
             offset_x = 0;
-            offset_y += h;
+            offset_y += h_step;
         }
     }
 
     log::debug!("created font glyphs at size: {size}, texture ({texture_w} x {texture_h})");
-    println!("created font glyphs at size: {size}, texture ({texture_w} x {texture_h})");
 
     let atlas_params = AtlasParams::Free(atlas_positions);
 
-    Ok((
+    Ok(TtfGlyphs {
         texture_data,
+        texture_size: (texture_w as u32, texture_h as u32),
         atlas_params,
-        (texture_w as u32, texture_h as u32),
-    ))
+        char_metrics,
+    })
 }

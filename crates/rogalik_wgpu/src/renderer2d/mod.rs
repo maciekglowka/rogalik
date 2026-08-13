@@ -200,7 +200,6 @@ impl Renderer2d {
         };
 
         for s in sprites {
-            // println!("{s:?}");
             self.sprite_pass
                 .add_to_queue(&s.0, &s.1, z_index, bind_params);
         }
