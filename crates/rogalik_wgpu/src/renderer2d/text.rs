@@ -49,4 +49,17 @@ impl TextCache {
 
         layout
     }
+
+    /// Cache clean. Should be called after each frame is rendered.
+    ///
+    /// Layouts that haven't been accessed during current frame will be removed
+    /// from cache.
+    pub(crate) fn clean(&mut self) {
+        self.entries.retain(|_, (_, accessed)| *accessed);
+
+        // Clean the accessed flag for remaining elements.
+        self.entries
+            .values_mut()
+            .for_each(|(_, accessed)| *accessed = false);
+    }
 }

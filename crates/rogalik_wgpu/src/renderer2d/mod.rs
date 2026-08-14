@@ -315,7 +315,10 @@ impl Renderer2d {
         }
 
         output.present();
+
         self.uniforms.lights.frame_end();
+        self.text_cache.clean();
+
         Ok(())
     }
 }
