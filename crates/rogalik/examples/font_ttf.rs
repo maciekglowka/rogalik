@@ -4,10 +4,19 @@ use rogalik::prelude::*;
 struct GameState;
 impl Game for GameState {
     fn setup(&mut self, context: &mut Context) {
-        // Load a default font
         context
             .graphics
-            .load_font("pixel", "examples/m5x7.ttf", FontParams::default());
+            .load_font("m5x7", "examples/m5x7.ttf", FontParams::default());
+
+        context.graphics.load_font(
+            "monogram",
+            "examples/monogram.ttf",
+            FontParams {
+                // Make slightly tighter lines.
+                line_spacing: Some(0.75),
+                ..Default::default()
+            },
+        );
 
         // Create camera
         context.graphics.create_camera(1., Vector2f::ZERO);
@@ -30,15 +39,15 @@ impl Scene for MainScene {
             "This is a small\nmultiline paragraph. A long line should be wrapped.\n\nEnd.";
         let font_size = 32.;
 
-        let width = context.graphics.text_dimensions("pixel", text, font_size).x;
+        let width = context.graphics.text_dimensions("m5x7", text, font_size).x;
 
         // Single line text.
         context
             .graphics
             .draw_text(
-                "pixel",
+                "m5x7",
                 text,
-                Vector2f::new(-0.5 * width, 2. * font_size as f32),
+                Vector2f::new(-0.5 * width, 2. * font_size),
                 0,
                 font_size,
                 SpriteParams::default(),
@@ -49,9 +58,23 @@ impl Scene for MainScene {
         context
             .graphics
             .draw_textbox(
-                "pixel",
+                "m5x7",
                 paragraph,
-                Vector2f::new(-0.5 * width, 0.),
+                Vector2f::new(20., 0.),
+                0,
+                font_size,
+                200.,
+                SpriteParams::default(),
+            )
+            .unwrap();
+
+        // Multiline wrapped text.
+        context
+            .graphics
+            .draw_textbox(
+                "monogram",
+                paragraph,
+                Vector2f::new(-220., 0.),
                 0,
                 font_size,
                 200.,

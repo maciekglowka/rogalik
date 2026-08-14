@@ -36,7 +36,7 @@ impl Scene for MainScene {
         _scenes: &mut SceneController<Self::Game>,
     ) {
         let text = "Hello World";
-        let font_size = 36;
+        let font_size = 36.;
 
         let width = context.graphics.text_dimensions("pixel", text, font_size).x;
 

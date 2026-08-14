@@ -177,7 +177,10 @@ impl Renderer2d {
         size: f32,
         max_width: Option<f32>,
     ) -> Option<Vector2f> {
-        let layout = self.text_cache.get(assets, font, text, size, max_width);
+        let layout = self
+            .text_cache
+            .get(assets, font, text, size, max_width)
+            .ok()?;
         Some(Vector2f::new(layout.width, layout.height))
     }
     pub fn draw_text(
@@ -194,8 +197,8 @@ impl Renderer2d {
     ) -> Result<Vector2f, EngineError> {
         let layout = self
             .text_cache
-            .get(assets, font_name, text, size, max_width);
-        let sprites = get_text_sprites(assets, layout, position, params);
+            .get(assets, font_name, text, size, max_width)?;
+        let sprites = get_text_sprites(assets, layout, position, params)?;
 
         let material = assets
             .get_material(layout.material_id)

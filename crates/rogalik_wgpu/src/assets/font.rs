@@ -129,7 +129,7 @@ pub(crate) fn get_text_layout(
     text: &str,
     font: &Font,
     size: f32,
-) -> TextLayout {
+) -> Result<TextLayout, EngineError> {
     calculate_layout(assets, [[text]], font, size, None)
 }
 /// Get base wrapped text box layout from an existing atlas.
@@ -141,7 +141,7 @@ pub(crate) fn get_textbox_layout(
     font: &Font,
     size: f32,
     max_width: f32,
-) -> TextLayout {
+) -> Result<TextLayout, EngineError> {
     let lines = text.split('\n').map(|s| s.split_inclusive(' '));
     calculate_layout(assets, lines, font, size, Some(max_width))
 }
@@ -152,25 +152,31 @@ fn calculate_layout<T, U, S>(
     font: &Font,
     size: f32,
     max_width: Option<f32>,
-) -> TextLayout
+) -> Result<TextLayout, EngineError>
 where
     T: IntoIterator<Item = U>,
     U: IntoIterator<Item = S>,
     S: AsRef<str>,
 {
-    let (material_id, char_metrics, line_metrics) = match &font.kind {
-        FontKind::Bitmap(id) => (*id, None, None),
+    let (scale, material_id, char_metrics, line_metrics) = match &font.kind {
+        FontKind::Bitmap(id) => (true, *id, None, None),
         FontKind::Ttf { sizes, .. } => {
             let size_entry = &sizes[&text_key_size(size)];
             (
+                false,
                 size_entry.material_id,
                 Some(&size_entry.char_metrics),
                 Some(&size_entry.line_metrics),
             )
         }
     };
-    let material = assets.get_material(material_id).unwrap();
-    let atlas = material.atlas.as_ref().unwrap();
+    let material = assets
+        .get_material(material_id)
+        .ok_or(EngineError::ResourceNotFound)?;
+    let atlas = material
+        .atlas
+        .as_ref()
+        .ok_or(EngineError::GraphicsNotReady)?;
 
     // Text is anchored top-left (unlike regular sprites).
     let mut offset = Vector2f::new(0., -(size));
@@ -182,7 +188,7 @@ where
         .unwrap_or(0.)
         .round();
 
-    let mut line_spacing = font.line_spacing.unwrap_or(1.) * size;
+    let mut line_spacing = (font.line_spacing.unwrap_or(1.) * size).round();
     if let Some(metrics) = line_metrics {
         line_spacing += metrics.gap;
     }
@@ -190,7 +196,7 @@ where
     // Keep the last gap for width calculation.
     let mut h_gap = char_gap;
 
-    let h = size;
+    let base_h = size;
 
     let mut text_w: f32 = 0.;
 
@@ -207,9 +213,14 @@ where
                     continue;
                 };
 
-                let mut w = (entry.w as f32 / entry.h as f32) * h;
-                if w.is_nan() {
-                    w = 0.;
+                let (w, h) = if scale {
+                    let mut w = ((entry.w as f32 / entry.h as f32) * base_h).round();
+                    if w.is_nan() {
+                        w = 0.;
+                    };
+                    (w, base_h)
+                } else {
+                    (entry.w as f32, entry.h as f32)
                 };
 
                 chars.push(LayoutChar {
@@ -254,12 +265,12 @@ where
 
     let line_gap = line_spacing - size;
 
-    TextLayout {
+    Ok(TextLayout {
         chars,
         width: text_w,
         height: -offset.y - size - line_gap,
         material_id,
-    }
+    })
 }
 
 /// Get text sprites from an existing atlas.
@@ -270,11 +281,16 @@ pub(crate) fn get_text_sprites(
     layout: &TextLayout,
     position: Vector2f,
     params: SpriteParams,
-) -> Vec<Quad> {
-    let material = assets.get_material(layout.material_id).unwrap();
-    let atlas = material.atlas.as_ref().unwrap();
+) -> Result<Vec<Quad>, EngineError> {
+    let material = assets
+        .get_material(layout.material_id)
+        .ok_or(EngineError::ResourceNotFound)?;
+    let atlas = material
+        .atlas
+        .as_ref()
+        .ok_or(EngineError::GraphicsNotReady)?;
 
-    layout
+    Ok(layout
         .chars
         .iter()
         .map(|char| {
@@ -285,7 +301,7 @@ pub(crate) fn get_text_sprites(
                 params,
             )
         })
-        .collect()
+        .collect())
 }
 
 /// Returns standard ascii charser

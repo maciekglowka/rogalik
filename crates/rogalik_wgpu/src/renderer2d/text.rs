@@ -1,4 +1,6 @@
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
+
+use rogalik_common::EngineError;
 
 use crate::assets::{
     font::{get_text_layout, get_textbox_layout, text_key_size, TextLayout},
@@ -28,7 +30,7 @@ impl TextCache {
         text: &str,
         size: f32,
         max_width: Option<f32>,
-    ) -> &TextLayout {
+    ) -> Result<&TextLayout, EngineError> {
         let key = (
             font_name.to_string(),
             text.to_string(),
@@ -36,18 +38,22 @@ impl TextCache {
             max_width.unwrap_or(0.) as u32,
         );
 
-        let (layout, accessed) = self.entries.entry(key).or_insert_with(|| {
-            let font = assets.get_font(font_name).unwrap();
-            let layout = if let Some(max_width) = max_width {
-                get_textbox_layout(assets, text, font, size, max_width)
-            } else {
-                get_text_layout(assets, text, font, size)
-            };
-            (layout, true)
-        });
+        let (layout, accessed) = match self.entries.entry(key) {
+            Entry::Occupied(occupied) => occupied.into_mut(),
+            Entry::Vacant(vacant) => {
+                let font = assets.get_font(font_name).unwrap();
+                let layout = if let Some(max_width) = max_width {
+                    get_textbox_layout(assets, text, font, size, max_width)?
+                } else {
+                    get_text_layout(assets, text, font, size)?
+                };
+                vacant.insert((layout, true))
+            }
+        };
+
         *accessed = true;
 
-        layout
+        Ok(layout)
     }
 
     /// Cache clean. Should be called after each frame is rendered.
