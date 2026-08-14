@@ -303,6 +303,30 @@ impl GraphicsContext for WgpuContext {
             position,
             z_index,
             size,
+            None,
+            params,
+        )
+    }
+    fn draw_textbox(
+        &mut self,
+        font: &str,
+        text: &str,
+        position: Vector2f,
+        z_index: i32,
+        size: u32,
+        max_width: u32,
+        params: SpriteParams,
+    ) -> Result<(), EngineError> {
+        self.ensure_font_size(font, size)?;
+        self.renderer2d.draw_text(
+            &mut self.assets,
+            font,
+            text,
+            self.current_camera_id,
+            position,
+            z_index,
+            size,
+            Some(max_width),
             params,
         )
     }
@@ -370,7 +394,22 @@ impl GraphicsContext for WgpuContext {
         }
 
         self.renderer2d
-            .get_text_dimensions(&mut self.assets, font, text, size)
+            .get_text_dimensions(&mut self.assets, font, text, size, None)
+            .unwrap_or(Vector2f::ZERO)
+    }
+    fn textbox_dimensions(
+        &mut self,
+        font: &str,
+        text: &str,
+        size: u32,
+        max_width: u32,
+    ) -> Vector2f {
+        if self.ensure_font_size(font, size).is_err() {
+            return Vector2f::ZERO;
+        }
+
+        self.renderer2d
+            .get_text_dimensions(&mut self.assets, font, text, size, Some(max_width))
             .unwrap_or(Vector2f::ZERO)
     }
     fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId {

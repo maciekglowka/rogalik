@@ -114,7 +114,7 @@ pub trait GraphicsContext {
         size: Vector2f,
         params: SpriteParams,
     ) -> Result<(), EngineError>;
-    /// Queues text for drawing using a specified font.
+    /// Queues singleline text for drawing using a specified font.
     /// `font`: The name of the loaded font (material) to use.
     /// `text`: The string to render.
     /// `position`: The world position of the first character (bottom-left
@@ -129,6 +129,24 @@ pub trait GraphicsContext {
         position: Vector2f,
         z_index: i32,
         size: u32,
+        params: SpriteParams,
+    ) -> Result<(), EngineError>;
+    /// Queues wrapped multiline text for drawing using a specified font.
+    /// `font`: The name of the loaded font (material) to use.
+    /// `text`: The string to render.
+    /// `position`: The world position of the first character (bottom-left
+    /// corner). `z_index`: The Z-order for rendering (higher values are
+    /// rendered on top). `size`: The desired height of the text in world
+    /// units. `params`: Additional sprite parameters applied to each
+    /// character (e.g., color, flip).
+    fn draw_textbox(
+        &mut self,
+        font: &str,
+        text: &str,
+        position: Vector2f,
+        z_index: i32,
+        size: u32,
+        max_width: u32,
         params: SpriteParams,
     ) -> Result<(), EngineError>;
     /// Queues a custom mesh for drawing.
@@ -169,12 +187,20 @@ pub trait GraphicsContext {
     /// imprecission) the pass is not processed at all in order to save
     /// hardware resources.
     fn set_postprocess_strength(&mut self, name: &str, value: f32) -> Result<(), EngineError>;
-    /// Calculates the dimensions (width and height) a given text string would
+    /// Calculates the dimensions (width and height) a singleline text would
     /// occupy when rendered with a specific font and size. `font`: The name
     /// of the font (material) to use for calculation. `text`: The string
     /// whose dimensions are to be measured. `size`: The desired height of
     /// the text. Returns a `Vector2f` representing the width and height.
     fn text_dimensions(&mut self, font: &str, text: &str, size: u32) -> Vector2f;
+    /// Calculates the dimensions (width and height) a multiline wrapped textbox
+    /// would occupy when rendered with a specific font and size. `font`:
+    /// The name of the font (material) to use for calculation. `text`: The
+    /// string whose dimensions are to be measured. `size`: The desired
+    /// height of the text. Returns a `Vector2f` representing the width and
+    /// height.
+    fn textbox_dimensions(&mut self, font: &str, text: &str, size: u32, max_width: u32)
+        -> Vector2f;
     /// Creates a new 2D camera with a specified scale and target position.
     /// Returns a `ResourceId` for the newly created camera.
     /// `scale`: The zoom level of the camera (e.g., 1.0 is no zoom).

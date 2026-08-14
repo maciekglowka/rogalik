@@ -130,6 +130,7 @@ pub struct FontParams<'a> {
     /// E.g. spacing value 0.25 will result in 2px gap
     /// on 8px font and 4px gap on 16px font.
     pub character_spacing: Option<f32>,
+    pub line_spacing: Option<f32>,
 }
 
 #[derive(Clone, Copy, Default)]

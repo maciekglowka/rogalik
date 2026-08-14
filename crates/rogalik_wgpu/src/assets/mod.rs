@@ -392,6 +392,7 @@ impl WgpuAssets {
                 FontSize {
                     material_id,
                     char_metrics: glyphs.char_metrics,
+                    line_metrics: glyphs.line_metrics,
                 },
             );
         }

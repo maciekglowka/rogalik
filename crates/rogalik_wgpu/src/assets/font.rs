@@ -13,6 +13,7 @@ pub(crate) struct Font {
     charmap: CharMap,
     pub(crate) kind: FontKind,
     character_spacing: Option<f32>,
+    line_spacing: Option<f32>,
     pub(crate) filtering: TextureFiltering,
     pub(crate) shader: Option<ResourceId>,
 }
@@ -29,6 +30,7 @@ impl Font {
             charmap,
             kind: FontKind::Bitmap(material_id),
             character_spacing: params.character_spacing,
+            line_spacing: params.line_spacing,
             filtering: params.filtering,
             shader: params.shader,
         }
@@ -49,6 +51,7 @@ impl Font {
                 sizes: HashMap::new(),
             },
             character_spacing: params.character_spacing,
+            line_spacing: params.line_spacing,
             filtering: params.filtering,
             shader: params.shader,
         }
@@ -59,9 +62,14 @@ pub(crate) struct CharMetric {
     gap: u32,
 }
 
+pub(crate) struct LineMetrics {
+    gap: u32,
+}
+
 pub(crate) struct FontSize {
     pub(crate) material_id: ResourceId,
     pub(crate) char_metrics: Vec<CharMetric>,
+    pub(crate) line_metrics: LineMetrics,
 }
 
 pub(crate) enum FontKind {
@@ -102,6 +110,7 @@ pub(crate) struct TtfGlyphs {
     pub(crate) texture_size: (u32, u32),
     pub(crate) atlas_params: AtlasParams,
     pub(crate) char_metrics: Vec<CharMetric>,
+    pub(crate) line_metrics: LineMetrics,
 }
 
 /// Get base text layout from an existing atlas.
@@ -113,9 +122,41 @@ pub(crate) fn get_text_layout(
     font: &Font,
     size: u32,
 ) -> TextLayout {
-    let (material_id, metrics) = match &font.kind {
-        FontKind::Bitmap(id) => (*id, None),
-        FontKind::Ttf { sizes, .. } => (sizes[&size].material_id, Some(&sizes[&size].char_metrics)),
+    calculate_layout(assets, [[text]], font, size, None)
+}
+/// Get base wrapped text box layout from an existing atlas.
+///
+/// Does not check if an atlas for requested size exists.
+pub(crate) fn get_textbox_layout(
+    assets: &WgpuAssets,
+    text: &str,
+    font: &Font,
+    size: u32,
+    max_width: u32,
+) -> TextLayout {
+    let lines = text.split('\n').map(|s| s.split_inclusive(' '));
+    calculate_layout(assets, lines, font, size, Some(max_width))
+}
+
+fn calculate_layout<T, U, S>(
+    assets: &WgpuAssets,
+    text: T,
+    font: &Font,
+    size: u32,
+    max_width: Option<u32>,
+) -> TextLayout
+where
+    T: IntoIterator<Item = U>,
+    U: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let (material_id, char_metrics, line_metrics) = match &font.kind {
+        FontKind::Bitmap(id) => (*id, None, None),
+        FontKind::Ttf { sizes, .. } => (
+            sizes[&size].material_id,
+            Some(&sizes[&size].char_metrics),
+            Some(&sizes[&size].line_metrics),
+        ),
     };
     let material = assets.get_material(material_id).unwrap();
     let atlas = material.atlas.as_ref().unwrap();
@@ -124,48 +165,92 @@ pub(crate) fn get_text_layout(
     let mut offset = Vector2f::new(0., -(size as f32));
     let mut chars = Vec::new();
 
-    let base_gap = font
+    let char_gap = font
         .character_spacing
         .map(|s| s * size as f32)
         .unwrap_or(0.)
         .round();
 
+    let mut line_spacing = font.line_spacing.unwrap_or(1.) * size as f32;
+    if let Some(metrics) = line_metrics {
+        line_spacing += metrics.gap as f32;
+    }
+
     // Keep the last gap for width calculation.
-    let mut gap = base_gap;
+    let mut h_gap = char_gap;
 
-    for c in text.chars() {
-        let sprite_index = font.charmap.0.get(c as usize).copied().unwrap_or(0) as usize;
-        let Some(entry) = atlas.get_entry(sprite_index) else {
-            continue;
-        };
-        let h = size as f32;
+    let h = size as f32;
 
-        let mut w = (entry.w as f32 / entry.h as f32) * h;
-        if w.is_nan() {
-            w = 0.;
-        };
+    let mut text_w: f32 = 0.;
 
-        chars.push(LayoutChar {
-            w,
-            h,
-            offset,
-            sprite_index,
-        });
+    for line in text {
+        let mut first_word = true;
 
-        if let Some(metrics) = metrics {
-            gap = base_gap + metrics[sprite_index].gap as f32;
+        for word in line {
+            let mut word_w = 0.;
+            let word_idx = chars.len();
+
+            for c in word.as_ref().chars() {
+                let sprite_index = font.charmap.0.get(c as usize).copied().unwrap_or(0) as usize;
+                let Some(entry) = atlas.get_entry(sprite_index) else {
+                    continue;
+                };
+
+                let mut w = (entry.w as f32 / entry.h as f32) * h;
+                if w.is_nan() {
+                    w = 0.;
+                };
+
+                chars.push(LayoutChar {
+                    w,
+                    h,
+                    offset: Vector2f::new(offset.x + word_w, offset.y),
+                    sprite_index,
+                });
+
+                if let Some(metrics) = char_metrics {
+                    h_gap = char_gap + metrics[sprite_index].gap as f32;
+                }
+
+                word_w += w + h_gap;
+            }
+
+            let mut shift = false;
+            if let Some(max_width) = max_width {
+                if !first_word && offset.x + word_w > max_width as f32 {
+                    // Shift to a next line.
+                    for c in chars[word_idx..].iter_mut() {
+                        c.offset.x -= offset.x;
+                        c.offset.y -= line_spacing;
+                    }
+                    shift = true;
+                }
+            }
+
+            if shift {
+                offset.x = word_w;
+                offset.y -= line_spacing;
+            } else {
+                offset.x += word_w;
+                text_w = text_w.max(offset.x);
+            }
+            first_word = false;
         }
 
-        offset += Vector2f::new(w + gap, 0.);
+        offset.y -= line_spacing;
+        offset.x = 0.;
     }
+
+    let line_gap = line_spacing - size as f32;
 
     TextLayout {
         chars,
-        width: offset.x - gap,
-        height: size as f32,
+        width: text_w,
+        height: -offset.y - size as f32 - line_gap,
         material_id,
     }
 }
+
 /// Get text sprites from an existing atlas.
 ///
 /// Does not check if an atlas for requested size exists.
@@ -294,11 +379,15 @@ pub(crate) fn render_ttf_glyphs(
     log::debug!("created font glyphs at size: {size}, texture ({texture_w} x {texture_h})");
 
     let atlas_params = AtlasParams::Free(atlas_positions);
+    let line_metrics = LineMetrics {
+        gap: line_metrics.line_gap as u32,
+    };
 
     Ok(TtfGlyphs {
         texture_data,
         texture_size: (texture_w as u32, texture_h as u32),
         atlas_params,
         char_metrics,
+        line_metrics,
     })
 }
