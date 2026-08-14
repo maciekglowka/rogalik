@@ -364,7 +364,7 @@ impl WgpuAssets {
                 .ok_or(EngineError::ResourceNotFound)
                 .expect("Invalid font asset!");
 
-            render_ttf_glyphs(&font.charset, asset.data.get(), size as f32)
+            render_ttf_glyphs(&font.charset, asset.data.get(), size)
         }?;
 
         let mut material_params = MaterialParams {

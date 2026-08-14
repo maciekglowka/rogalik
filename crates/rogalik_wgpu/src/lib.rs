@@ -118,15 +118,20 @@ impl WgpuContext {
         }
     }
     fn ensure_font_size(&mut self, font: &str, size: f32) -> Result<(), EngineError> {
-        if matches!(self.assets.has_font_size(font, size), Ok(false)) {
-            if let Ok(state) = self.surface_state.lock() {
-                if let Some(state) = state.as_ref() {
-                    self.assets
-                        .create_font_size(font, size, &state.device, &state.queue)?;
-                }
+        match self.assets.has_font_size(font, size) {
+            Ok(true) => Ok(()),
+            Ok(false) => {
+                let state = self
+                    .surface_state
+                    .lock()
+                    .map_err(|_| EngineError::GraphicsInternalError)?;
+                let state = state.as_ref().ok_or(EngineError::GraphicsNotReady)?;
+
+                self.assets
+                    .create_font_size(font, size, &state.device, &state.queue)
             }
+            Err(e) => Err(e),
         }
-        Ok(())
     }
 }
 impl GraphicsSetup for WgpuContext {
@@ -293,7 +298,7 @@ impl GraphicsContext for WgpuContext {
         z_index: i32,
         size: f32,
         params: SpriteParams,
-    ) -> Result<(), EngineError> {
+    ) -> Result<Vector2f, EngineError> {
         self.ensure_font_size(font, size)?;
         self.renderer2d.draw_text(
             &mut self.assets,
@@ -316,7 +321,7 @@ impl GraphicsContext for WgpuContext {
         size: f32,
         max_width: f32,
         params: SpriteParams,
-    ) -> Result<(), EngineError> {
+    ) -> Result<Vector2f, EngineError> {
         self.ensure_font_size(font, size)?;
         self.renderer2d.draw_text(
             &mut self.assets,

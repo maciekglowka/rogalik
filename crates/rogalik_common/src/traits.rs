@@ -115,6 +115,7 @@ pub trait GraphicsContext {
         params: SpriteParams,
     ) -> Result<(), EngineError>;
     /// Queues singleline text for drawing using a specified font.
+    ///
     /// `font`: The name of the loaded font (material) to use.
     /// `text`: The string to render.
     /// `position`: The world position of the first character (bottom-left
@@ -122,6 +123,8 @@ pub trait GraphicsContext {
     /// rendered on top). `size`: The desired height of the text in world
     /// units. `params`: Additional sprite parameters applied to each
     /// character (e.g., color, flip).
+    ///
+    /// On success text dimensions are returned.
     fn draw_text(
         &mut self,
         font: &str,
@@ -130,8 +133,9 @@ pub trait GraphicsContext {
         z_index: i32,
         size: f32,
         params: SpriteParams,
-    ) -> Result<(), EngineError>;
+    ) -> Result<Vector2f, EngineError>;
     /// Queues wrapped multiline text for drawing using a specified font.
+    ///
     /// `font`: The name of the loaded font (material) to use.
     /// `text`: The string to render.
     /// `position`: The world position of the first character (bottom-left
@@ -139,6 +143,8 @@ pub trait GraphicsContext {
     /// rendered on top). `size`: The desired height of the text in world
     /// units. `params`: Additional sprite parameters applied to each
     /// character (e.g., color, flip).
+    ///
+    /// On success text dimensions are returned.
     fn draw_textbox(
         &mut self,
         font: &str,
@@ -148,7 +154,7 @@ pub trait GraphicsContext {
         size: f32,
         max_width: f32,
         params: SpriteParams,
-    ) -> Result<(), EngineError>;
+    ) -> Result<Vector2f, EngineError>;
     /// Queues a custom mesh for drawing.
     /// `material`: The name of the material to use for rendering the mesh.
     /// `vertices`: A slice of `Vector2f` representing the positions of the mesh

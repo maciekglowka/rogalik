@@ -187,7 +187,7 @@ impl Renderer2d {
         size: f32,
         max_width: Option<f32>,
         params: SpriteParams,
-    ) -> Result<(), EngineError> {
+    ) -> Result<Vector2f, EngineError> {
         let layout = self
             .text_cache
             .get(assets, font_name, text, size, max_width);
@@ -208,7 +208,7 @@ impl Renderer2d {
                 .add_to_queue(&s.0, &s.1, z_index, bind_params);
         }
 
-        Ok(())
+        Ok(Vector2f::new(layout.width, layout.height))
     }
     pub fn draw_mesh(
         &mut self,

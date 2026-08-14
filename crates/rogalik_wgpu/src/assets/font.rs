@@ -277,7 +277,7 @@ pub(crate) fn get_text_sprites(
         .map(|char| {
             atlas.get_sprite(
                 char.sprite_index,
-                position + char.offset,
+                (position + char.offset).round(),
                 Vector2f::new(char.w, char.h),
                 params,
             )
