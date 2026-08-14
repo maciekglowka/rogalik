@@ -1,6 +1,13 @@
-use rogalik_common::ResourceId;
+use rogalik_common::{
+    structs::{CameraId, ShaderId},
+    ResourceId,
+};
 
 pub(crate) type Quad = ([Vertex; 4], [u16; 6]);
+
+/// Private ResourceId markers.
+pub(crate) struct MaterialId;
+pub(crate) struct PostProcessId;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
@@ -33,7 +40,7 @@ pub struct Triangle {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BindParams {
-    pub shader_id: ResourceId,
-    pub material_id: ResourceId,
-    pub camera_id: ResourceId,
+    pub shader_id: ResourceId<ShaderId>,
+    pub material_id: ResourceId<MaterialId>,
+    pub camera_id: ResourceId<CameraId>,
 }

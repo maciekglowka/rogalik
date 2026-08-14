@@ -1,13 +1,58 @@
 #[cfg(feature = "serialize")]
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, PartialOrd, Ord)]
-pub struct ResourceId(pub usize);
-impl ResourceId {
-    pub fn next(&self) -> Self {
-        Self(self.0 + 1)
+pub struct ResourceId<T>(pub usize, std::marker::PhantomData<fn() -> T>);
+impl<T> ResourceId<T> {
+    pub fn new(id: usize) -> Self {
+        Self(id, std::marker::PhantomData)
     }
 }
+impl<T> Clone for ResourceId<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<T> Copy for ResourceId<T> {}
+
+impl<T> Default for ResourceId<T> {
+    fn default() -> Self {
+        Self::new(0)
+    }
+}
+
+impl<T> PartialEq for ResourceId<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+impl<T> Eq for ResourceId<T> {}
+impl<T> PartialOrd for ResourceId<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl<T> Ord for ResourceId<T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+impl<T> std::hash::Hash for ResourceId<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state)
+    }
+}
+impl<T> std::fmt::Debug for ResourceId<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ResourceId({})", self.0)
+    }
+}
+
+// Resource type markers.
+pub struct AssetId;
+pub struct CameraId;
+pub struct ShaderId;
+pub struct TextureId;
+pub struct TimerId;
 
 #[derive(Debug)]
 pub enum EngineError {
@@ -75,17 +120,17 @@ fn srgb_single(v: f32) -> f32 {
 #[derive(Clone, Default)]
 pub struct MaterialParams {
     pub atlas: Option<AtlasParams>,
-    pub diffuse_texture: Option<ResourceId>,
-    pub normal_texture: Option<ResourceId>,
-    pub shader: Option<ResourceId>,
+    pub diffuse_texture: Option<ResourceId<TextureId>>,
+    pub normal_texture: Option<ResourceId<TextureId>>,
+    pub shader: Option<ResourceId<ShaderId>>,
     pub repeat: TextureRepeat,
     pub filtering: TextureFiltering,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 pub struct PostProcessParams {
-    pub texture: Option<ResourceId>,
-    pub shader: ResourceId,
+    pub texture: Option<ResourceId<TextureId>>,
+    pub shader: ResourceId<ShaderId>,
     pub repeat: TextureRepeat,
     pub filtering: TextureFiltering,
 }
@@ -121,7 +166,7 @@ pub struct FontParams<'a> {
     /// If not provided ASCII mapping is used.
     pub charset: Option<&'a [char]>,
     pub filtering: TextureFiltering,
-    pub shader: Option<ResourceId>,
+    pub shader: Option<ResourceId<ShaderId>>,
     /// Horizontal spacing between characters.
     ///
     /// Typically this only should be set for bitmap atlas fonts.

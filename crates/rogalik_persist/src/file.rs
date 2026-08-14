@@ -2,9 +2,9 @@ use anyhow::Result;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     env::current_dir,
-    fs::{File, remove_file},
+    fs::{remove_file, File},
     io::{Read, Write},
-    path::PathBuf
+    path::PathBuf,
 };
 
 use crate::KVStore;
@@ -14,7 +14,7 @@ impl FileStore {
     fn get_path(key: &str, base: Option<&str>) -> Result<PathBuf> {
         let dir = match base {
             Some(a) => a.into(),
-            None => current_dir()?
+            None => current_dir()?,
         };
         Ok(dir.as_path().join(format!("{}.bin", key)))
     }
@@ -25,7 +25,11 @@ impl KVStore for FileStore {
         let f = File::open(FileStore::get_path(key, path)?)?;
         Ok(bincode::deserialize_from(f)?)
     }
-    fn store<T: DeserializeOwned + Serialize>(key: &str, value: &T, path: Option<&str>) -> Result<()> {
+    fn store<T: DeserializeOwned + Serialize>(
+        key: &str,
+        value: &T,
+        path: Option<&str>,
+    ) -> Result<()> {
         let mut f = File::create(FileStore::get_path(key, path)?)?;
         bincode::serialize_into(&mut f, value)?;
         Ok(())
@@ -38,7 +42,7 @@ impl KVStore for FileStore {
     }
     fn store_raw(key: &str, value: &[u8], path: Option<&str>) -> Result<()> {
         let mut f = File::create(FileStore::get_path(key, path)?)?;
-        f.write(value)?;
+        f.write_all(value)?;
         Ok(())
     }
     fn remove(key: &str, path: Option<&str>) -> Result<()> {

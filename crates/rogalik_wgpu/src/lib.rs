@@ -5,8 +5,9 @@ use std::sync::{
 use winit::window::Window;
 
 use rogalik_common::{
-    traits::GraphicsSetup, AtlasParams, BuiltInShader, EngineError, FontParams, GraphicsContext,
-    ResourceId, SpriteParams,
+    structs::{CameraId, ShaderId, TextureId},
+    traits::GraphicsSetup,
+    AtlasParams, BuiltInShader, EngineError, FontParams, GraphicsContext, ResourceId, SpriteParams,
 };
 use rogalik_math::vectors::Vector2f;
 
@@ -33,7 +34,7 @@ struct SurfaceState {
 
 pub struct WgpuContext {
     assets: assets::WgpuAssets,
-    current_camera_id: ResourceId,
+    current_camera_id: ResourceId<CameraId>,
     clear_color: wgpu::Color,
     renderer2d: renderer2d::Renderer2d,
     rendering_resolution: Option<(u32, u32)>,
@@ -44,7 +45,7 @@ impl WgpuContext {
     pub fn new(asset_store: Arc<Mutex<rogalik_assets::AssetStore>>) -> Self {
         Self {
             assets: assets::WgpuAssets::new(asset_store),
-            current_camera_id: ResourceId::default(),
+            current_camera_id: ResourceId::new(0),
             clear_color: wgpu::Color::BLACK,
             renderer2d: renderer2d::Renderer2d::new(),
             rendering_resolution: None,
@@ -231,14 +232,18 @@ impl GraphicsContext for WgpuContext {
         }
         self.resize_cameras();
     }
-    fn load_texture(&mut self, path: &str) -> ResourceId {
+    fn load_texture(&mut self, path: &str) -> ResourceId<TextureId> {
         self.assets.texture_from_path(path)
     }
     fn load_material(&mut self, name: &str, params: rogalik_common::MaterialParams) {
         self.assets.create_material(name, params);
         // TODO if self.surface_state build bind_group
     }
-    fn load_shader(&mut self, kind: rogalik_common::ShaderKind, path: &str) -> ResourceId {
+    fn load_shader(
+        &mut self,
+        kind: rogalik_common::ShaderKind,
+        path: &str,
+    ) -> ResourceId<ShaderId> {
         // TODO if self.surface_state build pipeline
         self.assets.create_shader(kind, path)
     }
@@ -417,12 +422,12 @@ impl GraphicsContext for WgpuContext {
             .get_text_dimensions(&mut self.assets, font, text, size, Some(max_width))
             .unwrap_or(Vector2f::ZERO)
     }
-    fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId {
+    fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId<CameraId> {
         let (vw, vh, rw, rh) = self.get_current_resolutions();
         self.assets
             .create_camera(vw as f32, vh as f32, rw as f32, rh as f32, scale, target)
     }
-    fn set_camera(&mut self, id: &ResourceId) {
+    fn set_camera(&mut self, id: &ResourceId<CameraId>) {
         self.current_camera_id = *id;
     }
     fn get_current_camera(&self) -> &dyn rogalik_common::Camera {
@@ -431,13 +436,16 @@ impl GraphicsContext for WgpuContext {
     fn get_current_camera_mut(&mut self) -> &mut dyn rogalik_common::Camera {
         self.assets.get_camera_mut(self.current_camera_id).unwrap()
     }
-    fn get_camera(&self, id: &ResourceId) -> Option<&dyn rogalik_common::Camera> {
+    fn get_camera(&self, id: &ResourceId<CameraId>) -> Option<&dyn rogalik_common::Camera> {
         Some(self.assets.get_camera(*id)?)
     }
-    fn get_camera_mut(&mut self, id: &ResourceId) -> Option<&mut dyn rogalik_common::Camera> {
+    fn get_camera_mut(
+        &mut self,
+        id: &ResourceId<CameraId>,
+    ) -> Option<&mut dyn rogalik_common::Camera> {
         Some(self.assets.get_camera_mut(*id)?)
     }
-    fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId> {
+    fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId<ShaderId>> {
         self.assets.builtin_shaders.get(&shader).copied()
     }
     fn toggle_recording(&mut self) {

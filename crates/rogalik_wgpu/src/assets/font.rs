@@ -1,12 +1,15 @@
 use std::collections::HashMap;
 
 use rogalik_common::{
-    structs::AtlasPosition, AtlasParams, EngineError, FontParams, ResourceId, SpriteParams,
-    TextureFiltering,
+    structs::{AssetId, AtlasPosition, ShaderId},
+    AtlasParams, EngineError, FontParams, ResourceId, SpriteParams, TextureFiltering,
 };
 use rogalik_math::vectors::Vector2f;
 
-use crate::{assets::WgpuAssets, structs::Quad};
+use crate::{
+    assets::WgpuAssets,
+    structs::{MaterialId, Quad},
+};
 
 pub(crate) struct Font {
     pub(crate) charset: Vec<char>,
@@ -15,10 +18,10 @@ pub(crate) struct Font {
     character_spacing: Option<f32>,
     line_spacing: Option<f32>,
     pub(crate) filtering: TextureFiltering,
-    pub(crate) shader: Option<ResourceId>,
+    pub(crate) shader: Option<ResourceId<ShaderId>>,
 }
 impl Font {
-    pub(crate) fn new_from_atlas(params: &FontParams, material_id: ResourceId) -> Self {
+    pub(crate) fn new_from_atlas(params: &FontParams, material_id: ResourceId<MaterialId>) -> Self {
         let charset = params
             .charset
             .map(|c| c.to_vec())
@@ -36,7 +39,7 @@ impl Font {
         }
     }
 
-    pub(crate) fn new_from_ttf(params: &FontParams, asset_id: ResourceId) -> Self {
+    pub(crate) fn new_from_ttf(params: &FontParams, asset_id: ResourceId<AssetId>) -> Self {
         let charset = params
             .charset
             .map(|c| c.to_vec())
@@ -67,7 +70,7 @@ pub(crate) struct LineMetrics {
 }
 
 pub(crate) struct FontSize {
-    pub(crate) material_id: ResourceId,
+    pub(crate) material_id: ResourceId<MaterialId>,
     pub(crate) char_metrics: Vec<CharMetric>,
     pub(crate) line_metrics: LineMetrics,
 }
@@ -79,10 +82,10 @@ pub(crate) fn text_key_size(size: f32) -> u32 {
 
 pub(crate) enum FontKind {
     /// Single atlas. Stores material id.
-    Bitmap(ResourceId),
+    Bitmap(ResourceId<MaterialId>),
     Ttf {
         /// Ttf source file.
-        asset_id: ResourceId,
+        asset_id: ResourceId<AssetId>,
         /// Material ids by font size.
         sizes: HashMap<u32, FontSize>,
     },
@@ -107,7 +110,7 @@ pub(crate) struct TextLayout {
     chars: Vec<LayoutChar>,
     pub(crate) width: f32,
     pub(crate) height: f32,
-    pub(crate) material_id: ResourceId,
+    pub(crate) material_id: ResourceId<MaterialId>,
 }
 
 pub(crate) struct TtfGlyphs {

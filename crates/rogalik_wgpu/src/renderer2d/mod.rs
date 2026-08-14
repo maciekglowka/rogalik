@@ -1,9 +1,12 @@
-use rogalik_common::{Color, EngineError, PostProcessParams, ResourceId, SpriteParams};
+use rogalik_common::structs::CameraId;
+use rogalik_common::{
+    Color, EngineError, PostProcessParams, ResourceId, SpriteParams, TextureRepeat,
+};
 use rogalik_math::vectors::Vector2f;
 
 use crate::assets::font::get_text_sprites;
 use crate::assets::{material::Material, postprocess::PostProcessPass, WgpuAssets};
-use crate::structs::BindParams;
+use crate::structs::{BindParams, MaterialId};
 
 mod sprite_pass;
 mod text;
@@ -58,7 +61,8 @@ impl Renderer2d {
             PostProcessParams {
                 shader: *shader_id,
                 filtering: rogalik_common::TextureFiltering::Nearest,
-                ..Default::default()
+                repeat: TextureRepeat::default(),
+                texture: None,
             },
         ));
         self.uniforms.globals.render_size = [w as f32, h as f32];
@@ -132,7 +136,7 @@ impl Renderer2d {
         assets: &WgpuAssets,
         index: usize,
         material_name: &str,
-        camera_id: ResourceId,
+        camera_id: ResourceId<CameraId>,
         position: Vector2f,
         z_index: i32,
         size: Vector2f,
@@ -181,7 +185,7 @@ impl Renderer2d {
         assets: &mut WgpuAssets,
         font_name: &str,
         text: &str,
-        camera_id: ResourceId,
+        camera_id: ResourceId<CameraId>,
         position: Vector2f,
         z_index: i32,
         size: f32,
@@ -214,7 +218,7 @@ impl Renderer2d {
         &mut self,
         assets: &WgpuAssets,
         material_name: &str,
-        camera_id: ResourceId,
+        camera_id: ResourceId<CameraId>,
         vertices: &[crate::structs::Vertex],
         indices: &[u16],
         z_index: i32,
@@ -326,7 +330,7 @@ impl Renderer2d {
 fn get_material<'a>(
     name: &str,
     assets: &'a WgpuAssets,
-) -> Result<(ResourceId, &'a Material), EngineError> {
+) -> Result<(ResourceId<MaterialId>, &'a Material), EngineError> {
     let &material_id = assets
         .get_material_id(name)
         .ok_or(EngineError::ResourceNotFound)?;

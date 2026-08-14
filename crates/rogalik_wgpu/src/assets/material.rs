@@ -1,4 +1,7 @@
-use rogalik_common::{AtlasParams, EngineError, MaterialParams, ResourceId};
+use rogalik_common::{
+    structs::{ShaderId, TextureId},
+    AtlasParams, EngineError, MaterialParams, ResourceId,
+};
 
 use super::{atlas::SpriteAtlas, texture::TextureData};
 use crate::utils::{get_wgpu_address_mode, get_wgpu_filter_mode};
@@ -9,16 +12,16 @@ pub struct Material {
     pub atlas: Option<SpriteAtlas>,
     atlas_params: Option<AtlasParams>,
     pub bind_group: Option<wgpu::BindGroup>,
-    pub diffuse_texture_id: ResourceId,
-    pub normal_texture_id: ResourceId,
+    pub diffuse_texture_id: ResourceId<TextureId>,
+    pub normal_texture_id: ResourceId<TextureId>,
     filter_mode: wgpu::FilterMode,
-    pub shader_id: ResourceId,
+    pub shader_id: ResourceId<ShaderId>,
 }
 impl Material {
     pub fn new(
-        diffuse_texture_id: ResourceId,
-        normal_texture_id: ResourceId,
-        shader_id: ResourceId,
+        diffuse_texture_id: ResourceId<TextureId>,
+        normal_texture_id: ResourceId<TextureId>,
+        shader_id: ResourceId<ShaderId>,
         material_params: MaterialParams,
     ) -> Self {
         let address_mode = get_wgpu_address_mode(material_params.repeat);

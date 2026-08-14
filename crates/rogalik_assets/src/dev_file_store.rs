@@ -4,23 +4,23 @@ use std::{
     path::Path,
 };
 
-use rogalik_common::{EngineError, ResourceId};
+use rogalik_common::{structs::AssetId, EngineError, ResourceId};
 
 use super::{Asset, AssetBytes, AssetContext, AssetState};
 
 include!(concat!(env!("OUT_DIR"), "/included_assets.rs"));
 
 pub struct DevFileStore {
-    next_id: ResourceId,
-    assets: HashMap<ResourceId, Asset>,
-    meta: HashMap<ResourceId, FileAssetMeta>,
+    next_id: ResourceId<AssetId>,
+    assets: HashMap<ResourceId<AssetId>, Asset>,
+    meta: HashMap<ResourceId<AssetId>, FileAssetMeta>,
     root: String,
 }
 impl Default for DevFileStore {
     fn default() -> Self {
         log::debug!("Dev Asset Store init.");
         Self {
-            next_id: ResourceId(0),
+            next_id: ResourceId::new(0),
             assets: HashMap::new(),
             meta: HashMap::new(),
             root: ASSET_ROOT.to_string(),
@@ -54,17 +54,17 @@ impl DevFileStore {
         }
     }
     fn bump_id(&mut self) {
-        self.next_id = self.next_id.next();
+        self.next_id = ResourceId::new(self.next_id.0 + 1);
     }
 }
 impl AssetContext for DevFileStore {
-    fn from_bytes(&mut self, data: &'static [u8]) -> ResourceId {
+    fn from_bytes(&mut self, data: &'static [u8]) -> ResourceId<AssetId> {
         let id = self.next_id;
         self.assets.insert(id, Asset::borrowed(data));
         self.bump_id();
         id
     }
-    fn load(&mut self, path: &str) -> Result<ResourceId, EngineError> {
+    fn load(&mut self, path: &str) -> Result<ResourceId<AssetId>, EngineError> {
         let id = self.next_id;
 
         let abs_path = Path::new(&self.root).join(path);
@@ -85,10 +85,10 @@ impl AssetContext for DevFileStore {
         self.bump_id();
         Ok(id)
     }
-    fn get(&self, asset_id: ResourceId) -> Option<&Asset> {
+    fn get(&self, asset_id: ResourceId<AssetId>) -> Option<&Asset> {
         self.assets.get(&asset_id)
     }
-    fn mark_read(&mut self, asset_id: ResourceId) {
+    fn mark_read(&mut self, asset_id: ResourceId<AssetId>) {
         if let Some(asset) = self.assets.get_mut(&asset_id) {
             asset.state = AssetState::Loaded;
         }

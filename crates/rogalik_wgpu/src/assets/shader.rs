@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use rogalik_assets::{AssetContext, AssetStore};
-use rogalik_common::{EngineError, ResourceId, ShaderKind};
+use rogalik_common::{structs::AssetId, EngineError, ResourceId, ShaderKind};
 
 use super::bind_groups::BindGroupLayoutKind;
 use crate::structs::Vertex;
@@ -24,12 +24,12 @@ pub fn get_pipeline_layouts(
 
 #[derive(Debug)]
 pub struct Shader {
-    pub asset_id: ResourceId,
+    pub asset_id: ResourceId<AssetId>,
     pub kind: ShaderKind,
     pub pipeline: Option<wgpu::RenderPipeline>,
 }
 impl Shader {
-    pub fn new(kind: ShaderKind, asset_id: ResourceId) -> Self {
+    pub fn new(kind: ShaderKind, asset_id: ResourceId<AssetId>) -> Self {
         Self {
             asset_id,
             kind,

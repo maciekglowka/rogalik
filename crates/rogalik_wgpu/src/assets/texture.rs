@@ -1,15 +1,15 @@
 use image::{GenericImageView, ImageBuffer, Rgba};
-use rogalik_common::{EngineError, ResourceId};
+use rogalik_common::{structs::AssetId, EngineError, ResourceId};
 
 pub(crate) struct TextureData {
     /// Asset handle used for hot reloading.
-    pub asset_id: Option<ResourceId>,
+    pub asset_id: Option<ResourceId<AssetId>>,
     pub buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
     pub dim: (u32, u32),
 }
 impl TextureData {
     pub(crate) fn from_file_bytes(
-        asset_id: Option<ResourceId>,
+        asset_id: Option<ResourceId<AssetId>>,
         bytes: &[u8],
     ) -> Result<Self, EngineError> {
         let (rgba, dim) = TextureData::get_buffer_from_file(bytes)?;

@@ -2,7 +2,10 @@ use rogalik_math::vectors::Vector2f;
 use std::sync::Arc;
 use winit::window::Window;
 
-use crate::structs::{BuiltInShader, Color, EngineError, ResourceId, ShaderKind, SpriteParams};
+use crate::structs::{
+    BuiltInShader, CameraId, Color, EngineError, ResourceId, ShaderId, ShaderKind, SpriteParams,
+    TextureId,
+};
 
 pub trait GraphicsSetup {
     /// Creates and initializes the graphics context and surface.
@@ -46,7 +49,7 @@ pub trait GraphicsContext {
     fn set_rendering_resolution(&mut self, w: u32, h: u32);
     /// Loads a texture from the given file path and returns its `ResourceId`.
     /// `path`: The file path to the texture image.
-    fn load_texture(&mut self, path: &str) -> ResourceId;
+    fn load_texture(&mut self, path: &str) -> ResourceId<TextureId>;
     /// Loads a material with the given name and parameters.
     /// Materials define how objects are rendered, including their textures and
     /// shaders. `name`: A unique identifier for the material.
@@ -56,7 +59,7 @@ pub trait GraphicsContext {
     /// Loads a shader from the given file path and returns its `ResourceId`.
     /// `kind`: The type of shader (e.g., `Sprite`, `PostProcess`).
     /// `path`: The file path to the shader source code (WGSL).
-    fn load_shader(&mut self, kind: ShaderKind, path: &str) -> ResourceId;
+    fn load_shader(&mut self, kind: ShaderKind, path: &str) -> ResourceId<ShaderId>;
     /// Loads a font from a TTF file.
     /// `name`: A unique identifier for the font.
     /// `path`: The file path to the font texture atlas.
@@ -211,15 +214,15 @@ pub trait GraphicsContext {
     /// Returns a `ResourceId` for the newly created camera.
     /// `scale`: The zoom level of the camera (e.g., 1.0 is no zoom).
     /// `target`: The initial world position that the camera will center on.
-    fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId;
+    fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId<CameraId>;
     /// Sets the currently active camera by its `ResourceId`.
     /// All subsequent draw calls will use this camera's view.
     /// `id`: The `ResourceId` of the camera to activate.
-    fn set_camera(&mut self, id: &ResourceId);
+    fn set_camera(&mut self, id: &ResourceId<CameraId>);
     /// Retrieves an immutable reference to a camera by its `ResourceId`.
     /// Returns `None` if the camera does not exist.
     /// `id`: The `ResourceId` of the camera to retrieve.
-    fn get_camera(&self, id: &ResourceId) -> Option<&dyn Camera>;
+    fn get_camera(&self, id: &ResourceId<CameraId>) -> Option<&dyn Camera>;
     /// Retrieves an immutable reference to the currently active camera.
     fn get_current_camera(&self) -> &dyn Camera;
     /// Retrieves a mutable reference to the currently active camera.
@@ -227,12 +230,12 @@ pub trait GraphicsContext {
     /// Retrieves a mutable reference to a camera by its `ResourceId`.
     /// Returns `None` if the camera does not exist.
     /// `id`: The `ResourceId` of the camera to retrieve.
-    fn get_camera_mut(&mut self, id: &ResourceId) -> Option<&mut dyn Camera>;
+    fn get_camera_mut(&mut self, id: &ResourceId<CameraId>) -> Option<&mut dyn Camera>;
     /// Retrieves the `ResourceId` of a built-in shader.
     /// Returns `None` if the shader is not found.
     /// `shader`: The `BuiltInShader` enum variant identifying the desired
     /// shader.
-    fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId>;
+    fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId<ShaderId>>;
     fn toggle_recording(&mut self);
     fn request_screenshot(&mut self);
     fn take_screenshot(&mut self) -> Option<Vec<u8>>;
