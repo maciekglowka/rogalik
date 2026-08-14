@@ -28,7 +28,7 @@ impl Scene for MainScene {
         let text = "Hello World!";
         let paragraph =
             "This is a small\nmultiline paragraph. A long line should be wrapped.\n\nEnd.";
-        let font_size = 32;
+        let font_size = 32.;
 
         let width = context.graphics.text_dimensions("pixel", text, font_size).x;
 
@@ -54,7 +54,7 @@ impl Scene for MainScene {
                 Vector2f::new(-0.5 * width, 0.),
                 0,
                 font_size,
-                200,
+                200.,
                 SpriteParams::default(),
             )
             .unwrap();

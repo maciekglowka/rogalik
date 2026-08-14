@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
 use crate::assets::{
-    font::{get_text_layout, get_textbox_layout, TextLayout},
+    font::{get_text_layout, get_textbox_layout, text_key_size, TextLayout},
     WgpuAssets,
 };
 
-/// (font, text, size)
-type Key = (String, String, u32);
+/// (font, text, 100 * size, max_width)
+type Key = (String, String, u32, u32);
 
 #[derive(Default)]
 pub(crate) struct TextCache {
@@ -26,10 +26,15 @@ impl TextCache {
         assets: &WgpuAssets,
         font_name: &str,
         text: &str,
-        size: u32,
-        max_width: Option<u32>,
+        size: f32,
+        max_width: Option<f32>,
     ) -> &TextLayout {
-        let key = (font_name.to_string(), text.to_string(), size);
+        let key = (
+            font_name.to_string(),
+            text.to_string(),
+            text_key_size(size),
+            max_width.unwrap_or(0.) as u32,
+        );
 
         let (layout, accessed) = self.entries.entry(key).or_insert_with(|| {
             let font = assets.get_font(font_name).unwrap();

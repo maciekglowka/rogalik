@@ -10,7 +10,7 @@ use rogalik_common::{
 };
 use rogalik_math::vectors::Vector2f;
 
-use crate::assets::font::{render_ttf_glyphs, Font, FontSize, TtfGlyphs};
+use crate::assets::font::{render_ttf_glyphs, text_key_size, Font, FontSize, TtfGlyphs};
 
 pub mod atlas;
 pub mod bind_groups;
@@ -330,18 +330,18 @@ impl WgpuAssets {
         self.fonts.insert(name.to_string(), font);
         Ok(())
     }
-    pub(crate) fn has_font_size(&self, name: &str, size: u32) -> Result<bool, EngineError> {
+    pub(crate) fn has_font_size(&self, name: &str, size: f32) -> Result<bool, EngineError> {
         let font = self.fonts.get(name).ok_or(EngineError::InvalidResource)?;
 
         match &font.kind {
             font::FontKind::Bitmap(_) => Ok(true),
-            font::FontKind::Ttf { sizes, .. } => Ok(sizes.contains_key(&size)),
+            font::FontKind::Ttf { sizes, .. } => Ok(sizes.contains_key(&text_key_size(size))),
         }
     }
     pub(crate) fn create_font_size(
         &mut self,
         name: &str,
-        size: u32,
+        size: f32,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> Result<(), EngineError> {
@@ -388,7 +388,7 @@ impl WgpuAssets {
 
         if let font::FontKind::Ttf { sizes, .. } = &mut self.fonts.get_mut(name).unwrap().kind {
             sizes.insert(
-                size,
+                text_key_size(size),
                 FontSize {
                     material_id,
                     char_metrics: glyphs.char_metrics,

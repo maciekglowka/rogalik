@@ -117,7 +117,7 @@ impl WgpuContext {
             self.post_surface_state();
         }
     }
-    fn ensure_font_size(&mut self, font: &str, size: u32) -> Result<(), EngineError> {
+    fn ensure_font_size(&mut self, font: &str, size: f32) -> Result<(), EngineError> {
         if matches!(self.assets.has_font_size(font, size), Ok(false)) {
             if let Ok(state) = self.surface_state.lock() {
                 if let Some(state) = state.as_ref() {
@@ -291,7 +291,7 @@ impl GraphicsContext for WgpuContext {
         text: &str,
         position: Vector2f,
         z_index: i32,
-        size: u32,
+        size: f32,
         params: SpriteParams,
     ) -> Result<(), EngineError> {
         self.ensure_font_size(font, size)?;
@@ -313,8 +313,8 @@ impl GraphicsContext for WgpuContext {
         text: &str,
         position: Vector2f,
         z_index: i32,
-        size: u32,
-        max_width: u32,
+        size: f32,
+        max_width: f32,
         params: SpriteParams,
     ) -> Result<(), EngineError> {
         self.ensure_font_size(font, size)?;
@@ -388,7 +388,7 @@ impl GraphicsContext for WgpuContext {
     ) -> Result<(), EngineError> {
         self.renderer2d.add_light(position, radius, color, falloff)
     }
-    fn text_dimensions(&mut self, font: &str, text: &str, size: u32) -> Vector2f {
+    fn text_dimensions(&mut self, font: &str, text: &str, size: f32) -> Vector2f {
         if self.ensure_font_size(font, size).is_err() {
             return Vector2f::ZERO;
         }
@@ -401,8 +401,8 @@ impl GraphicsContext for WgpuContext {
         &mut self,
         font: &str,
         text: &str,
-        size: u32,
-        max_width: u32,
+        size: f32,
+        max_width: f32,
     ) -> Vector2f {
         if self.ensure_font_size(font, size).is_err() {
             return Vector2f::ZERO;

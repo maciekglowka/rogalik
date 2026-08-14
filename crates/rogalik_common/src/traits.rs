@@ -128,7 +128,7 @@ pub trait GraphicsContext {
         text: &str,
         position: Vector2f,
         z_index: i32,
-        size: u32,
+        size: f32,
         params: SpriteParams,
     ) -> Result<(), EngineError>;
     /// Queues wrapped multiline text for drawing using a specified font.
@@ -145,8 +145,8 @@ pub trait GraphicsContext {
         text: &str,
         position: Vector2f,
         z_index: i32,
-        size: u32,
-        max_width: u32,
+        size: f32,
+        max_width: f32,
         params: SpriteParams,
     ) -> Result<(), EngineError>;
     /// Queues a custom mesh for drawing.
@@ -192,14 +192,14 @@ pub trait GraphicsContext {
     /// of the font (material) to use for calculation. `text`: The string
     /// whose dimensions are to be measured. `size`: The desired height of
     /// the text. Returns a `Vector2f` representing the width and height.
-    fn text_dimensions(&mut self, font: &str, text: &str, size: u32) -> Vector2f;
+    fn text_dimensions(&mut self, font: &str, text: &str, size: f32) -> Vector2f;
     /// Calculates the dimensions (width and height) a multiline wrapped textbox
     /// would occupy when rendered with a specific font and size. `font`:
     /// The name of the font (material) to use for calculation. `text`: The
     /// string whose dimensions are to be measured. `size`: The desired
     /// height of the text. Returns a `Vector2f` representing the width and
     /// height.
-    fn textbox_dimensions(&mut self, font: &str, text: &str, size: u32, max_width: u32)
+    fn textbox_dimensions(&mut self, font: &str, text: &str, size: f32, max_width: f32)
         -> Vector2f;
     /// Creates a new 2D camera with a specified scale and target position.
     /// Returns a `ResourceId` for the newly created camera.

@@ -59,17 +59,22 @@ impl Font {
 }
 
 pub(crate) struct CharMetric {
-    gap: u32,
+    gap: f32,
 }
 
 pub(crate) struct LineMetrics {
-    gap: u32,
+    gap: f32,
 }
 
 pub(crate) struct FontSize {
     pub(crate) material_id: ResourceId,
     pub(crate) char_metrics: Vec<CharMetric>,
     pub(crate) line_metrics: LineMetrics,
+}
+
+#[inline(always)]
+pub(crate) fn text_key_size(size: f32) -> u32 {
+    (10. * size) as u32
 }
 
 pub(crate) enum FontKind {
@@ -120,7 +125,7 @@ pub(crate) fn get_text_layout(
     assets: &WgpuAssets,
     text: &str,
     font: &Font,
-    size: u32,
+    size: f32,
 ) -> TextLayout {
     calculate_layout(assets, [[text]], font, size, None)
 }
@@ -131,8 +136,8 @@ pub(crate) fn get_textbox_layout(
     assets: &WgpuAssets,
     text: &str,
     font: &Font,
-    size: u32,
-    max_width: u32,
+    size: f32,
+    max_width: f32,
 ) -> TextLayout {
     let lines = text.split('\n').map(|s| s.split_inclusive(' '));
     calculate_layout(assets, lines, font, size, Some(max_width))
@@ -142,8 +147,8 @@ fn calculate_layout<T, U, S>(
     assets: &WgpuAssets,
     text: T,
     font: &Font,
-    size: u32,
-    max_width: Option<u32>,
+    size: f32,
+    max_width: Option<f32>,
 ) -> TextLayout
 where
     T: IntoIterator<Item = U>,
@@ -152,34 +157,37 @@ where
 {
     let (material_id, char_metrics, line_metrics) = match &font.kind {
         FontKind::Bitmap(id) => (*id, None, None),
-        FontKind::Ttf { sizes, .. } => (
-            sizes[&size].material_id,
-            Some(&sizes[&size].char_metrics),
-            Some(&sizes[&size].line_metrics),
-        ),
+        FontKind::Ttf { sizes, .. } => {
+            let size_entry = &sizes[&text_key_size(size)];
+            (
+                size_entry.material_id,
+                Some(&size_entry.char_metrics),
+                Some(&size_entry.line_metrics),
+            )
+        }
     };
     let material = assets.get_material(material_id).unwrap();
     let atlas = material.atlas.as_ref().unwrap();
 
     // Text is anchored top-left (unlike regular sprites).
-    let mut offset = Vector2f::new(0., -(size as f32));
+    let mut offset = Vector2f::new(0., -(size));
     let mut chars = Vec::new();
 
     let char_gap = font
         .character_spacing
-        .map(|s| s * size as f32)
+        .map(|s| s * size)
         .unwrap_or(0.)
         .round();
 
-    let mut line_spacing = font.line_spacing.unwrap_or(1.) * size as f32;
+    let mut line_spacing = font.line_spacing.unwrap_or(1.) * size;
     if let Some(metrics) = line_metrics {
-        line_spacing += metrics.gap as f32;
+        line_spacing += metrics.gap;
     }
 
     // Keep the last gap for width calculation.
     let mut h_gap = char_gap;
 
-    let h = size as f32;
+    let h = size;
 
     let mut text_w: f32 = 0.;
 
@@ -209,7 +217,7 @@ where
                 });
 
                 if let Some(metrics) = char_metrics {
-                    h_gap = char_gap + metrics[sprite_index].gap as f32;
+                    h_gap = char_gap + metrics[sprite_index].gap;
                 }
 
                 word_w += w + h_gap;
@@ -217,7 +225,7 @@ where
 
             let mut shift = false;
             if let Some(max_width) = max_width {
-                if !first_word && offset.x + word_w > max_width as f32 {
+                if !first_word && offset.x + word_w > max_width {
                     // Shift to a next line.
                     for c in chars[word_idx..].iter_mut() {
                         c.offset.x -= offset.x;
@@ -241,12 +249,12 @@ where
         offset.x = 0.;
     }
 
-    let line_gap = line_spacing - size as f32;
+    let line_gap = line_spacing - size;
 
     TextLayout {
         chars,
         width: text_w,
-        height: -offset.y - size as f32 - line_gap,
+        height: -offset.y - size - line_gap,
         material_id,
     }
 }
@@ -363,7 +371,7 @@ pub(crate) fn render_ttf_glyphs(
         ));
 
         char_metrics.push(CharMetric {
-            gap: metrics.advance_width as u32 - metrics.width as u32,
+            gap: metrics.advance_width - metrics.width as f32,
         });
 
         col += 1;
@@ -380,7 +388,7 @@ pub(crate) fn render_ttf_glyphs(
 
     let atlas_params = AtlasParams::Free(atlas_positions);
     let line_metrics = LineMetrics {
-        gap: line_metrics.line_gap as u32,
+        gap: line_metrics.line_gap,
     };
 
     Ok(TtfGlyphs {

@@ -170,8 +170,8 @@ impl Renderer2d {
         assets: &mut WgpuAssets,
         font: &str,
         text: &str,
-        size: u32,
-        max_width: Option<u32>,
+        size: f32,
+        max_width: Option<f32>,
     ) -> Option<Vector2f> {
         let layout = self.text_cache.get(assets, font, text, size, max_width);
         Some(Vector2f::new(layout.width, layout.height))
@@ -184,8 +184,8 @@ impl Renderer2d {
         camera_id: ResourceId,
         position: Vector2f,
         z_index: i32,
-        size: u32,
-        max_width: Option<u32>,
+        size: f32,
+        max_width: Option<f32>,
         params: SpriteParams,
     ) -> Result<(), EngineError> {
         let layout = self
