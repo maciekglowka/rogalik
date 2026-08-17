@@ -1,0 +1,12 @@
+[package]
+name = "examples-basic"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "arkanoid"
+path = "src/arkanoid.rs"
+
+[dependencies]
+rogalik = { path = "../../crates/rogalik" }

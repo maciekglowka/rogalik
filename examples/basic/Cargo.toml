@@ -1,0 +1,24 @@
+[package]
+name = "examples-games"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "font-bitmap"
+path = "src/font_bitmap.rs"
+
+[[bin]]
+name = "font-ttf"
+path = "src/font_ttf.rs"
+
+[[bin]]
+name = "lighting"
+path = "src/lighting.rs"
+
+[[bin]]
+name = "sprite-atlas"
+path = "src/sprite_atlas.rs"
+
+[dependencies]
+rogalik = { path = "../../crates/rogalik" }
