@@ -150,7 +150,7 @@ impl GraphicsSetup for WgpuContext {
     }
     fn update_time(&mut self, delta: f32) {
         self.time += delta;
-        self.time = self.time % MAX_TIME;
+        self.time %= MAX_TIME;
     }
     fn update_assets(&mut self) {
         if let Ok(state) = self.surface_state.lock() {
@@ -538,6 +538,8 @@ async fn create_surface_state(
     } else {
         surface_caps.present_modes[0]
     };
+    // TEMP
+    let present_mode = wgpu::PresentMode::Mailbox;
     log::debug!("WGPU present mode: {:?}", present_mode);
 
     // COPY_SRC needed only for recordings
