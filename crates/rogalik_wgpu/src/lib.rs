@@ -538,8 +538,6 @@ async fn create_surface_state(
     } else {
         surface_caps.present_modes[0]
     };
-    // TEMP
-    let present_mode = wgpu::PresentMode::Mailbox;
     log::debug!("WGPU present mode: {:?}", present_mode);
 
     // COPY_SRC needed only for recordings

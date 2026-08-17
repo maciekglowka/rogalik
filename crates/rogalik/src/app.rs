@@ -168,11 +168,15 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
                 // let start = std::time::Instant::now();
                 self.context.time.update();
 
-                // TEMP
-                self.window
-                    .as_mut()
-                    .unwrap()
-                    .set_title(&self.context.time.fps().to_string());
+                // // TEMP
+                // self.context.graphics.draw_text(
+                //     "pixel",
+                //     &format!("{}", self.context.time.fps()),
+                //     rogalik_math::vectors::vector2::Vector2f::ZERO,
+                //     5000,
+                //     18.,
+                //     rogalik_common::SpriteParams::default(),
+                // );
 
                 self.context
                     .graphics
