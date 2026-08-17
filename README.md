@@ -1,7 +1,5 @@
 A simple framework for 2d pixel games.
 
-**Very early release ;)**
-
 ## Supported platforms
 
 - Windows
@@ -23,20 +21,18 @@ A simple framework for 2d pixel games.
 - pixel perfect rendering pass
 - custom sprite shaders (no custom uniform buffers though)
 - postprocessing shaders (also no custom uniforms)
-- limited text rendering (currently only ASCII table style bitmap fonts)
+- text rendering (bitmap and ttf fonts) 
 - basic audio
 
 ## Examples
 
-You can find some basic usage and simple game examples in the main crate folder:
-<https://github.com/maciekglowka/rogalik/tree/main/crates/rogalik/examples>
+Examples are provided as separate crates in the `examples` directory.
 
-## Todo
+In order to run them execute e.g.:
 
-- proper font rendering (ttf)
-- documentation ;)
-- examples
-- `fixed_update` method
+```
+cargo run --bin sprite-atlas
+```
 
 ## Games created with Rogalik
 

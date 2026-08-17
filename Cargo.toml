@@ -1,5 +1,8 @@
 [workspace]
-members = ["crates/*"]
+members = [
+  "crates/*",
+  "examples/*"
+]
 resolver = "2"
 
 [workspace.metadata.release]
