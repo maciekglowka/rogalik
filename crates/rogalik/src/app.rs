@@ -167,6 +167,13 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
             WindowEvent::RedrawRequested => {
                 // let start = std::time::Instant::now();
                 self.context.time.update();
+
+                // TEMP
+                self.window
+                    .as_mut()
+                    .unwrap()
+                    .set_title(&self.context.time.fps().to_string());
+
                 self.context
                     .graphics
                     .update_time(self.context.time.get_delta());

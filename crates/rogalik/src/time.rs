@@ -9,6 +9,9 @@ pub struct Time {
     // Game engine start ts
     start: Instant,
     delta: f32,
+    fps: f32,
+    fps_frames: usize,
+    last_fps_update: Instant,
     timers: HashMap<ResourceId<TimerId>, Timer>,
     next_timer_id: usize,
     frame_start: Instant,
@@ -18,6 +21,9 @@ impl Time {
         Self {
             start: Instant::now(),
             delta: 1.0,
+            fps: 0.,
+            fps_frames: 0,
+            last_fps_update: Instant::now(),
             timers: HashMap::default(),
             next_timer_id: 0,
             frame_start: Instant::now(),
@@ -26,6 +32,9 @@ impl Time {
     pub fn update(&mut self) {
         self.delta = self.frame_start.elapsed();
         self.frame_start = Instant::now();
+
+        self.update_fps();
+
         for timer in self.timers.values_mut() {
             timer.update(self.delta);
         }
@@ -49,6 +58,19 @@ impl Time {
     /// Returns the amount of seconds ca. since the game start.
     pub fn elapsed(&self) -> f32 {
         self.start.elapsed()
+    }
+    /// Returns current frame FPS value.
+    pub fn fps(&self) -> f32 {
+        self.fps
+    }
+    /// Update internal fps counter.
+    fn update_fps(&mut self) {
+        self.fps_frames += 1;
+        if self.last_fps_update.elapsed() > 1. {
+            self.fps = self.fps_frames as f32 / self.last_fps_update.elapsed();
+            self.fps_frames = 0;
+            self.last_fps_update = Instant::now();
+        }
     }
 }
 
