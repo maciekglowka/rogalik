@@ -25,11 +25,23 @@ impl SpriteAtlas {
         cols: usize,
         padding: Option<(u32, u32)>,
     ) -> Self {
-        let (sp_w, sp_h) =
-            grid_sprite_pixel_size(texture_size.0, texture_size.1, rows, cols, padding);
+        let (sp_w, sp_h) = match padding {
+            None => (texture_size.0 / cols as u32, texture_size.1 / rows as u32),
+            Some((x, y)) => {
+                let grid_width = (texture_size.0 + x) / cols as u32;
+                let grid_height = (texture_size.1 + y) / rows as u32;
+                (grid_width - x, grid_height - x)
+            }
+        };
 
-        let u_step = 1.0 / cols as f32;
-        let v_step = 1.0 / rows as f32;
+        let (u_step, v_step) = match padding {
+            None => (1. / cols as f32, 1. / rows as f32),
+            Some((x, y)) => (
+                (sp_w + x) as f32 / texture_size.0 as f32,
+                (sp_h + y) as f32 / texture_size.1 as f32,
+            ),
+        };
+
         let u_size = sp_w as f32 / texture_size.0 as f32;
         let v_size = sp_h as f32 / texture_size.1 as f32;
 
@@ -223,23 +235,6 @@ impl SpriteAtlas {
         }
 
         (vertices, indices)
-    }
-}
-
-/// Calculate single sprite size for an even-grid atlas.
-fn grid_sprite_pixel_size(
-    texture_w: u32,
-    texture_h: u32,
-    rows: usize,
-    cols: usize,
-    padding: Option<(u32, u32)>,
-) -> (u32, u32) {
-    let grid_width = texture_w / cols as u32;
-    let grid_height = texture_h / rows as u32;
-
-    match padding {
-        None => (grid_width, grid_height),
-        Some((x, y)) => (grid_width - x, grid_height - y),
     }
 }
 

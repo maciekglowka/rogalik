@@ -3,7 +3,6 @@ use std::f32;
 use rogalik::prelude::*;
 
 const SPRITE_SIZE: f32 = 8.;
-
 const PIXEL_SCALE: u32 = 4;
 
 // Main game object.
@@ -14,17 +13,17 @@ impl Game for GameState {
         let diffuse_texture = Some(
             context
                 .graphics
-                .load_texture("examples/colored_tilemap_packed.png"),
+                .load_texture("examples/colored_tilemap.png"),
         );
 
         // Create sprite material
         context.graphics.load_material(
             "sprites",
             MaterialParams {
-                atlas: Some(AtlasParams {
+                atlas: Some(AtlasParams::Grid {
                     cols: 16,
                     rows: 10,
-                    padding: None,
+                    padding: Some((1, 1)),
                 }),
                 diffuse_texture,
                 ..Default::default()
