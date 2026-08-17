@@ -3,13 +3,13 @@ use std::collections::HashMap;
 #[cfg(feature = "serialize")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use rogalik_common::ResourceId;
+use rogalik_common::{structs::TimerId, ResourceId};
 
 pub struct Time {
     // Game engine start ts
     start: Instant,
     delta: f32,
-    timers: HashMap<ResourceId, Timer>,
+    timers: HashMap<ResourceId<TimerId>, Timer>,
     next_timer_id: usize,
     frame_start: Instant,
 }
@@ -30,20 +30,20 @@ impl Time {
             timer.update(self.delta);
         }
     }
-    pub fn add_timer(&mut self, tick: f32) -> ResourceId {
+    pub fn add_timer(&mut self, tick: f32) -> ResourceId<TimerId> {
         let timer = Timer::new(tick);
-        let id = ResourceId(self.next_timer_id);
+        let id = ResourceId::new(self.next_timer_id);
         self.timers.insert(id, timer);
         self.next_timer_id += 1;
         id
     }
-    pub fn remove_timer(&mut self, id: ResourceId) {
+    pub fn remove_timer(&mut self, id: ResourceId<TimerId>) {
         self.timers.remove(&id);
     }
     pub fn get_delta(&self) -> f32 {
         self.delta
     }
-    pub fn get_timer(&self, id: ResourceId) -> Option<&Timer> {
+    pub fn get_timer(&self, id: ResourceId<TimerId>) -> Option<&Timer> {
         self.timers.get(&id)
     }
     /// Returns the amount of seconds ca. since the game start.
@@ -61,7 +61,7 @@ impl Timer {
     fn new(tick: f32) -> Self {
         Timer {
             state: 0.,
-            tick: tick,
+            tick,
             finished: false,
         }
     }

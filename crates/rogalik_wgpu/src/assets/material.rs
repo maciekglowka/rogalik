@@ -1,4 +1,7 @@
-use rogalik_common::{AtlasParams, EngineError, MaterialParams, ResourceId};
+use rogalik_common::{
+    structs::{ShaderId, TextureId},
+    AtlasParams, EngineError, MaterialParams, ResourceId,
+};
 
 use super::{atlas::SpriteAtlas, texture::TextureData};
 use crate::utils::{get_wgpu_address_mode, get_wgpu_filter_mode};
@@ -9,16 +12,16 @@ pub struct Material {
     pub atlas: Option<SpriteAtlas>,
     atlas_params: Option<AtlasParams>,
     pub bind_group: Option<wgpu::BindGroup>,
-    pub diffuse_texture_id: ResourceId,
-    pub normal_texture_id: ResourceId,
+    pub diffuse_texture_id: ResourceId<TextureId>,
+    pub normal_texture_id: ResourceId<TextureId>,
     filter_mode: wgpu::FilterMode,
-    pub shader_id: ResourceId,
+    pub shader_id: ResourceId<ShaderId>,
 }
 impl Material {
     pub fn new(
-        diffuse_texture_id: ResourceId,
-        normal_texture_id: ResourceId,
-        shader_id: ResourceId,
+        diffuse_texture_id: ResourceId<TextureId>,
+        normal_texture_id: ResourceId<TextureId>,
+        shader_id: ResourceId<ShaderId>,
         material_params: MaterialParams,
     ) -> Self {
         let address_mode = get_wgpu_address_mode(material_params.repeat);
@@ -36,7 +39,7 @@ impl Material {
     }
     pub fn create_wgpu_data(
         &mut self,
-        textures: &Vec<TextureData>,
+        textures: &[TextureData],
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         bind_group_layout: &wgpu::BindGroupLayout,
@@ -49,8 +52,8 @@ impl Material {
             .ok_or(EngineError::ResourceNotFound)?;
 
         self.bind_group = Some(get_material_bind_group(
-            &diffuse_texture,
-            &normal_texture,
+            diffuse_texture,
+            normal_texture,
             device,
             queue,
             bind_group_layout,
@@ -58,16 +61,26 @@ impl Material {
             self.filter_mode,
         ));
 
-        if let Some(atlas_params) = self.atlas_params {
-            self.atlas = Some(SpriteAtlas::new(
-                diffuse_texture.dim,
-                atlas_params.rows,
-                atlas_params.cols,
-                atlas_params.padding,
-            ))
-        } else {
-            // Create 1x1 atlas for compatibility.
-            self.atlas = Some(SpriteAtlas::new(diffuse_texture.dim, 1, 1, None));
+        match &self.atlas_params {
+            None => {
+                // Create 1x1 atlas for compatibility.
+                self.atlas = Some(SpriteAtlas::from_grid(diffuse_texture.dim, 1, 1, None));
+            }
+            Some(AtlasParams::Grid {
+                cols,
+                rows,
+                padding,
+            }) => {
+                self.atlas = Some(SpriteAtlas::from_grid(
+                    diffuse_texture.dim,
+                    *rows,
+                    *cols,
+                    *padding,
+                ))
+            }
+            Some(AtlasParams::Free(entries)) => {
+                self.atlas = Some(SpriteAtlas::from_entries(entries, diffuse_texture.dim));
+            }
         }
 
         Ok(())

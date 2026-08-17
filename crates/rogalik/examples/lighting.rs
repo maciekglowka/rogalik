@@ -26,11 +26,6 @@ impl Game for GameState {
         context.graphics.load_material(
             "sprites",
             MaterialParams {
-                atlas: Some(AtlasParams {
-                    cols: 1,
-                    rows: 1,
-                    padding: None,
-                }),
                 diffuse_texture,
                 normal_texture,
                 shader: context

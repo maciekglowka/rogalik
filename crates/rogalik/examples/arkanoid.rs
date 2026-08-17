@@ -58,9 +58,9 @@ impl Game for GameState {
         );
 
         // Load bitmap font
-        context
-            .graphics
-            .load_font("pixel", "examples/font.png", 16, 16, Some((11., 7.)), None);
+        // context
+        //     .graphics
+        //     .load_font("pixel", "examples/font.png", 16, 16, Some((11., 7.)), None);
 
         // Create camera
         context.graphics.create_camera(1., Vector2f::ZERO);
@@ -156,7 +156,7 @@ impl Scene for EndScene {
             &self.0,
             center - Vector2f::new(0.5 * width, 0.),
             10,
-            9.,
+            9,
             SpriteParams::default(),
         );
 
@@ -289,7 +289,7 @@ fn draw_status(game: &GameState, context: &mut Context) {
         &"*".repeat(game.lives),
         bounds.0,
         10,
-        9.,
+        9,
         SpriteParams::default(),
     );
 }

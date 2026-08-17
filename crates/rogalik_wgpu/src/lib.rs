@@ -5,7 +5,9 @@ use std::sync::{
 use winit::window::Window;
 
 use rogalik_common::{
-    traits::GraphicsSetup, BuiltInShader, EngineError, GraphicsContext, ResourceId, SpriteParams,
+    structs::{CameraId, ShaderId, TextureId},
+    traits::GraphicsSetup,
+    AtlasParams, BuiltInShader, EngineError, FontParams, GraphicsContext, ResourceId, SpriteParams,
 };
 use rogalik_math::vectors::Vector2f;
 
@@ -32,7 +34,7 @@ struct SurfaceState {
 
 pub struct WgpuContext {
     assets: assets::WgpuAssets,
-    current_camera_id: ResourceId,
+    current_camera_id: ResourceId<CameraId>,
     clear_color: wgpu::Color,
     renderer2d: renderer2d::Renderer2d,
     rendering_resolution: Option<(u32, u32)>,
@@ -43,7 +45,7 @@ impl WgpuContext {
     pub fn new(asset_store: Arc<Mutex<rogalik_assets::AssetStore>>) -> Self {
         Self {
             assets: assets::WgpuAssets::new(asset_store),
-            current_camera_id: ResourceId::default(),
+            current_camera_id: ResourceId::new(0),
             clear_color: wgpu::Color::BLACK,
             renderer2d: renderer2d::Renderer2d::new(),
             rendering_resolution: None,
@@ -114,6 +116,22 @@ impl WgpuContext {
     fn handle_surface_refresh(&mut self) {
         if SURFACE_REFRESH.load(Ordering::Relaxed) {
             self.post_surface_state();
+        }
+    }
+    fn ensure_font_size(&mut self, font: &str, size: f32) -> Result<(), EngineError> {
+        match self.assets.has_font_size(font, size) {
+            Ok(true) => Ok(()),
+            Ok(false) => {
+                let state = self
+                    .surface_state
+                    .lock()
+                    .map_err(|_| EngineError::GraphicsInternalError)?;
+                let state = state.as_ref().ok_or(EngineError::GraphicsNotReady)?;
+
+                self.assets
+                    .create_font_size(font, size, &state.device, &state.queue)
+            }
+            Err(e) => Err(e),
         }
     }
 }
@@ -219,28 +237,26 @@ impl GraphicsContext for WgpuContext {
         }
         self.resize_cameras();
     }
-    fn load_texture(&mut self, path: &str) -> ResourceId {
+    fn load_texture(&mut self, path: &str) -> ResourceId<TextureId> {
         self.assets.texture_from_path(path)
     }
     fn load_material(&mut self, name: &str, params: rogalik_common::MaterialParams) {
         self.assets.create_material(name, params);
         // TODO if self.surface_state build bind_group
     }
-    fn load_shader(&mut self, kind: rogalik_common::ShaderKind, path: &str) -> ResourceId {
+    fn load_shader(
+        &mut self,
+        kind: rogalik_common::ShaderKind,
+        path: &str,
+    ) -> ResourceId<ShaderId> {
         // TODO if self.surface_state build pipeline
         self.assets.create_shader(kind, path)
     }
-    fn load_font(
-        &mut self,
-        name: &str,
-        path: &str,
-        rows: usize,
-        cols: usize,
-        padding: Option<(f32, f32)>,
-        shader: Option<ResourceId>,
-    ) {
-        self.assets
-            .load_font(name, path, rows, cols, padding, shader);
+    fn load_font(&mut self, name: &str, path: &str, params: FontParams) {
+        self.assets.load_font(name, path, params);
+    }
+    fn load_font_atlas(&mut self, name: &str, path: &str, atlas: AtlasParams, params: FontParams) {
+        self.assets.load_font_atlas(name, path, atlas, params);
     }
     fn add_post_process(&mut self, name: &str, params: rogalik_common::PostProcessParams) {
         self.assets.create_post_process(name, params);
@@ -292,15 +308,40 @@ impl GraphicsContext for WgpuContext {
         z_index: i32,
         size: f32,
         params: SpriteParams,
-    ) -> Result<(), EngineError> {
+    ) -> Result<Vector2f, EngineError> {
+        self.ensure_font_size(font, size)?;
         self.renderer2d.draw_text(
-            &self.assets,
+            &mut self.assets,
             font,
             text,
             self.current_camera_id,
             position,
             z_index,
             size,
+            None,
+            params,
+        )
+    }
+    fn draw_textbox(
+        &mut self,
+        font: &str,
+        text: &str,
+        position: Vector2f,
+        z_index: i32,
+        size: f32,
+        max_width: f32,
+        params: SpriteParams,
+    ) -> Result<Vector2f, EngineError> {
+        self.ensure_font_size(font, size)?;
+        self.renderer2d.draw_text(
+            &mut self.assets,
+            font,
+            text,
+            self.current_camera_id,
+            position,
+            z_index,
+            size,
+            Some(max_width),
             params,
         )
     }
@@ -362,17 +403,36 @@ impl GraphicsContext for WgpuContext {
     ) -> Result<(), EngineError> {
         self.renderer2d.add_light(position, radius, color, falloff)
     }
-    fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f {
-        self.assets
-            .get_text_dimensions(font, text, size)
+    fn text_dimensions(&mut self, font: &str, text: &str, size: f32) -> Vector2f {
+        if self.ensure_font_size(font, size).is_err() {
+            return Vector2f::ZERO;
+        }
+
+        self.renderer2d
+            .get_text_dimensions(&mut self.assets, font, text, size, None)
             .unwrap_or(Vector2f::ZERO)
     }
-    fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId {
+    fn textbox_dimensions(
+        &mut self,
+        font: &str,
+        text: &str,
+        size: f32,
+        max_width: f32,
+    ) -> Vector2f {
+        if self.ensure_font_size(font, size).is_err() {
+            return Vector2f::ZERO;
+        }
+
+        self.renderer2d
+            .get_text_dimensions(&mut self.assets, font, text, size, Some(max_width))
+            .unwrap_or(Vector2f::ZERO)
+    }
+    fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId<CameraId> {
         let (vw, vh, rw, rh) = self.get_current_resolutions();
         self.assets
             .create_camera(vw as f32, vh as f32, rw as f32, rh as f32, scale, target)
     }
-    fn set_camera(&mut self, id: &ResourceId) {
+    fn set_camera(&mut self, id: &ResourceId<CameraId>) {
         self.current_camera_id = *id;
     }
     fn get_current_camera(&self) -> &dyn rogalik_common::Camera {
@@ -381,13 +441,16 @@ impl GraphicsContext for WgpuContext {
     fn get_current_camera_mut(&mut self) -> &mut dyn rogalik_common::Camera {
         self.assets.get_camera_mut(self.current_camera_id).unwrap()
     }
-    fn get_camera(&self, id: &ResourceId) -> Option<&dyn rogalik_common::Camera> {
+    fn get_camera(&self, id: &ResourceId<CameraId>) -> Option<&dyn rogalik_common::Camera> {
         Some(self.assets.get_camera(*id)?)
     }
-    fn get_camera_mut(&mut self, id: &ResourceId) -> Option<&mut dyn rogalik_common::Camera> {
+    fn get_camera_mut(
+        &mut self,
+        id: &ResourceId<CameraId>,
+    ) -> Option<&mut dyn rogalik_common::Camera> {
         Some(self.assets.get_camera_mut(*id)?)
     }
-    fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId> {
+    fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId<ShaderId>> {
         self.assets.builtin_shaders.get(&shader).copied()
     }
     fn toggle_recording(&mut self) {
@@ -400,7 +463,13 @@ impl GraphicsContext for WgpuContext {
     }
     fn take_screenshot(&mut self) -> Option<Vec<u8>> {
         #[cfg(feature = "capture")]
-        self.renderer2d.recorder.take_screenshot()
+        {
+            self.renderer2d.recorder.take_screenshot()
+        }
+        #[cfg(not(feature = "capture"))]
+        {
+            None
+        }
     }
 }
 

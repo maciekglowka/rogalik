@@ -2,7 +2,10 @@ use rogalik_math::vectors::Vector2f;
 use std::sync::Arc;
 use winit::window::Window;
 
-use crate::structs::{BuiltInShader, Color, EngineError, ResourceId, ShaderKind, SpriteParams};
+use crate::structs::{
+    BuiltInShader, CameraId, Color, EngineError, ResourceId, ShaderId, ShaderKind, SpriteParams,
+    TextureId,
+};
 
 pub trait GraphicsSetup {
     /// Creates and initializes the graphics context and surface.
@@ -46,7 +49,7 @@ pub trait GraphicsContext {
     fn set_rendering_resolution(&mut self, w: u32, h: u32);
     /// Loads a texture from the given file path and returns its `ResourceId`.
     /// `path`: The file path to the texture image.
-    fn load_texture(&mut self, path: &str) -> ResourceId;
+    fn load_texture(&mut self, path: &str) -> ResourceId<TextureId>;
     /// Loads a material with the given name and parameters.
     /// Materials define how objects are rendered, including their textures and
     /// shaders. `name`: A unique identifier for the material.
@@ -56,23 +59,25 @@ pub trait GraphicsContext {
     /// Loads a shader from the given file path and returns its `ResourceId`.
     /// `kind`: The type of shader (e.g., `Sprite`, `PostProcess`).
     /// `path`: The file path to the shader source code (WGSL).
-    fn load_shader(&mut self, kind: ShaderKind, path: &str) -> ResourceId;
+    fn load_shader(&mut self, kind: ShaderKind, path: &str) -> ResourceId<ShaderId>;
+    /// Loads a font from a TTF file.
+    /// `name`: A unique identifier for the font.
+    /// `path`: The file path to the font texture atlas.
+    /// `params`:
+    fn load_font(&mut self, name: &str, path: &str, params: crate::FontParams);
     /// Loads a font from a texture atlas, allowing text rendering.
     /// `name`: A unique identifier for the font.
     /// `path`: The file path to the font texture atlas.
     /// `rows`: The number of rows in the font atlas.
     /// `cols`: The number of columns in the font atlas.
     /// `padding`: Optional padding around each character in the atlas (x, y).
-    /// `shader`: Optional `ResourceId` of a custom shader to use for text
-    /// rendering.
-    fn load_font(
+    /// `params`:
+    fn load_font_atlas(
         &mut self,
         name: &str,
         path: &str,
-        rows: usize,
-        cols: usize,
-        padding: Option<(f32, f32)>,
-        shader: Option<ResourceId>,
+        atlas: crate::AtlasParams,
+        params: crate::FontParams,
     );
     /// Adds a post-processing effect to be applied after the main scene
     /// rendering. `name`: A unique identifier for the post-process effect.
@@ -112,7 +117,8 @@ pub trait GraphicsContext {
         size: Vector2f,
         params: SpriteParams,
     ) -> Result<(), EngineError>;
-    /// Queues text for drawing using a specified font.
+    /// Queues singleline text for drawing using a specified font.
+    ///
     /// `font`: The name of the loaded font (material) to use.
     /// `text`: The string to render.
     /// `position`: The world position of the first character (bottom-left
@@ -120,6 +126,8 @@ pub trait GraphicsContext {
     /// rendered on top). `size`: The desired height of the text in world
     /// units. `params`: Additional sprite parameters applied to each
     /// character (e.g., color, flip).
+    ///
+    /// On success text dimensions are returned.
     fn draw_text(
         &mut self,
         font: &str,
@@ -128,7 +136,28 @@ pub trait GraphicsContext {
         z_index: i32,
         size: f32,
         params: SpriteParams,
-    ) -> Result<(), EngineError>;
+    ) -> Result<Vector2f, EngineError>;
+    /// Queues wrapped multiline text for drawing using a specified font.
+    ///
+    /// `font`: The name of the loaded font (material) to use.
+    /// `text`: The string to render.
+    /// `position`: The world position of the first character (bottom-left
+    /// corner). `z_index`: The Z-order for rendering (higher values are
+    /// rendered on top). `size`: The desired height of the text in world
+    /// units. `params`: Additional sprite parameters applied to each
+    /// character (e.g., color, flip).
+    ///
+    /// On success text dimensions are returned.
+    fn draw_textbox(
+        &mut self,
+        font: &str,
+        text: &str,
+        position: Vector2f,
+        z_index: i32,
+        size: f32,
+        max_width: f32,
+        params: SpriteParams,
+    ) -> Result<Vector2f, EngineError>;
     /// Queues a custom mesh for drawing.
     /// `material`: The name of the material to use for rendering the mesh.
     /// `vertices`: A slice of `Vector2f` representing the positions of the mesh
@@ -167,25 +196,33 @@ pub trait GraphicsContext {
     /// imprecission) the pass is not processed at all in order to save
     /// hardware resources.
     fn set_postprocess_strength(&mut self, name: &str, value: f32) -> Result<(), EngineError>;
-    /// Calculates the dimensions (width and height) a given text string would
+    /// Calculates the dimensions (width and height) a singleline text would
     /// occupy when rendered with a specific font and size. `font`: The name
     /// of the font (material) to use for calculation. `text`: The string
     /// whose dimensions are to be measured. `size`: The desired height of
     /// the text. Returns a `Vector2f` representing the width and height.
-    fn text_dimensions(&self, font: &str, text: &str, size: f32) -> Vector2f;
+    fn text_dimensions(&mut self, font: &str, text: &str, size: f32) -> Vector2f;
+    /// Calculates the dimensions (width and height) a multiline wrapped textbox
+    /// would occupy when rendered with a specific font and size. `font`:
+    /// The name of the font (material) to use for calculation. `text`: The
+    /// string whose dimensions are to be measured. `size`: The desired
+    /// height of the text. Returns a `Vector2f` representing the width and
+    /// height.
+    fn textbox_dimensions(&mut self, font: &str, text: &str, size: f32, max_width: f32)
+        -> Vector2f;
     /// Creates a new 2D camera with a specified scale and target position.
     /// Returns a `ResourceId` for the newly created camera.
     /// `scale`: The zoom level of the camera (e.g., 1.0 is no zoom).
     /// `target`: The initial world position that the camera will center on.
-    fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId;
+    fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId<CameraId>;
     /// Sets the currently active camera by its `ResourceId`.
     /// All subsequent draw calls will use this camera's view.
     /// `id`: The `ResourceId` of the camera to activate.
-    fn set_camera(&mut self, id: &ResourceId);
+    fn set_camera(&mut self, id: &ResourceId<CameraId>);
     /// Retrieves an immutable reference to a camera by its `ResourceId`.
     /// Returns `None` if the camera does not exist.
     /// `id`: The `ResourceId` of the camera to retrieve.
-    fn get_camera(&self, id: &ResourceId) -> Option<&dyn Camera>;
+    fn get_camera(&self, id: &ResourceId<CameraId>) -> Option<&dyn Camera>;
     /// Retrieves an immutable reference to the currently active camera.
     fn get_current_camera(&self) -> &dyn Camera;
     /// Retrieves a mutable reference to the currently active camera.
@@ -193,12 +230,12 @@ pub trait GraphicsContext {
     /// Retrieves a mutable reference to a camera by its `ResourceId`.
     /// Returns `None` if the camera does not exist.
     /// `id`: The `ResourceId` of the camera to retrieve.
-    fn get_camera_mut(&mut self, id: &ResourceId) -> Option<&mut dyn Camera>;
+    fn get_camera_mut(&mut self, id: &ResourceId<CameraId>) -> Option<&mut dyn Camera>;
     /// Retrieves the `ResourceId` of a built-in shader.
     /// Returns `None` if the shader is not found.
     /// `shader`: The `BuiltInShader` enum variant identifying the desired
     /// shader.
-    fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId>;
+    fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId<ShaderId>>;
     fn toggle_recording(&mut self);
     fn request_screenshot(&mut self);
     fn take_screenshot(&mut self) -> Option<Vec<u8>>;

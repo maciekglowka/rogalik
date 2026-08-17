@@ -1,56 +1,93 @@
 use rogalik_math::vectors::Vector2f;
 
-use crate::structs::Vertex;
-use rogalik_common::SpriteParams;
+use crate::structs::{Quad, Vertex};
+use rogalik_common::{structs::AtlasPosition, SpriteParams};
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct AtlasEntry {
+    pub(crate) u: f32,
+    pub(crate) u_size: f32,
+    pub(crate) v: f32,
+    pub(crate) v_size: f32,
+    pub(crate) w: u32,
+    pub(crate) h: u32,
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct SpriteAtlas {
-    cols: usize,
-    pub u_step: f32,
-    pub v_step: f32,
-    u_size: f32,
-    v_size: f32,
-    sprite_w: f32,
-    sprite_h: f32,
+    entries: Vec<AtlasEntry>,
+    pub(crate) texture_size: (u32, u32),
 }
 impl SpriteAtlas {
-    pub fn new(
+    pub fn from_grid(
         texture_size: (u32, u32),
         rows: usize,
         cols: usize,
-        padding: Option<(f32, f32)>,
+        padding: Option<(u32, u32)>,
     ) -> Self {
-        let (sp_w, sp_h) = sprite_pixel_size(texture_size.0, texture_size.1, rows, cols, padding);
+        let (sp_w, sp_h) =
+            grid_sprite_pixel_size(texture_size.0, texture_size.1, rows, cols, padding);
+
+        let u_step = 1.0 / cols as f32;
+        let v_step = 1.0 / rows as f32;
+        let u_size = sp_w as f32 / texture_size.0 as f32;
+        let v_size = sp_h as f32 / texture_size.1 as f32;
+
+        let mut entries = vec![];
+        for row in 0..rows {
+            for col in 0..cols {
+                entries.push(AtlasEntry {
+                    u: col as f32 * u_step,
+                    u_size,
+                    v: row as f32 * v_step,
+                    v_size,
+                    w: sp_w,
+                    h: sp_h,
+                });
+            }
+        }
+
         Self {
-            cols,
-            u_step: 1.0 / cols as f32,
-            v_step: 1.0 / rows as f32,
-            u_size: sp_w / texture_size.0 as f32,
-            v_size: sp_h / texture_size.1 as f32,
-            sprite_w: sp_w,
-            sprite_h: sp_h,
+            entries,
+            texture_size,
         }
     }
-    pub fn get_sprite_size(&self) -> (f32, f32) {
-        (self.sprite_w, self.sprite_h)
+    pub(crate) fn from_entries(entries: &[AtlasPosition], texture_size: (u32, u32)) -> Self {
+        let entries = entries
+            .iter()
+            .map(|e| AtlasEntry {
+                w: e.w,
+                h: e.h,
+                u: e.x as f32 / texture_size.0 as f32,
+                v: e.y as f32 / texture_size.1 as f32,
+                u_size: e.w as f32 / texture_size.0 as f32,
+                v_size: e.h as f32 / texture_size.1 as f32,
+            })
+            .collect();
+
+        Self {
+            entries,
+            texture_size,
+        }
     }
+    pub(crate) fn get_entry(&self, index: usize) -> Option<&AtlasEntry> {
+        self.entries.get(index)
+    }
+
     pub fn get_sprite(
         &self,
         index: usize,
         position: Vector2f,
         size: Vector2f,
         params: SpriteParams,
-    ) -> ([Vertex; 4], [u16; 6]) {
-        let row = index / self.cols;
-        let col = index % self.cols;
-        let u = self.u_step * col as f32;
-        let v = self.v_step * row as f32;
+    ) -> Quad {
+        let entry = &self.entries[index];
 
         let color = params.color.as_srgb();
-        let l = u;
-        let r = u + self.u_size;
-        let b = v + self.v_size;
-        let t = v;
+        let l = entry.u;
+        let r = entry.u + entry.u_size;
+        let b = entry.v + entry.v_size;
+        let t = entry.v;
 
         let mut uvs = [[l, b], [r, b], [r, t], [l, t]];
 
@@ -95,12 +132,12 @@ impl SpriteAtlas {
                 tex_coords: uvs[3],
             },
         ];
-        if let Some(rotate) = params.rotate {
+        if params.rotate != 0. {
             // not tested for performance :)
             // perhaps should be moved to the shader
             let cx = position.x + 0.5 * size.x;
             let cy = position.y + 0.5 * size.y;
-            rotate_verts(&mut vertices, rotate, cx, cy);
+            rotate_verts(&mut vertices, params.rotate, cx, cy);
         }
         let indices = [0, 1, 2, 0, 2, 3];
         (vertices, indices)
@@ -113,33 +150,44 @@ impl SpriteAtlas {
         size: Vector2f,
         params: SpriteParams,
     ) -> ([Vertex; 16], [u16; 54]) {
-        let row = index / self.cols;
-        let col = index % self.cols;
-        let u = self.u_step * col as f32;
-        let v = self.v_step * row as f32;
+        let entry = &self.entries[index];
 
         let color = params.color.as_srgb();
 
-        let (slice_dim, base_size) = params.slice.unwrap();
+        let slice_dim = params.slice.unwrap();
 
-        let ratio_w = slice_dim as f32 / self.sprite_w;
-        let ratio_h = slice_dim as f32 / self.sprite_h;
-        let u_slice = ratio_w * self.u_size;
-        let v_slice = ratio_h * self.v_size;
-        let w_slice = ratio_w * base_size.x;
-        let h_slice = ratio_h * base_size.y;
-        let mut us = [u, u + u_slice, u + self.u_size - u_slice, u + self.u_size];
-        let mut vs = [v + self.v_size, v + self.v_size - v_slice, v + v_slice, v];
+        let sprite_w = self.texture_size.0 as f32 * entry.u_size;
+        let sprite_h = self.texture_size.1 as f32 * entry.v_size;
+
+        let ratio_w = slice_dim as f32 / sprite_w;
+        let ratio_h = slice_dim as f32 / sprite_h;
+
+        let u_slice = ratio_w * entry.u_size;
+        let v_slice = ratio_h * entry.v_size;
+
+        let mut us = [
+            entry.u,
+            entry.u + u_slice,
+            entry.u + entry.u_size - u_slice,
+            entry.u + entry.u_size,
+        ];
+        let mut vs = [
+            entry.v + entry.v_size,
+            entry.v + entry.v_size - v_slice,
+            entry.v + v_slice,
+            entry.v,
+        ];
+
         let xs = [
             position.x,
-            position.x + w_slice,
-            position.x + size.x - w_slice,
+            position.x + slice_dim as f32,
+            position.x + size.x - slice_dim as f32,
             position.x + size.x,
         ];
         let ys = [
             position.y,
-            position.y + h_slice,
-            position.y + size.y - h_slice,
+            position.y + slice_dim as f32,
+            position.y + size.y - slice_dim as f32,
             position.y + size.y,
         ];
 
@@ -168,25 +216,26 @@ impl SpriteAtlas {
             3, 7,
         ];
 
-        if let Some(rotate) = params.rotate {
+        if params.rotate != 0. {
             let cx = position.x + 0.5 * size.x;
             let cy = position.y + 0.5 * size.y;
-            rotate_verts(&mut vertices, rotate, cx, cy);
+            rotate_verts(&mut vertices, params.rotate, cx, cy);
         }
 
         (vertices, indices)
     }
 }
 
-pub fn sprite_pixel_size(
+/// Calculate single sprite size for an even-grid atlas.
+fn grid_sprite_pixel_size(
     texture_w: u32,
     texture_h: u32,
     rows: usize,
     cols: usize,
-    padding: Option<(f32, f32)>,
-) -> (f32, f32) {
-    let grid_width = (texture_w as f32) / (cols as f32);
-    let grid_height = (texture_h as f32) / (rows as f32);
+    padding: Option<(u32, u32)>,
+) -> (u32, u32) {
+    let grid_width = texture_w / cols as u32;
+    let grid_height = texture_h / rows as u32;
 
     match padding {
         None => (grid_width, grid_height),

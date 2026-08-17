@@ -174,6 +174,7 @@ pub(crate) fn spawn_remote_controller(
                             log::error!("Cannot send remote response: {e}. Disconnecting");
                             break;
                         };
+                        log::debug!("Screenshot response sent");
                         idle = false;
                         state.expects_screenshot.store(false, Ordering::Relaxed);
                     }

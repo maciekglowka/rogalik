@@ -5,9 +5,19 @@ struct GameState;
 impl Game for GameState {
     fn setup(&mut self, context: &mut Context) {
         // Load a default font
-        context
-            .graphics
-            .load_font("pixel", "examples/font.png", 16, 16, Some((11., 7.)), None);
+        context.graphics.load_font_atlas(
+            "pixel",
+            "examples/font.png",
+            AtlasParams::Grid {
+                cols: 16,
+                rows: 16,
+                padding: Some((12, 7)),
+            },
+            FontParams {
+                character_spacing: Some(0.125),
+                ..Default::default()
+            },
+        );
 
         // Create camera
         context.graphics.create_camera(1., Vector2f::ZERO);
@@ -25,7 +35,7 @@ impl Scene for MainScene {
         context: &mut Context,
         _scenes: &mut SceneController<Self::Game>,
     ) {
-        let text = "Hello World!";
+        let text = "Hello World";
         let font_size = 36.;
 
         let width = context.graphics.text_dimensions("pixel", text, font_size).x;
@@ -43,7 +53,8 @@ impl Scene for MainScene {
 
 fn main() {
     let engine = EngineBuilder::new()
-        .with_title("Hello Rogalik!".to_string())
+        .with_title("RGLK Bitmap Font".to_string())
+        .resizable(true)
         .build(GameState, Box::new(MainScene));
     engine.run();
 }

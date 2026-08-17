@@ -1,3 +1,4 @@
+use rogalik_common::structs::{ShaderId, TextureId};
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
@@ -9,8 +10,8 @@ use crate::utils::{get_wgpu_address_mode, get_wgpu_filter_mode};
 
 #[derive(Debug)]
 pub struct PostProcessPass {
-    pub shader_id: ResourceId,
-    texture_id: ResourceId,
+    pub shader_id: ResourceId<ShaderId>,
+    texture_id: ResourceId<TextureId>,
     bind_group: Option<wgpu::BindGroup>,
     uniform_buffer: Option<wgpu::Buffer>,
     uniform_data: PostProcessUniform,
@@ -19,7 +20,7 @@ pub struct PostProcessPass {
     view: Option<wgpu::TextureView>,
 }
 impl PostProcessPass {
-    pub fn new(texture_id: ResourceId, params: PostProcessParams) -> Self {
+    pub fn new(texture_id: ResourceId<TextureId>, params: PostProcessParams) -> Self {
         let address_mode = get_wgpu_address_mode(params.repeat);
         let filter_mode = get_wgpu_filter_mode(params.filtering);
         Self {
@@ -126,7 +127,7 @@ impl PostProcessPass {
         view: &wgpu::TextureView,
         filter_mode: wgpu::FilterMode,
         address_mode: wgpu::AddressMode,
-        texture_id: ResourceId,
+        texture_id: ResourceId<TextureId>,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> Result<(wgpu::BindGroup, wgpu::Buffer), EngineError> {

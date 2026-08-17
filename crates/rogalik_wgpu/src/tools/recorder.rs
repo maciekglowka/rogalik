@@ -189,7 +189,6 @@ impl Recorder {
                 .chunks_mut(padded_bytes_per_row as usize)
                 .map(|a| &mut a[..bytes_per_row as usize])
                 .for_each(|a| {
-                    println!("{channel_swap}");
                     if channel_swap {
                         a.chunks_exact_mut(4).for_each(|c| c.swap(0, 2));
                     }

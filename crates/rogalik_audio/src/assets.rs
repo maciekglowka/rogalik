@@ -8,9 +8,11 @@ use rogalik_common::{EngineError, ResourceId};
 
 use crate::source::AudioSource;
 
+pub(crate) struct AudioId;
+
 pub(crate) struct AudioAssets {
     asset_store: Arc<Mutex<AssetStore>>,
-    source_names: HashMap<String, ResourceId>, // lookup
+    source_names: HashMap<String, ResourceId<AudioId>>, // lookup
     pub(crate) sources: Vec<AudioSource>,
 }
 impl AudioAssets {
@@ -31,7 +33,7 @@ impl AudioAssets {
 
         let source = AudioSource::new(asset_id, &store)?;
 
-        let source_id = ResourceId(self.sources.len());
+        let source_id = ResourceId::new(self.sources.len());
         self.sources.push(source);
         self.source_names.insert(name.to_string(), source_id);
 

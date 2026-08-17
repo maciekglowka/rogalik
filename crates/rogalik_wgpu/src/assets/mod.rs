@@ -5,10 +5,16 @@ use std::{
 
 use rogalik_assets::{AssetContext, AssetState, AssetStore};
 use rogalik_common::{
-    AtlasParams, BuiltInShader, EngineError, MaterialParams, PostProcessParams, ResourceId,
-    ShaderKind,
+    structs::{AssetId, CameraId, ShaderId, TextureId},
+    AtlasParams, BuiltInShader, EngineError, FontParams, MaterialParams, PostProcessParams,
+    ResourceId, ShaderKind,
 };
 use rogalik_math::vectors::Vector2f;
+
+use crate::{
+    assets::font::{render_ttf_glyphs, text_key_size, Font, FontSize},
+    structs::{MaterialId, PostProcessId},
+};
 
 pub mod atlas;
 pub mod bind_groups;
@@ -20,18 +26,19 @@ pub mod shader;
 mod texture;
 
 pub struct WgpuAssets {
-    asset_store: Arc<Mutex<AssetStore>>,
-    pub bind_group_layouts: HashMap<bind_groups::BindGroupLayoutKind, wgpu::BindGroupLayout>,
-    pub(crate) builtin_shaders: HashMap<BuiltInShader, ResourceId>,
+    pub(crate) asset_store: Arc<Mutex<AssetStore>>,
+    pub(crate) bind_group_layouts: HashMap<bind_groups::BindGroupLayoutKind, wgpu::BindGroupLayout>,
+    pub(crate) builtin_shaders: HashMap<BuiltInShader, ResourceId<ShaderId>>,
     pub(crate) cameras: Vec<camera::Camera2D>,
-    pub(crate) default_shader: ResourceId,
-    pub(crate) default_normal: ResourceId,
-    pub(crate) default_diffuse: ResourceId,
-    pub pipeline_layouts: HashMap<ShaderKind, wgpu::PipelineLayout>,
-    material_names: HashMap<String, ResourceId>, // lookup
+    pub(crate) default_shader: ResourceId<ShaderId>,
+    pub(crate) default_normal: ResourceId<TextureId>,
+    pub(crate) default_diffuse: ResourceId<TextureId>,
+    pub(crate) fonts: HashMap<String, Font>,
+    pub(crate) pipeline_layouts: HashMap<ShaderKind, wgpu::PipelineLayout>,
+    material_names: HashMap<String, ResourceId<MaterialId>>, // lookup
     materials: Vec<material::Material>,
     pub(crate) postprocess: Vec<postprocess::PostProcessPass>,
-    postprocess_names: HashMap<String, ResourceId>, // lookup
+    postprocess_names: HashMap<String, ResourceId<PostProcessId>>, // lookup
     shaders: Vec<shader::Shader>,
     pub(crate) textures: Vec<texture::TextureData>,
 }
@@ -43,9 +50,10 @@ impl WgpuAssets {
             bind_group_layouts: HashMap::new(),
             builtin_shaders: HashMap::new(),
             cameras: Vec::new(),
-            default_shader: ResourceId::default(),
-            default_normal: ResourceId::default(),
-            default_diffuse: ResourceId::default(),
+            default_shader: ResourceId::new(0),
+            default_normal: ResourceId::new(0),
+            default_diffuse: ResourceId::new(0),
+            fonts: HashMap::new(),
             material_names: HashMap::new(),
             materials: Vec::new(),
             pipeline_layouts: HashMap::new(),
@@ -142,7 +150,7 @@ impl WgpuAssets {
         for pass in self.postprocess.iter_mut() {
             pass.create_wgpu_data(
                 &self.textures,
-                &postprocess_layout,
+                postprocess_layout,
                 w,
                 h,
                 device,
@@ -171,14 +179,14 @@ impl WgpuAssets {
         let mut updated_textures = HashSet::new();
 
         for (i, texture) in self.textures.iter_mut().enumerate() {
-            if let Some(asset) = store.get(texture.asset_id) {
+            if let Some(asset) = texture.asset_id.and_then(|id| store.get(id)) {
                 if asset.state == AssetState::Updated {
                     log::debug!("Updating texture {}, Asset: {:?}", i, texture.asset_id);
                     texture.update_bytes(asset.data.get());
                     updated_textures.insert(i);
 
                     #[cfg(debug_assertions)]
-                    store.mark_read(texture.asset_id);
+                    store.mark_read(texture.asset_id.unwrap());
                 }
             }
         }
@@ -215,14 +223,21 @@ impl WgpuAssets {
         self.pipeline_layouts = shader::get_pipeline_layouts(&self.bind_group_layouts, device)?;
         Ok(())
     }
-    pub fn create_shader(&mut self, kind: ShaderKind, path: &str) -> ResourceId {
+    pub fn create_shader(&mut self, kind: ShaderKind, path: &str) -> ResourceId<ShaderId> {
         let asset_id = self.load_asset(path);
         let shader = shader::Shader::new(kind, asset_id);
         let shader_id = self.get_next_shader_id();
         self.shaders.push(shader);
         shader_id
     }
-    pub fn create_material(&mut self, name: &str, params: MaterialParams) {
+    pub fn create_material(
+        &mut self,
+        name: &str,
+        params: MaterialParams,
+    ) -> Result<ResourceId<MaterialId>, EngineError> {
+        if self.material_names.contains_key(name) {
+            return Err(EngineError::NameConflict);
+        }
         let diffuse_id = params.diffuse_texture.unwrap_or(self.default_diffuse);
         let normal_id = params.normal_texture.unwrap_or(self.default_normal);
         let shader_id = params.shader.unwrap_or(self.default_shader);
@@ -231,6 +246,7 @@ impl WgpuAssets {
         let material_id = self.get_next_material_id();
         self.material_names.insert(name.to_string(), material_id);
         self.materials.push(material);
+        Ok(material_id)
     }
     pub fn create_post_process(&mut self, name: &str, params: PostProcessParams) {
         let texture_id = params.texture.unwrap_or(self.default_diffuse);
@@ -240,22 +256,9 @@ impl WgpuAssets {
         self.postprocess_names
             .insert(name.to_string(), postprocess_id);
     }
-    pub(crate) fn texture_from_path(&mut self, path: &str) -> ResourceId {
-        let asset_id = self.load_asset(path);
-        self.create_texture(asset_id)
-    }
-    fn texture_from_bytes(&mut self, bytes: &'static [u8]) -> ResourceId {
-        let asset_id = {
-            let mut store = self
-                .asset_store
-                .lock()
-                .expect("Can't acquire the asset store!");
-            store.from_bytes(bytes)
-        };
-        self.create_texture(asset_id)
-    }
-    fn create_texture(&mut self, asset_id: ResourceId) -> ResourceId {
+    pub(crate) fn texture_from_path(&mut self, path: &str) -> ResourceId<TextureId> {
         let texture = {
+            let asset_id = self.load_asset(path);
             let store = self
                 .asset_store
                 .lock()
@@ -264,8 +267,17 @@ impl WgpuAssets {
                 .get(asset_id)
                 .ok_or(EngineError::ResourceNotFound)
                 .expect("Invalid texture asset!");
-            texture::TextureData::from_bytes(asset_id, asset.data.get())
+
+            // TODO error handling.
+            texture::TextureData::from_file_bytes(Some(asset_id), asset.data.get()).unwrap()
         };
+        self.add_texture(texture)
+    }
+    fn texture_from_bytes(&mut self, bytes: &[u8]) -> ResourceId<TextureId> {
+        // TODO error handling
+        self.add_texture(texture::TextureData::from_file_bytes(None, bytes).unwrap())
+    }
+    fn add_texture(&mut self, texture: texture::TextureData) -> ResourceId<TextureId> {
         let texture_id = self.get_next_texture_id();
         self.textures.push(texture);
         texture_id
@@ -278,7 +290,7 @@ impl WgpuAssets {
         rh: f32,
         scale: f32,
         target: Vector2f,
-    ) -> ResourceId {
+    ) -> ResourceId<CameraId> {
         let id = self.get_next_camera_id();
         let camera = camera::Camera2D::new(vw, vh, rw, rh, scale, target);
         self.cameras.push(camera);
@@ -288,57 +300,147 @@ impl WgpuAssets {
         &mut self,
         name: &str,
         path: &str,
-        rows: usize,
-        cols: usize,
-        padding: Option<(f32, f32)>,
-        shader: Option<ResourceId>,
-    ) {
-        let atlas = Some(AtlasParams {
-            rows,
-            cols,
-            padding,
-        });
+        params: FontParams,
+    ) -> Result<(), EngineError> {
+        if self.fonts.contains_key(name) {
+            return Err(EngineError::NameConflict);
+        }
 
-        let params = MaterialParams {
-            atlas,
+        let asset_id = self.load_asset(path);
+        let font = Font::new_from_ttf(&params, asset_id);
+        self.fonts.insert(name.to_string(), font);
+        Ok(())
+    }
+    pub fn load_font_atlas(
+        &mut self,
+        name: &str,
+        path: &str,
+        atlas: AtlasParams,
+        params: FontParams,
+    ) -> Result<(), EngineError> {
+        if self.fonts.contains_key(name) {
+            return Err(EngineError::NameConflict);
+        }
+
+        let material_params = MaterialParams {
+            atlas: Some(atlas),
             diffuse_texture: Some(self.texture_from_path(path)),
-            shader,
+            shader: params.shader,
+            filtering: params.filtering,
             ..Default::default()
         };
-        self.create_material(name, params);
+        let material_id = self.create_material(name, material_params)?;
+        let font = Font::new_from_atlas(&params, material_id);
+        self.fonts.insert(name.to_string(), font);
+        Ok(())
     }
-    pub fn get_text_dimensions(&self, font: &str, text: &str, size: f32) -> Option<Vector2f> {
-        let material = self.get_material(*self.get_material_id(font)?)?;
-        let (w, h) = material.atlas?.get_sprite_size();
-        let ratio = w / h;
-        let l = text.chars().count();
-        Some(size * Vector2f::new(ratio * l as f32, 1.))
+    pub(crate) fn has_font_size(&self, name: &str, size: f32) -> Result<bool, EngineError> {
+        let font = self.fonts.get(name).ok_or(EngineError::InvalidResource)?;
+
+        match &font.kind {
+            font::FontKind::Bitmap(_) => Ok(true),
+            font::FontKind::Ttf { sizes, .. } => Ok(sizes.contains_key(&text_key_size(size))),
+        }
     }
-    pub fn get_material_id(&self, name: &str) -> Option<&ResourceId> {
+    pub(crate) fn create_font_size(
+        &mut self,
+        name: &str,
+        size: f32,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Result<(), EngineError> {
+        let font = self.fonts.get(name).ok_or(EngineError::ResourceNotFound)?;
+
+        let asset_id = if let font::FontKind::Ttf { asset_id, .. } = font.kind {
+            asset_id
+        } else {
+            return Err(EngineError::InvalidResource);
+        };
+
+        let glyphs = {
+            let store = self
+                .asset_store
+                .lock()
+                .expect("Can't acquire the asset store!");
+
+            let asset = store
+                .get(asset_id)
+                .ok_or(EngineError::ResourceNotFound)
+                .expect("Invalid font asset!");
+
+            render_ttf_glyphs(&font.charset, asset.data.get(), size)
+        }?;
+
+        let mut material_params = MaterialParams {
+            atlas: Some(glyphs.atlas_params),
+            diffuse_texture: None,
+            shader: font.shader,
+            filtering: font.filtering,
+            ..Default::default()
+        };
+
+        let texture = texture::TextureData::from_raw(
+            &glyphs.texture_data,
+            glyphs.texture_size.0,
+            glyphs.texture_size.1,
+        )?;
+        let texture_id = self.add_texture(texture);
+
+        material_params.diffuse_texture = Some(texture_id);
+
+        let material_id = self.create_material(&format!("{name}_{size}"), material_params)?;
+
+        if let font::FontKind::Ttf { sizes, .. } = &mut self.fonts.get_mut(name).unwrap().kind {
+            sizes.insert(
+                text_key_size(size),
+                FontSize {
+                    material_id,
+                    char_metrics: glyphs.char_metrics,
+                    line_metrics: glyphs.line_metrics,
+                },
+            );
+        }
+
+        let material_layout = self
+            .bind_group_layouts
+            .get(&bind_groups::BindGroupLayoutKind::Sprite)
+            .ok_or(EngineError::GraphicsInternalError)?;
+
+        self.materials
+            .get_mut(material_id.0)
+            .unwrap()
+            .create_wgpu_data(&self.textures, device, queue, material_layout)?;
+
+        Ok(())
+    }
+    pub fn get_material_id(&self, name: &str) -> Option<&ResourceId<MaterialId>> {
         self.material_names.get(name)
     }
-    pub fn get_material(&self, id: ResourceId) -> Option<&material::Material> {
+    pub fn get_material(&self, id: ResourceId<MaterialId>) -> Option<&material::Material> {
         self.materials.get(id.0)
     }
-    pub fn get_shader(&self, id: ResourceId) -> Option<&shader::Shader> {
+    pub fn get_font(&self, name: &str) -> Option<&Font> {
+        self.fonts.get(name)
+    }
+    pub fn get_shader(&self, id: ResourceId<ShaderId>) -> Option<&shader::Shader> {
         self.shaders.get(id.0)
     }
-    pub fn get_camera(&self, id: ResourceId) -> Option<&camera::Camera2D> {
+    pub fn get_camera(&self, id: ResourceId<CameraId>) -> Option<&camera::Camera2D> {
         self.cameras.get(id.0)
     }
-    pub fn get_camera_mut(&mut self, id: ResourceId) -> Option<&mut camera::Camera2D> {
+    pub fn get_camera_mut(&mut self, id: ResourceId<CameraId>) -> Option<&mut camera::Camera2D> {
         self.cameras.get_mut(id.0)
     }
-    pub fn get_postprocess_id(&self, name: &str) -> Option<&ResourceId> {
+    pub fn get_postprocess_id(&self, name: &str) -> Option<&ResourceId<PostProcessId>> {
         self.postprocess_names.get(name)
     }
     pub fn get_postprocess_mut(
         &mut self,
-        id: ResourceId,
+        id: ResourceId<PostProcessId>,
     ) -> Option<&mut postprocess::PostProcessPass> {
         self.postprocess.get_mut(id.0)
     }
-    fn load_asset(&self, path: &str) -> ResourceId {
+    fn load_asset(&self, path: &str) -> ResourceId<AssetId> {
         let mut store = self
             .asset_store
             .lock()
@@ -361,19 +463,19 @@ impl WgpuAssets {
         self.shaders.push(shader);
         self.builtin_shaders.insert(builtin_id, id);
     }
-    fn get_next_shader_id(&self) -> ResourceId {
-        ResourceId(self.shaders.len())
+    fn get_next_shader_id(&self) -> ResourceId<ShaderId> {
+        ResourceId::new(self.shaders.len())
     }
-    fn get_next_material_id(&self) -> ResourceId {
-        ResourceId(self.materials.len())
+    fn get_next_material_id(&self) -> ResourceId<MaterialId> {
+        ResourceId::new(self.materials.len())
     }
-    fn get_next_texture_id(&self) -> ResourceId {
-        ResourceId(self.textures.len())
+    fn get_next_texture_id(&self) -> ResourceId<TextureId> {
+        ResourceId::new(self.textures.len())
     }
-    fn get_next_postprocess_id(&self) -> ResourceId {
-        ResourceId(self.postprocess.len())
+    fn get_next_postprocess_id(&self) -> ResourceId<PostProcessId> {
+        ResourceId::new(self.postprocess.len())
     }
-    fn get_next_camera_id(&self) -> ResourceId {
-        ResourceId(self.cameras.len())
+    fn get_next_camera_id(&self) -> ResourceId<CameraId> {
+        ResourceId::new(self.cameras.len())
     }
 }

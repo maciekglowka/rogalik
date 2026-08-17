@@ -1,10 +1,15 @@
-use rogalik_common::{Color, EngineError, PostProcessParams, ResourceId, SpriteParams};
+use rogalik_common::structs::CameraId;
+use rogalik_common::{
+    Color, EngineError, PostProcessParams, ResourceId, SpriteParams, TextureRepeat,
+};
 use rogalik_math::vectors::Vector2f;
 
+use crate::assets::font::get_text_sprites;
 use crate::assets::{material::Material, postprocess::PostProcessPass, WgpuAssets};
-use crate::structs::BindParams;
+use crate::structs::{BindParams, MaterialId};
 
 mod sprite_pass;
+mod text;
 pub(crate) mod uniforms;
 
 const MAX_LIGHTS: u32 = 16;
@@ -16,6 +21,7 @@ pub struct Renderer2d {
     rendering_resolution: Option<(u32, u32)>, // for pixel perfect renders
     upscale_pass: Option<PostProcessPass>,    // for pixel perfect renders
     uniforms: uniforms::Uniforms,
+    text_cache: text::TextCache,
 }
 impl Renderer2d {
     pub fn new() -> Self {
@@ -27,6 +33,7 @@ impl Renderer2d {
             rendering_resolution: None,
             upscale_pass: None,
             uniforms: uniforms::Uniforms::default(),
+            text_cache: Default::default(),
         }
     }
     pub fn set_clear_color(&mut self, color: wgpu::Color) {
@@ -54,7 +61,8 @@ impl Renderer2d {
             PostProcessParams {
                 shader: *shader_id,
                 filtering: rogalik_common::TextureFiltering::Nearest,
-                ..Default::default()
+                repeat: TextureRepeat::default(),
+                texture: None,
             },
         ));
         self.uniforms.globals.render_size = [w as f32, h as f32];
@@ -128,7 +136,7 @@ impl Renderer2d {
         assets: &WgpuAssets,
         index: usize,
         material_name: &str,
-        camera_id: ResourceId,
+        camera_id: ResourceId<CameraId>,
         position: Vector2f,
         z_index: i32,
         size: Vector2f,
@@ -145,6 +153,7 @@ impl Renderer2d {
         if let Some(_) = params.slice {
             let s = material
                 .atlas
+                .as_ref()
                 .ok_or(EngineError::InvalidResource)?
                 .get_sliced_sprite(index, position, size, params);
             self.sprite_pass
@@ -152,6 +161,7 @@ impl Renderer2d {
         } else {
             let s = material
                 .atlas
+                .as_ref()
                 .ok_or(EngineError::InvalidResource)?
                 .get_sprite(index, position, size, params);
             self.sprite_pass
@@ -159,37 +169,59 @@ impl Renderer2d {
         };
         Ok(())
     }
-    pub fn draw_text(
+    pub(crate) fn get_text_dimensions(
         &mut self,
-        assets: &WgpuAssets,
+        assets: &mut WgpuAssets,
         font: &str,
         text: &str,
-        camera_id: ResourceId,
+        size: f32,
+        max_width: Option<f32>,
+    ) -> Option<Vector2f> {
+        let layout = self
+            .text_cache
+            .get(assets, font, text, size, max_width)
+            .ok()?;
+        Some(Vector2f::new(layout.width, layout.height))
+    }
+    pub fn draw_text(
+        &mut self,
+        assets: &mut WgpuAssets,
+        font_name: &str,
+        text: &str,
+        camera_id: ResourceId<CameraId>,
         position: Vector2f,
         z_index: i32,
         size: f32,
+        max_width: Option<f32>,
         params: SpriteParams,
-    ) -> Result<(), EngineError> {
-        let (material_id, material) = get_material(font, assets)?;
-        let atlas = material.atlas.ok_or(EngineError::InvalidResource)?;
+    ) -> Result<Vector2f, EngineError> {
+        let layout = self
+            .text_cache
+            .get(assets, font_name, text, size, max_width)?;
+        let sprites = get_text_sprites(assets, layout, position, params)?;
+
+        let material = assets
+            .get_material(layout.material_id)
+            .ok_or(EngineError::ResourceNotFound)?;
 
         let bind_params = BindParams {
             camera_id,
-            material_id,
+            material_id: layout.material_id,
             shader_id: material.shader_id,
         };
 
-        for s in crate::assets::font::get_text_sprites(text, atlas, position, size, params) {
+        for s in sprites {
             self.sprite_pass
                 .add_to_queue(&s.0, &s.1, z_index, bind_params);
         }
-        Ok(())
+
+        Ok(Vector2f::new(layout.width, layout.height))
     }
     pub fn draw_mesh(
         &mut self,
         assets: &WgpuAssets,
         material_name: &str,
-        camera_id: ResourceId,
+        camera_id: ResourceId<CameraId>,
         vertices: &[crate::structs::Vertex],
         indices: &[u16],
         z_index: i32,
@@ -290,7 +322,10 @@ impl Renderer2d {
         }
 
         output.present();
+
         self.uniforms.lights.frame_end();
+        self.text_cache.clean();
+
         Ok(())
     }
 }
@@ -298,7 +333,7 @@ impl Renderer2d {
 fn get_material<'a>(
     name: &str,
     assets: &'a WgpuAssets,
-) -> Result<(ResourceId, &'a Material), EngineError> {
+) -> Result<(ResourceId<MaterialId>, &'a Material), EngineError> {
     let &material_id = assets
         .get_material_id(name)
         .ok_or(EngineError::ResourceNotFound)?;
