@@ -1,6 +1,8 @@
 #[cfg(feature = "serialize")]
 use serde::{Deserialize, Serialize};
 
+use crate::data::U8_TO_SRGB;
+
 pub struct ResourceId<T>(pub usize, std::marker::PhantomData<fn() -> T>);
 impl<T> ResourceId<T> {
     pub fn new(id: usize) -> Self {
@@ -87,13 +89,14 @@ impl Color {
             self.3 as f32 / 255.,
         ]
     }
+
+    #[inline(always)]
     pub fn as_srgb(&self) -> [f32; 4] {
-        let f = self.as_f32();
         [
-            srgb_single(f[0]),
-            srgb_single(f[1]),
-            srgb_single(f[2]),
-            f[3],
+            U8_TO_SRGB[self.0 as usize],
+            U8_TO_SRGB[self.1 as usize],
+            U8_TO_SRGB[self.2 as usize],
+            self.3 as f32 / 255.,
         ]
     }
 }
@@ -110,11 +113,6 @@ pub struct SpriteParams {
     pub flip_y: bool,
     pub rotate: f32,
     pub slice: Option<u32>,
-}
-
-#[inline(always)]
-fn srgb_single(v: f32) -> f32 {
-    ((v + 0.055) / 1.055).powf(2.4)
 }
 
 #[derive(Clone, Default)]

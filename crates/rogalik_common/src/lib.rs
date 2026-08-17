@@ -1,3 +1,4 @@
+mod data;
 pub mod structs;
 pub mod traits;
 

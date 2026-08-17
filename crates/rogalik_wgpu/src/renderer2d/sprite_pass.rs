@@ -1,28 +1,75 @@
 use rogalik_common::EngineError;
 use std::collections::HashMap;
-use wgpu::util::DeviceExt;
 
 use crate::assets::WgpuAssets;
 use crate::structs::{BindParams, Triangle, Vertex};
 
 use super::uniforms::UniformKind;
 
-pub struct SpritePass {
+struct DynamicBuffer {
+    buffer: Option<wgpu::Buffer>,
+    usage: wgpu::BufferUsages,
+}
+impl DynamicBuffer {
+    fn ensure_size(&mut self, size: u64, device: &wgpu::Device) {
+        if let Some(buffer) = &self.buffer {
+            if buffer.size() >= size {
+                return;
+            }
+        }
+
+        // Add some headroom.
+        let new_size = size.next_power_of_two();
+        log::debug!("Allocating new sprite pass buffer with size: {new_size}");
+
+        self.buffer = Some(device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Sprite pass buffer"),
+            mapped_at_creation: false,
+            size: new_size,
+            usage: self.usage | wgpu::BufferUsages::COPY_DST,
+        }));
+    }
+    fn unchecked(&self) -> &wgpu::Buffer {
+        self.buffer.as_ref().unwrap()
+    }
+    fn clear(&mut self) {
+        self.buffer = None;
+    }
+}
+
+pub(crate) struct SpritePass {
     pub clear_color: wgpu::Color,
     vertex_queue: Vec<Vertex>,
     triangle_queue: Vec<Triangle>,
-    // pipeline: wgpu::RenderPipeline,
-    // pub bind_group_layout: wgpu::BindGroupLayout,
+    vertex_buffer: DynamicBuffer,
+    index_buffer: DynamicBuffer,
+    /// Reusable temp buffer.
+    indices: Vec<u16>,
 }
 impl SpritePass {
-    pub fn new(clear_color: wgpu::Color) -> Self {
+    pub(crate) fn new(clear_color: wgpu::Color) -> Self {
         Self {
             clear_color,
             vertex_queue: Vec::new(),
             triangle_queue: Vec::new(),
+            vertex_buffer: DynamicBuffer {
+                buffer: None,
+                usage: wgpu::BufferUsages::VERTEX,
+            },
+            index_buffer: DynamicBuffer {
+                buffer: None,
+                usage: wgpu::BufferUsages::INDEX,
+            },
+            indices: vec![],
         }
     }
-    pub fn add_to_queue(
+    pub(crate) fn create_wgpu_data(&mut self) {
+        // Currently only clear dynamic buffers, so they will get recreated on a first
+        // draw.
+        self.vertex_buffer.clear();
+        self.index_buffer.clear();
+    }
+    pub(crate) fn add_to_queue(
         &mut self,
         vertices: &[Vertex],
         indices: &[u16],
@@ -39,26 +86,29 @@ impl SpritePass {
                 params,
             }))
     }
-    pub fn render(
+    pub(crate) fn render(
         &mut self,
         assets: &WgpuAssets,
         encoder: &mut wgpu::CommandEncoder,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         uniform_bind_groups: &HashMap<UniformKind, wgpu::BindGroup>,
         view: &wgpu::TextureView,
     ) -> Result<(), EngineError> {
-        if self.triangle_queue.len() == 0 {
+        if self.triangle_queue.is_empty() {
             self.vertex_queue.clear();
             return Ok(());
         };
 
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Sprite vertex buffer"),
-            contents: bytemuck::cast_slice(&self.vertex_queue),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
+        let vertex_size = self.vertex_queue.len() * std::mem::size_of::<Vertex>();
+        self.vertex_buffer.ensure_size(vertex_size as u64, device);
 
-        // let start = std::time::Instant::now();
+        queue.write_buffer(
+            self.vertex_buffer.unchecked(),
+            0,
+            bytemuck::cast_slice(&self.vertex_queue),
+        );
+
         self.triangle_queue.sort_by(|a, b| {
             a.z_index
                 .cmp(&b.z_index)
@@ -66,26 +116,28 @@ impl SpritePass {
                 .then(a.params.material_id.cmp(&b.params.material_id))
                 .then(a.params.camera_id.cmp(&b.params.camera_id))
         });
-        // log::debug!("Triangle sort: {:?}", start.elapsed());
 
-        let indices = self
-            .triangle_queue
-            .iter()
-            .map(|t| t.indices)
-            .flatten()
-            .collect::<Vec<_>>();
+        self.indices.clear();
+        self.indices
+            .extend(self.triangle_queue.iter().flat_map(|t| t.indices));
+        // let indices = self
+        //     .triangle_queue
+        //     .iter()
+        //     .flat_map(|t| t.indices)
+        //     .collect::<Vec<_>>();
 
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Sprite index buffer"),
-            contents: bytemuck::cast_slice(&indices),
-            usage: wgpu::BufferUsages::INDEX,
-        });
+        // Single tri size == 6 Bytes (3 * u16).
+        let index_size = 6 * self.triangle_queue.len();
+        self.index_buffer.ensure_size(index_size as u64, device);
+
+        let index_data = bytemuck::cast_slice(&self.indices);
+        queue.write_buffer(self.index_buffer.unchecked(), 0, index_data);
 
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Sprite Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(self.clear_color),
@@ -129,8 +181,11 @@ impl SpritePass {
             pass.set_bind_group(2, uniform_bind_groups.get(&UniformKind::Globals), &[]);
             pass.set_bind_group(3, uniform_bind_groups.get(&UniformKind::Lights), &[]);
 
-            pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-            pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            pass.set_vertex_buffer(0, self.vertex_buffer.unchecked().slice(..));
+            pass.set_index_buffer(
+                self.index_buffer.unchecked().slice(..),
+                wgpu::IndexFormat::Uint16,
+            );
 
             for tri in self.triangle_queue.iter() {
                 let end = offset + 3;

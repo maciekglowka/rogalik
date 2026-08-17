@@ -129,6 +129,7 @@ impl Renderer2d {
                 .ok_or(EngineError::GraphicsInternalError)?,
             device,
         );
+        self.sprite_pass.create_wgpu_data();
         Ok(())
     }
     pub fn draw_atlas_sprite(
@@ -288,6 +289,7 @@ impl Renderer2d {
             assets,
             &mut encoder,
             device,
+            queue,
             &self.uniforms.bind_groups,
             current_view,
         )?;

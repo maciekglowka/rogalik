@@ -1,0 +1,5 @@
+- fix atlas padding (last row, col)
+- perf
+- public trait docstings
+- add asset author info
+- fix and cleanup examples (separate crate, incl WASM build with CI?)
