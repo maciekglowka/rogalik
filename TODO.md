@@ -1,6 +1,5 @@
 ## Fixes
 
-- fix atlas padding (last row, col)
 - public trait docstings
 - fix and cleanup examples (separate crate, incl WASM build with CI?)
 - error handling on public methods

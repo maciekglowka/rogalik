@@ -67,6 +67,15 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // Keep sprite's alpha
     let alpha = color[3];
 
+    // Correct the normal if there is a sprite rotation.
+    var dx = dpdx(in.tex_coords.xy);
+    var dy = dpdy(in.tex_coords.xy);
+    var m = mat2x2(normalize(dx), normalize(dy));
+    var rotated = m * normal.xy;
+
+    normal.x = rotated.x;
+    normal.y = rotated.y;
+
     var total_light = lights_uniform.ambient;
 
     for (var i=0; i<i32(lights_uniform.light_count); i++) {
@@ -78,14 +87,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         let t = max_dist - dist;
         let strength = smoothstep(0., max_dist * lights_uniform.lights[i].falloff, t);
 
-        // Light elevation is equal to its radius.
-        let elevated_light = vec3(
-            lights_uniform.lights[i].position.xy,
-            lights_uniform.lights[i].radius
-        );
         // Normalized direction.
-        let dir = normalize(elevated_light - in.world_position);
-        let n = min(1., max(dot(normal, dir), 0.));
+        let dir = normalize(lights_uniform.lights[i].position.xy - in.world_position.xy);
+        var n = 1.0 + 0.5 * dot(normal.xy, dir);
+
 
         // Apply the color
         let light = n * strength * vec4(lights_uniform.lights[i].color, 1.);
