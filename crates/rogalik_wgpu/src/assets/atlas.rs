@@ -30,7 +30,7 @@ impl SpriteAtlas {
             Some((x, y)) => {
                 let grid_width = (texture_size.0 + x) / cols as u32;
                 let grid_height = (texture_size.1 + y) / rows as u32;
-                (grid_width - x, grid_height - x)
+                (grid_width - x, grid_height - y)
             }
         };
 
@@ -235,6 +235,48 @@ impl SpriteAtlas {
         }
 
         (vertices, indices)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn grid_cell_size_without_padding() {
+        let atlas = SpriteAtlas::from_grid((64, 32), 2, 4, None);
+        let entry = atlas.get_entry(0).expect("4x2 grid has an entry at 0");
+        assert_eq!((entry.w, entry.h), (16, 16));
+    }
+
+    #[test]
+    fn grid_cell_size_with_non_square_padding() {
+        // Padding sits between cells, not around the atlas edges.
+        let (cell, cols, rows) = (16, 3, 2);
+        let (pad_x, pad_y) = (2, 4);
+        let texture_size = (
+            cols * cell + (cols - 1) * pad_x,
+            rows * cell + (rows - 1) * pad_y,
+        );
+
+        let atlas = SpriteAtlas::from_grid(
+            texture_size,
+            rows as usize,
+            cols as usize,
+            Some((pad_x, pad_y)),
+        );
+
+        let count = (rows * cols) as usize;
+        for index in 0..count {
+            let entry = atlas
+                .get_entry(index)
+                .expect("grid entry count is rows * cols");
+            assert_eq!((entry.w, entry.h), (cell, cell), "entry {index}");
+        }
+
+        let last = atlas.get_entry(count - 1).expect("last grid entry");
+        assert!(last.u + last.u_size <= 1.);
+        assert!(last.v + last.v_size <= 1.);
     }
 }
 
