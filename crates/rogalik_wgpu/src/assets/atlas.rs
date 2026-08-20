@@ -238,48 +238,6 @@ impl SpriteAtlas {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn grid_cell_size_without_padding() {
-        let atlas = SpriteAtlas::from_grid((64, 32), 2, 4, None);
-        let entry = atlas.get_entry(0).expect("4x2 grid has an entry at 0");
-        assert_eq!((entry.w, entry.h), (16, 16));
-    }
-
-    #[test]
-    fn grid_cell_size_with_non_square_padding() {
-        // Padding sits between cells, not around the atlas edges.
-        let (cell, cols, rows) = (16, 3, 2);
-        let (pad_x, pad_y) = (2, 4);
-        let texture_size = (
-            cols * cell + (cols - 1) * pad_x,
-            rows * cell + (rows - 1) * pad_y,
-        );
-
-        let atlas = SpriteAtlas::from_grid(
-            texture_size,
-            rows as usize,
-            cols as usize,
-            Some((pad_x, pad_y)),
-        );
-
-        let count = (rows * cols) as usize;
-        for index in 0..count {
-            let entry = atlas
-                .get_entry(index)
-                .expect("grid entry count is rows * cols");
-            assert_eq!((entry.w, entry.h), (cell, cell), "entry {index}");
-        }
-
-        let last = atlas.get_entry(count - 1).expect("last grid entry");
-        assert!(last.u + last.u_size <= 1.);
-        assert!(last.v + last.v_size <= 1.);
-    }
-}
-
 fn rotate_verts(vertices: &mut [Vertex], angle: f32, cx: f32, cy: f32) {
     // not tested for performance :)
     // perhaps should be moved to the shader
@@ -296,5 +254,82 @@ fn rotate_verts(vertices: &mut [Vertex], angle: f32, cx: f32, cy: f32) {
 
         v.position[0] += cx;
         v.position[1] += cy;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Padding sits between cells, not around the atlas edges.
+    fn grid_texture_size(cell: u32, cols: u32, rows: u32, padding: (u32, u32)) -> (u32, u32) {
+        (
+            cols * cell + (cols - 1) * padding.0,
+            rows * cell + (rows - 1) * padding.1,
+        )
+    }
+
+    fn assert_grid_entries(
+        atlas: &SpriteAtlas,
+        cell: u32,
+        cols: u32,
+        rows: u32,
+        padding: (u32, u32),
+    ) {
+        let (texture_w, texture_h) = atlas.texture_size;
+        let u_step = (cell + padding.0) as f32 / texture_w as f32;
+        let v_step = (cell + padding.1) as f32 / texture_h as f32;
+
+        for index in 0..(rows * cols) as usize {
+            let entry = atlas
+                .get_entry(index)
+                .expect("grid entry count is rows * cols");
+            let (row, col) = (index as u32 / cols, index as u32 % cols);
+
+            assert_eq!((entry.w, entry.h), (cell, cell), "entry {index} size");
+            assert_eq!(
+                (entry.u, entry.v),
+                (col as f32 * u_step, row as f32 * v_step),
+                "entry {index} uv"
+            );
+            assert_eq!(
+                (entry.u_size, entry.v_size),
+                (
+                    cell as f32 / texture_w as f32,
+                    cell as f32 / texture_h as f32
+                ),
+                "entry {index} uv size"
+            );
+        }
+    }
+
+    #[test]
+    fn grid_entries_without_padding() {
+        let (cell, cols, rows) = (16, 4, 2);
+        let padding = (0, 0);
+
+        let atlas = SpriteAtlas::from_grid(
+            grid_texture_size(cell, cols, rows, padding),
+            rows as usize,
+            cols as usize,
+            None,
+        );
+
+        assert_grid_entries(&atlas, cell, cols, rows, padding);
+    }
+
+    #[test]
+    fn grid_entries_with_non_square_padding() {
+        let (cell, cols, rows) = (16, 3, 2);
+        let padding = (2, 4);
+
+        let atlas = SpriteAtlas::from_grid(
+            grid_texture_size(cell, cols, rows, padding),
+            rows as usize,
+            cols as usize,
+            Some(padding),
+        );
+
+        assert_grid_entries(&atlas, cell, cols, rows, padding);
     }
 }
