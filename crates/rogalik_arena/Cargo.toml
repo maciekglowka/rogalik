@@ -7,6 +7,5 @@ edition = "2024"
 serialize = ["dep:serde"]
 
 [dependencies]
-num-traits = "0.2"
 
 serde = { workspace = true, optional = true }
