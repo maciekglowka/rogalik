@@ -23,17 +23,20 @@ impl Game for GameState {
         );
 
         // Create sprite material
-        context.graphics.load_material(
-            "sprites",
-            MaterialParams {
-                diffuse_texture,
-                normal_texture,
-                shader: context
-                    .graphics
-                    .get_builtin_shader(BuiltInShader::SpriteLit),
-                ..Default::default()
-            },
-        );
+        context
+            .graphics
+            .create_material(
+                "sprites",
+                MaterialParams {
+                    diffuse_texture,
+                    normal_texture,
+                    shader: context
+                        .graphics
+                        .get_builtin_shader(BuiltInShader::SpriteLit),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
 
         // Create camera
         context.graphics.create_camera(1., Vector2f::ZERO);
@@ -78,10 +81,10 @@ impl Scene for MainScene {
         // Dynamic light
         let _ = context
             .graphics
-            .add_light(mouse_world, 16., Color(255, 128, 0, 255), 0.5);
+            .draw_light(mouse_world, 16., Color(255, 128, 0, 255), 0.5);
 
         // Static light
-        let _ = context.graphics.add_light(
+        let _ = context.graphics.draw_light(
             SPRITE_SIZE * Vector2i::splat(-BOARD_DIM).as_f32(),
             64.,
             Color(128, 0, 255, 255),

@@ -226,6 +226,7 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
     }
 }
 
+#[allow(unused)]
 #[derive(Debug)]
 pub(crate) enum ExternalEvent {
     MouseButton(MouseButton, ElementState),

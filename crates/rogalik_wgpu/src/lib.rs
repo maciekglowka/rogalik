@@ -240,8 +240,12 @@ impl GraphicsContext for WgpuContext {
     fn load_texture(&mut self, path: &str) -> ResourceId<TextureId> {
         self.assets.texture_from_path(path)
     }
-    fn load_material(&mut self, name: &str, params: rogalik_common::MaterialParams) {
-        self.assets.create_material(name, params);
+    fn create_material(
+        &mut self,
+        name: &str,
+        params: rogalik_common::MaterialParams,
+    ) -> Result<(), EngineError> {
+        self.assets.create_material(name, params).map(|_| ())
         // TODO if self.surface_state build bind_group
     }
     fn load_shader(
@@ -252,11 +256,17 @@ impl GraphicsContext for WgpuContext {
         // TODO if self.surface_state build pipeline
         self.assets.create_shader(kind, path)
     }
-    fn load_font(&mut self, name: &str, path: &str, params: FontParams) {
-        self.assets.load_font(name, path, params);
+    fn load_font(&mut self, name: &str, path: &str, params: FontParams) -> Result<(), EngineError> {
+        self.assets.load_font(name, path, params)
     }
-    fn load_font_atlas(&mut self, name: &str, path: &str, atlas: AtlasParams, params: FontParams) {
-        self.assets.load_font_atlas(name, path, atlas, params);
+    fn load_font_atlas(
+        &mut self,
+        name: &str,
+        path: &str,
+        atlas: AtlasParams,
+        params: FontParams,
+    ) -> Result<(), EngineError> {
+        self.assets.load_font_atlas(name, path, atlas, params)
     }
     fn add_post_process(&mut self, name: &str, params: rogalik_common::PostProcessParams) {
         self.assets.create_post_process(name, params);
@@ -394,7 +404,7 @@ impl GraphicsContext for WgpuContext {
         }
         Ok(())
     }
-    fn add_light(
+    fn draw_light(
         &mut self,
         position: Vector2f,
         radius: f32,
