@@ -23,6 +23,8 @@ A simple framework for 2d pixel games.
 - postprocessing shaders (also no custom uniforms)
 - text rendering (bitmap and ttf fonts) 
 - basic audio
+- remote control / screenshot (experimental)
+- dev mode video recording (experimental)
 
 ## Examples
 

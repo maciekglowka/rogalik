@@ -55,7 +55,11 @@ pub trait GraphicsContext {
     /// shaders. `name`: A unique identifier for the material.
     /// `params`: Parameters defining the material's properties (e.g., textures,
     /// atlas, filtering).
-    fn load_material(&mut self, name: &str, params: crate::MaterialParams);
+    fn create_material(
+        &mut self,
+        name: &str,
+        params: crate::MaterialParams,
+    ) -> Result<(), EngineError>;
     /// Loads a shader from the given file path and returns its `ResourceId`.
     /// `kind`: The type of shader (e.g., `Sprite`, `PostProcess`).
     /// `path`: The file path to the shader source code (WGSL).
@@ -64,7 +68,12 @@ pub trait GraphicsContext {
     /// `name`: A unique identifier for the font.
     /// `path`: The file path to the font texture atlas.
     /// `params`:
-    fn load_font(&mut self, name: &str, path: &str, params: crate::FontParams);
+    fn load_font(
+        &mut self,
+        name: &str,
+        path: &str,
+        params: crate::FontParams,
+    ) -> Result<(), EngineError>;
     /// Loads a font from a texture atlas, allowing text rendering.
     /// `name`: A unique identifier for the font.
     /// `path`: The file path to the font texture atlas.
@@ -78,7 +87,7 @@ pub trait GraphicsContext {
         path: &str,
         atlas: crate::AtlasParams,
         params: crate::FontParams,
-    );
+    ) -> Result<(), EngineError>;
     /// Adds a post-processing effect to be applied after the main scene
     /// rendering. `name`: A unique identifier for the post-process effect.
     /// `params`: Parameters defining the post-process effect (e.g., shader,
@@ -179,7 +188,7 @@ pub trait GraphicsContext {
     /// `radius`: The size of the light.
     /// `color`: The color of the light. (alpha value is discarded)
     /// `falloff`: The hardness of the light.
-    fn add_light(
+    fn draw_light(
         &mut self,
         position: Vector2f,
         radius: f32,

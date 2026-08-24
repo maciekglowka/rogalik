@@ -17,18 +17,21 @@ impl Game for GameState {
         );
 
         // Create sprite material
-        context.graphics.load_material(
-            "sprites",
-            MaterialParams {
-                atlas: Some(AtlasParams::Grid {
-                    cols: 16,
-                    rows: 10,
-                    padding: Some((1, 1)),
-                }),
-                diffuse_texture,
-                ..Default::default()
-            },
-        );
+        context
+            .graphics
+            .create_material(
+                "sprites",
+                MaterialParams {
+                    atlas: Some(AtlasParams::Grid {
+                        cols: 16,
+                        rows: 10,
+                        padding: Some((1, 1)),
+                    }),
+                    diffuse_texture,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
 
         // Create camera
         context.graphics.create_camera(1., Vector2f::ZERO);

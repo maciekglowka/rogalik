@@ -42,34 +42,40 @@ impl Game for GameState {
                 .load_texture("examples/arkanoid/sprites.png"),
         );
         // Create sprite material
-        context.graphics.load_material(
-            "sprites",
-            MaterialParams {
-                atlas: Some(AtlasParams::Grid {
-                    cols: 4,
-                    rows: 1,
-                    padding: None,
-                }),
-                diffuse_texture: sprite_texture,
-                ..Default::default()
-            },
-        );
+        context
+            .graphics
+            .create_material(
+                "sprites",
+                MaterialParams {
+                    atlas: Some(AtlasParams::Grid {
+                        cols: 4,
+                        rows: 1,
+                        padding: None,
+                    }),
+                    diffuse_texture: sprite_texture,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
 
         // Load bitmap font
-        context.graphics.load_font_atlas(
-            "pixel",
-            "examples/font.png",
-            AtlasParams::Grid {
-                cols: 16,
-                rows: 6,
-                padding: Some((1, 1)),
-            },
-            FontParams {
-                // Typically manual spacing is needed for bitmap fonts.
-                character_spacing: Some(0.125),
-                ..Default::default()
-            },
-        );
+        context
+            .graphics
+            .load_font_atlas(
+                "pixel",
+                "examples/font.png",
+                AtlasParams::Grid {
+                    cols: 16,
+                    rows: 6,
+                    padding: Some((1, 1)),
+                },
+                FontParams {
+                    // Typically manual spacing is needed for bitmap fonts.
+                    character_spacing: Some(0.125),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
 
         // Create camera
         context.graphics.create_camera(1., Vector2f::ZERO);

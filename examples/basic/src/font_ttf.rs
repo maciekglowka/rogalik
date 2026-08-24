@@ -6,17 +6,21 @@ impl Game for GameState {
     fn setup(&mut self, context: &mut Context) {
         context
             .graphics
-            .load_font("m5x7", "examples/m5x7.ttf", FontParams::default());
+            .load_font("m5x7", "examples/m5x7.ttf", FontParams::default())
+            .unwrap();
 
-        context.graphics.load_font(
-            "monogram",
-            "examples/monogram.ttf",
-            FontParams {
-                // Make slightly tighter lines.
-                line_spacing: Some(0.75),
-                ..Default::default()
-            },
-        );
+        context
+            .graphics
+            .load_font(
+                "monogram",
+                "examples/monogram.ttf",
+                FontParams {
+                    // Make slightly tighter lines.
+                    line_spacing: Some(0.75),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
 
         // Create camera
         context.graphics.create_camera(1., Vector2f::ZERO);
