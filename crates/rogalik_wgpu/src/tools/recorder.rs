@@ -109,6 +109,7 @@ impl Recorder {
                     .copied()
                     .collect::<Vec<_>>();
                 if self.channel_swap {
+                    #[allow(clippy::chunks_exact_to_as_chunks)]
                     bytes.chunks_exact_mut(4).for_each(|c| c.swap(0, 2));
                 }
 
@@ -190,6 +191,7 @@ impl Recorder {
                 .map(|a| &mut a[..bytes_per_row as usize])
                 .for_each(|a| {
                     if channel_swap {
+                        #[allow(clippy::chunks_exact_to_as_chunks)]
                         a.chunks_exact_mut(4).for_each(|c| c.swap(0, 2));
                     }
                     pipe_writer.write_all(a).unwrap()
