@@ -30,6 +30,7 @@ jobs:
         run: sudo apt-get update && sudo apt install -yy libasound2-dev
       - name: Basic examples
         run: |
+          ls .
           cd $GITHUB_WORKSPACE/examples/basic
           cargo build --release
       - name: Game examples
