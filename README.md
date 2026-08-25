@@ -32,7 +32,7 @@ Examples are provided as separate crates in the `examples` directory.
 
 In order to run them execute e.g.:
 
-```
+```ignore
 cargo run --bin sprite-atlas
 ```
 
