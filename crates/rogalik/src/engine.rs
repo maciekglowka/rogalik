@@ -173,7 +173,7 @@ impl EngineBuilder {
 
         let os_path = app
             .internal_data_path()
-            .map_or(None, |a| a.to_str().map(|a| a.to_string()));
+            .and_then(|a| a.to_str().map(|a| a.to_string()));
 
         let event_loop = EventLoop::with_user_event()
             .with_android_app(app)
