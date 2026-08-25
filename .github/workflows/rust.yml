@@ -1,0 +1,34 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Run tests
+      run: cargo test --verbose
+
+  build-examples:
+    runs-on: ubuntu-latest
+    needs:
+      - test
+
+    steps:
+      - name: Basic examples
+        run: |
+          cd examples/basic
+          cargo build --release
+      - name: Game examples
+        run: |
+          cd examples/games
+          cargo build --release
