@@ -93,9 +93,10 @@ impl PostProcessPass {
         pass.draw(0..3, 0..1);
         Ok(())
     }
+    #[allow(clippy::too_many_arguments)]
     pub fn create_wgpu_data(
         &mut self,
-        textures: &Vec<TextureData>,
+        textures: &[TextureData],
         bind_group_layout: &wgpu::BindGroupLayout,
         w: u32,
         h: u32,
@@ -120,8 +121,9 @@ impl PostProcessPass {
         self.view = Some(view);
         Ok(())
     }
+    #[allow(clippy::too_many_arguments)]
     fn get_bind_group(
-        textures: &Vec<TextureData>,
+        textures: &[TextureData],
         uniform_data: &PostProcessUniform,
         bind_group_layout: &wgpu::BindGroupLayout,
         view: &wgpu::TextureView,
@@ -205,7 +207,7 @@ impl PostProcessPass {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: texture_format.clone(),
+            format: *texture_format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
             view_formats: &[],
         });

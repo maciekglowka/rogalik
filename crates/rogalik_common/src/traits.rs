@@ -157,6 +157,7 @@ pub trait GraphicsContext {
     /// character (e.g., color, flip).
     ///
     /// On success text dimensions are returned.
+    #[allow(clippy::too_many_arguments)]
     fn draw_textbox(
         &mut self,
         font: &str,

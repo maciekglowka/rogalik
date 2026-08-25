@@ -163,3 +163,9 @@ impl InputContext {
         &self.touches
     }
 }
+
+impl Default for InputContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}

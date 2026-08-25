@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use rogalik_common::{structs::AssetId, EngineError, ResourceId};
 
-use super::{Asset, AssetContext, AssetState};
+use super::{Asset, AssetContext};
 
 include!(concat!(env!("OUT_DIR"), "/included_assets.rs"));
 

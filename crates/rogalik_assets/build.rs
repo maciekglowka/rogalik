@@ -14,13 +14,14 @@ fn main() {
     root_dir_only();
 }
 
+#[allow(dead_code)]
 fn root_dir_only() {
     let (asset_dir, dest_path) = get_dirs();
     println!("cargo:rerun-if-changed={}", asset_dir.to_string_lossy());
     println!("cargo:rerun-if-env-changed=ROGALIK_ASSETS");
 
-    let mut asset_file =
-        File::create(&dest_path).expect(&format!("Can't create the asset_file at {:?}", dest_path));
+    let mut asset_file = File::create(&dest_path)
+        .unwrap_or_else(|_| panic!("Can't create the asset_file at {:?}", dest_path));
 
     asset_file
         .write_all(
@@ -41,8 +42,8 @@ fn embedded() {
     println!("cargo:rerun-if-changed={}", asset_dir.to_string_lossy());
     println!("cargo:rerun-if-env-changed=ROGALIK_ASSETS");
 
-    let mut asset_file =
-        File::create(&dest_path).expect(&format!("Can't create the asset_file at {:?}", dest_path));
+    let mut asset_file = File::create(&dest_path)
+        .unwrap_or_else(|_| panic!("Can't create the asset_file at {:?}", dest_path));
 
     asset_file
         .write_all(

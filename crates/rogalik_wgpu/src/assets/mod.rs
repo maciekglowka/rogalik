@@ -196,8 +196,9 @@ impl WgpuAssets {
                 || updated_textures.contains(&material.normal_texture_id.0)
             {
                 log::debug!("Updating material {:?}", material);
-                if let Err(_) =
-                    material.create_wgpu_data(&self.textures, device, queue, material_layout)
+                if material
+                    .create_wgpu_data(&self.textures, device, queue, material_layout)
+                    .is_err()
                 {
                     log::error!("Material reload failed!");
                 }
@@ -205,8 +206,9 @@ impl WgpuAssets {
         }
 
         for shader in self.shaders.iter_mut() {
-            if let Err(_) =
-                shader.create_wgpu_data(&mut store, device, texture_format, &self.pipeline_layouts)
+            if shader
+                .create_wgpu_data(&mut store, device, texture_format, &self.pipeline_layouts)
+                .is_err()
             {
                 log::debug!("Shader reload failed!");
             }
@@ -445,7 +447,9 @@ impl WgpuAssets {
             .asset_store
             .lock()
             .expect("Can't acquire the asset store!");
-        store.load(path).expect(&format!("Can't load {}!", path))
+        store
+            .load_path(path)
+            .unwrap_or_else(|_| panic!("Can't load {}!", path))
     }
     fn load_builtin_shader(
         &mut self,
@@ -457,7 +461,7 @@ impl WgpuAssets {
             .asset_store
             .lock()
             .expect("Can't acquire the asset store!");
-        let asset_id = store.from_bytes(bytes);
+        let asset_id = store.load_bytes(bytes);
         let shader = shader::Shader::new(kind, asset_id);
         let id = self.get_next_shader_id();
         self.shaders.push(shader);

@@ -132,6 +132,7 @@ impl Renderer2d {
         self.sprite_pass.create_wgpu_data();
         Ok(())
     }
+    #[allow(clippy::too_many_arguments)]
     pub fn draw_atlas_sprite(
         &mut self,
         assets: &WgpuAssets,
@@ -151,7 +152,7 @@ impl Renderer2d {
             shader_id: material.shader_id,
         };
 
-        if let Some(_) = params.slice {
+        if params.slice.is_some() {
             let s = material
                 .atlas
                 .as_ref()
@@ -184,6 +185,7 @@ impl Renderer2d {
             .ok()?;
         Some(Vector2f::new(layout.width, layout.height))
     }
+    #[allow(clippy::too_many_arguments)]
     pub fn draw_text(
         &mut self,
         assets: &mut WgpuAssets,

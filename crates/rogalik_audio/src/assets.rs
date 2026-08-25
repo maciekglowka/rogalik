@@ -29,7 +29,9 @@ impl AudioAssets {
             .lock()
             .expect("Can't acquire the asset store!");
 
-        let asset_id = store.load(path).expect(&format!("Can't load {path}!"));
+        let asset_id = store
+            .load_path(path)
+            .unwrap_or_else(|_| panic!("Can't load {path}!"));
 
         let source = AudioSource::new(asset_id, &store)?;
 

@@ -1,6 +1,8 @@
 use image::{GenericImageView, ImageBuffer, Rgba};
 use rogalik_common::{structs::AssetId, EngineError, ResourceId};
 
+type BufferOutput = (ImageBuffer<Rgba<u8>, Vec<u8>>, (u32, u32));
+
 pub(crate) struct TextureData {
     /// Asset handle used for hot reloading.
     pub asset_id: Option<ResourceId<AssetId>>,
@@ -78,9 +80,7 @@ impl TextureData {
         texture
     }
 
-    fn get_buffer_from_file(
-        bytes: &[u8],
-    ) -> Result<(ImageBuffer<Rgba<u8>, Vec<u8>>, (u32, u32)), EngineError> {
+    fn get_buffer_from_file(bytes: &[u8]) -> Result<BufferOutput, EngineError> {
         let img = image::load_from_memory(bytes)
             .inspect_err(|e| log::error!("Failed to load texture: {e}"))
             .map_err(|_| EngineError::InvalidResource)?;
@@ -94,7 +94,7 @@ impl TextureData {
         bytes: &[u8],
         width: u32,
         height: u32,
-    ) -> Result<(ImageBuffer<Rgba<u8>, Vec<u8>>, (u32, u32)), EngineError> {
+    ) -> Result<BufferOutput, EngineError> {
         let buf = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(width, height, bytes.to_vec())
             .ok_or(EngineError::InvalidResource)?;
         Ok((buf, (width, height)))

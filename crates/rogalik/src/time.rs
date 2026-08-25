@@ -146,9 +146,8 @@ where
 {
     let duration = std::time::Duration::deserialize(deserializer)?;
     let now = std::time::Instant::now();
-    Ok(now
-        .checked_sub(duration)
-        .ok_or(serde::de::Error::custom("Invalid instant"))?)
+    now.checked_sub(duration)
+        .ok_or(serde::de::Error::custom("Invalid instant"))
 }
 
 #[cfg(not(target_arch = "wasm32"))]

@@ -56,6 +56,7 @@ impl AudioSetup for AudioEngine {
 
                         for data_samples in data.chunks_mut(CHANNEL_COUNT) {
                             // Should get unrolled by the compiler
+                            #[allow(clippy::needless_range_loop)]
                             for i in 0..CHANNEL_COUNT {
                                 data_samples[i] = 0.;
                             }

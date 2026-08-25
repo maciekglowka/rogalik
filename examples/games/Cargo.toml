@@ -1,5 +1,5 @@
 [package]
-name = "examples-basic"
+name = "examples-games"
 version = "0.1.0"
 edition = "2024"
 publish = false

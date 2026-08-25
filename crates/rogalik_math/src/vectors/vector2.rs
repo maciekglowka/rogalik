@@ -109,7 +109,7 @@ impl<T: Num + Copy> Add for Vector2<T> {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
-        return Vector2::<T>::new(self.x + other.x, self.y + other.y);
+        Vector2::<T>::new(self.x + other.x, self.y + other.y)
     }
 }
 
@@ -126,7 +126,7 @@ impl<T: Num + Copy> Sub for Vector2<T> {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self {
-        return Vector2::<T>::new(self.x - other.x, self.y - other.y);
+        Vector2::<T>::new(self.x - other.x, self.y - other.y)
     }
 }
 
@@ -143,7 +143,7 @@ impl<T: Num + Copy> Div<T> for Vector2<T> {
     type Output = Self;
 
     fn div(self, other: T) -> Self {
-        return Vector2::<T>::new(self.x / other, self.y / other);
+        Vector2::<T>::new(self.x / other, self.y / other)
     }
 }
 
@@ -151,7 +151,7 @@ impl<T: Num + Copy> Mul<T> for Vector2<T> {
     type Output = Self;
 
     fn mul(self, other: T) -> Self {
-        return Vector2::<T>::new(self.x * other, self.y * other);
+        Vector2::<T>::new(self.x * other, self.y * other)
     }
 }
 
@@ -160,14 +160,14 @@ impl Mul<Vector2<f32>> for f32 {
     type Output = Vector2<f32>;
 
     fn mul(self, other: Vector2<f32>) -> Vector2<f32> {
-        return Vector2::<f32>::new(other.x * self, other.y * self);
+        Vector2::<f32>::new(other.x * self, other.y * self)
     }
 }
 impl Mul<Vector2<i32>> for i32 {
     type Output = Vector2<i32>;
 
     fn mul(self, other: Vector2<i32>) -> Vector2<i32> {
-        return Vector2::<i32>::new(other.x * self, other.y * self);
+        Vector2::<i32>::new(other.x * self, other.y * self)
     }
 }
 

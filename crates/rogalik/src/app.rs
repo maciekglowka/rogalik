@@ -4,8 +4,10 @@ use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::keyboard::PhysicalKey;
 use winit::window::{Window, WindowAttributes, WindowId};
+
+#[cfg(debug_assertions)]
+use winit::keyboard::PhysicalKey;
 
 #[cfg(feature = "remote")]
 use crate::remote::{RemoteHandle, RemoteResponse};

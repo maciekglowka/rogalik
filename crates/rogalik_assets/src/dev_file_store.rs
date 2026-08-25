@@ -36,7 +36,7 @@ impl DevFileStore {
                 continue;
             };
 
-            let Ok(file_meta) = fs::metadata(&meta.path.as_path()) else {
+            let Ok(file_meta) = fs::metadata(meta.path.as_path()) else {
                 continue;
             };
             let Ok(modified) = get_modified_u64(&file_meta) else {
@@ -58,19 +58,19 @@ impl DevFileStore {
     }
 }
 impl AssetContext for DevFileStore {
-    fn from_bytes(&mut self, data: &'static [u8]) -> ResourceId<AssetId> {
+    fn load_bytes(&mut self, data: &'static [u8]) -> ResourceId<AssetId> {
         let id = self.next_id;
         self.assets.insert(id, Asset::borrowed(data));
         self.bump_id();
         id
     }
-    fn load(&mut self, path: &str) -> Result<ResourceId<AssetId>, EngineError> {
+    fn load_path(&mut self, path: &str) -> Result<ResourceId<AssetId>, EngineError> {
         let id = self.next_id;
 
         let abs_path = Path::new(&self.root).join(path);
         let data = fs::read(&abs_path).map_err(|_| EngineError::ResourceNotFound)?;
 
-        let meta = fs::metadata(&abs_path.as_path()).map_err(|_| EngineError::ResourceNotFound)?;
+        let meta = fs::metadata(abs_path.as_path()).map_err(|_| EngineError::ResourceNotFound)?;
         let modified = get_modified_u64(&meta)?;
 
         log::debug!("Loaded asset from: {}. {} bytes.", path, data.len());
