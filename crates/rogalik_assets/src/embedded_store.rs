@@ -27,13 +27,13 @@ impl EmbeddedStore {
     }
 }
 impl AssetContext for EmbeddedStore {
-    fn from_bytes(&mut self, data: &'static [u8]) -> ResourceId<AssetId> {
+    fn load_bytes(&mut self, data: &'static [u8]) -> ResourceId<AssetId> {
         let id = self.next_id;
         self.assets.insert(id, Asset::borrowed(data));
         self.bump_id();
         id
     }
-    fn load(&mut self, path: &str) -> Result<ResourceId<AssetId>, EngineError> {
+    fn load_path(&mut self, path: &str) -> Result<ResourceId<AssetId>, EngineError> {
         let id = self.next_id;
 
         let data = self
