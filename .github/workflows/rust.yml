@@ -34,7 +34,8 @@ jobs:
       with:
         targets: ${{ matrix.target }}
         components: clippy
-    - name: Install deps
+    - name: Install Linux deps
+      if: matrix.tartet == 'x86_64-unknown-linux-gnu'
       run: sudo apt-get update && sudo apt install -yy libasound2-dev
     - name: Cache
       uses: Swatinem/rust-cache@v2
@@ -47,6 +48,7 @@ jobs:
       
 
   test:
+    name: Run tests
     runs-on: ubuntu-latest
 
     steps:
@@ -57,6 +59,7 @@ jobs:
         run: cargo test --verbose
 
   build-examples:
+    name: Build examples
     runs-on: ubuntu-latest
     needs:
       - test
