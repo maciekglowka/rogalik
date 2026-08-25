@@ -44,7 +44,7 @@ jobs:
     - name: Check
       run: cargo check --target ${{ matrix.target }} --all-features
     - name: Clippy
-      run: cargo clippy --target ${{ matrix.target }} --all-features
+      run: cargo clippy --target ${{ matrix.target }} --all-features -- -D warnings
       
 
   test:
