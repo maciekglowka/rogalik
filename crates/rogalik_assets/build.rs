@@ -27,7 +27,7 @@ fn root_dir_only() {
         .write_all(
             format!(
                 "
-           const ASSET_ROOT: &str = \"{}\";\n\n
+           const ASSET_ROOT: &str = r\"{}\";\n\n
         ",
                 asset_dir.as_path().to_str().unwrap()
             )
