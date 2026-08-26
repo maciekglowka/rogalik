@@ -246,6 +246,9 @@ pub trait GraphicsContext {
     /// `shader`: The `BuiltInShader` enum variant identifying the desired
     /// shader.
     fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId<ShaderId>>;
+}
+
+pub trait GraphicsDevTools {
     fn toggle_recording(&mut self);
     fn request_screenshot(&mut self);
     fn take_screenshot(&mut self) -> Option<Vec<u8>>;

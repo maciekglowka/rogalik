@@ -233,7 +233,7 @@ fn run<T>(event_loop: EventLoop<ExternalEvent>, mut app: App<T>)
 where
     T: Game + 'static,
 {
-    #[cfg(feature = "remote")]
+    #[cfg(all(dev_tools, feature = "remote"))]
     if let Ok(handle) = crate::remote::spawn_remote_controller(event_loop.create_proxy()) {
         app.remote_handle = Some(handle);
     }

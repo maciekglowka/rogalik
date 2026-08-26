@@ -16,7 +16,7 @@ const MAX_LIGHTS: u32 = 16;
 
 pub struct Renderer2d {
     sprite_pass: sprite_pass::SpritePass,
-    #[cfg(feature = "capture")]
+    #[cfg(all(dev_tools, feature = "capture"))]
     pub(crate) recorder: crate::tools::Recorder,
     rendering_resolution: Option<(u32, u32)>, // for pixel perfect renders
     upscale_pass: Option<PostProcessPass>,    // for pixel perfect renders
@@ -28,7 +28,7 @@ impl Renderer2d {
         let sprite_pass = sprite_pass::SpritePass::new(wgpu::Color::BLACK);
         Self {
             sprite_pass,
-            #[cfg(feature = "capture")]
+            #[cfg(all(dev_tools, feature = "capture"))]
             recorder: crate::tools::Recorder::default(),
             rendering_resolution: None,
             upscale_pass: None,

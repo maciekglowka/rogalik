@@ -5,7 +5,7 @@ mod android;
 mod app;
 mod engine;
 pub mod input;
-#[cfg(feature = "remote")]
+#[cfg(all(dev_tools, feature = "remote"))]
 mod remote;
 mod scenes;
 mod time;
@@ -31,6 +31,9 @@ pub mod prelude {
     pub use crate::scenes::SceneController;
     pub use crate::traits::{Game, Scene};
     pub use rogalik_assets::{AssetContext, AssetState};
-    pub use rogalik_common::*;
+    pub use rogalik_common::{
+        structs::*,
+        traits::{AudioContext, Camera, GraphicsContext},
+    };
     pub use rogalik_math::vectors::{Vector2f, Vector2i};
 }

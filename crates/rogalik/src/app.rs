@@ -6,17 +6,17 @@ use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowAttributes, WindowId};
 
-#[cfg(debug_assertions)]
+#[cfg(dev_tools)]
 use winit::keyboard::PhysicalKey;
 
-#[cfg(feature = "remote")]
+#[cfg(all(dev_tools, feature = "remote"))]
 use crate::remote::{RemoteHandle, RemoteResponse};
 use crate::{
     engine::Context,
     scenes::{update_scenes, SceneManager},
     Game, Scene,
 };
-use rogalik_common::traits::{AudioSetup, GraphicsContext, GraphicsSetup};
+use rogalik_common::traits::{AudioSetup, GraphicsDevTools, GraphicsSetup};
 
 pub struct App<T> {
     pub context: Context,
@@ -24,7 +24,7 @@ pub struct App<T> {
     pub scene_manager: SceneManager<T>,
     window: Option<Arc<Window>>,
     window_attributes: WindowAttributes,
-    #[cfg(feature = "remote")]
+    #[cfg(all(dev_tools, feature = "remote"))]
     pub(crate) remote_handle: Option<RemoteHandle>,
 }
 impl<T: Game> App<T> {
@@ -40,7 +40,7 @@ impl<T: Game> App<T> {
             scene_manager: SceneManager::new(scene),
             window: None,
             window_attributes,
-            #[cfg(feature = "remote")]
+            #[cfg(all(dev_tools, feature = "remote"))]
             remote_handle: None,
         }
     }
@@ -54,7 +54,7 @@ impl<T: Game> App<T> {
             .resize(physical_size.width, physical_size.height);
     }
     fn can_accept_input(&self) -> bool {
-        #[cfg(feature = "remote")]
+        #[cfg(all(dev_tools, feature = "remote"))]
         if let Some(remote) = &self.remote_handle {
             return !remote.is_connected();
         }
@@ -118,9 +118,11 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
                             self.context.audio.update_assets();
                             self.game.reload_assets(&mut self.context);
                         }
+                        #[cfg(feature = "capture")]
                         if code == winit::keyboard::KeyCode::F8 {
                             self.context.graphics.toggle_recording();
                         }
+                        // TODO add screenshot to disk.
                     }
                 }
             }
@@ -193,7 +195,7 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
                 //     start.elapsed().as_secs_f32()
                 // );
 
-                #[cfg(feature = "capture")]
+                #[cfg(all(dev_tools, feature = "capture"))]
                 if let Some(handle) = &self.remote_handle {
                     if handle.is_expecting_screenshot() {
                         if let Some(buf) = self.context.graphics.take_screenshot() {

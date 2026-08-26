@@ -6,7 +6,7 @@ use winit::window::Window;
 
 use rogalik_common::{
     structs::{CameraId, ShaderId, TextureId},
-    traits::GraphicsSetup,
+    traits::{GraphicsDevTools, GraphicsSetup},
     AtlasParams, BuiltInShader, EngineError, FontParams, GraphicsContext, ResourceId, SpriteParams,
 };
 use rogalik_math::vectors::Vector2f;
@@ -465,23 +465,21 @@ impl GraphicsContext for WgpuContext {
     fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId<ShaderId>> {
         self.assets.builtin_shaders.get(&shader).copied()
     }
+}
+
+impl GraphicsDevTools for WgpuContext {
     fn toggle_recording(&mut self) {
-        #[cfg(feature = "capture")]
+        #[cfg(all(dev_tools, feature = "capture"))]
         self.renderer2d.recorder.toggle_recording();
     }
     fn request_screenshot(&mut self) {
-        #[cfg(feature = "capture")]
+        #[cfg(all(dev_tools, feature = "capture"))]
         self.renderer2d.recorder.request_screenshot();
     }
     fn take_screenshot(&mut self) -> Option<Vec<u8>> {
-        #[cfg(feature = "capture")]
-        {
-            self.renderer2d.recorder.take_screenshot()
-        }
-        #[cfg(not(feature = "capture"))]
-        {
-            None
-        }
+        #[cfg(all(dev_tools, feature = "capture"))]
+        return self.renderer2d.recorder.take_screenshot();
+        None
     }
 }
 
