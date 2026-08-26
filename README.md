@@ -32,7 +32,7 @@ To enable dev-tools set Rust cfg `dev_tools`, e.g. via setting `RUSTFLAGS` var
 when running the game.
 
 ```ignore
-RUSTFLAGS="--cfg mock" cargo run
+RUSTFLAGS="--cfg dev_tools" cargo run
 ```
 
 By default this only enables assets hot reloading.

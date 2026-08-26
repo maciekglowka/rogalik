@@ -30,7 +30,7 @@ impl AudioAssets {
             .expect("Can't acquire the asset store!");
 
         let asset_id = store
-            .load_path(path)
+            .load(path)
             .unwrap_or_else(|_| panic!("Can't load {path}!"));
 
         let source = AudioSource::new(asset_id, &store)?;

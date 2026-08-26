@@ -33,7 +33,7 @@ impl AssetContext for EmbeddedStore {
         self.bump_id();
         id
     }
-    fn load_path(&mut self, path: &str) -> Result<ResourceId<AssetId>, EngineError> {
+    fn load(&mut self, path: &str) -> Result<ResourceId<AssetId>, EngineError> {
         let id = self.next_id;
 
         let data = self

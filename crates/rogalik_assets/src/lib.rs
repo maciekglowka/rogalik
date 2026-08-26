@@ -52,7 +52,7 @@ pub enum AssetState {
 
 pub trait AssetContext: Default {
     fn load_bytes(&mut self, data: &'static [u8]) -> ResourceId<AssetId>;
-    fn load_path(&mut self, path: &str) -> Result<ResourceId<AssetId>, EngineError>;
+    fn load(&mut self, path: &str) -> Result<ResourceId<AssetId>, EngineError>;
     fn get(&self, asset_id: ResourceId<AssetId>) -> Option<&Asset>;
     fn mark_read(&mut self, _asset_id: ResourceId<AssetId>) {}
 }

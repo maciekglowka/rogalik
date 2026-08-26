@@ -448,7 +448,7 @@ impl WgpuAssets {
             .lock()
             .expect("Can't acquire the asset store!");
         store
-            .load_path(path)
+            .load(path)
             .unwrap_or_else(|_| panic!("Can't load {}!", path))
     }
     fn load_builtin_shader(
