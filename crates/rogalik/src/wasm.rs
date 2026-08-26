@@ -1,8 +1,4 @@
 use wasm_bindgen::JsCast;
-use winit::{
-    dpi::{LogicalSize, PhysicalSize},
-    event_loop::EventLoop,
-};
 
 pub fn get_canvas() -> web_sys::HtmlCanvasElement {
     web_sys::window()
@@ -18,11 +14,6 @@ pub fn get_canvas() -> web_sys::HtmlCanvasElement {
             )
         })
         .expect("Can't find canvas!")
-}
-
-pub fn canvas_size() -> (u32, u32) {
-    let canvas = get_canvas();
-    (canvas.client_width() as u32, canvas.client_height() as u32)
 }
 
 pub fn configure_handlers() {

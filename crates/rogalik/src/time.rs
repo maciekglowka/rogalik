@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 #[cfg(feature = "serialize")]
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
+#[cfg(all(feature = "serialize", not(target_arch = "wasm32")))]
+use serde::{Deserializer, Serializer};
 
 use rogalik_common::{structs::TimerId, ResourceId};
 

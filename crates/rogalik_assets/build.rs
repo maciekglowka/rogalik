@@ -4,7 +4,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[allow(dead_code)]
 const ASSET_FILE_NAME: &str = "included_assets.rs";
 
 fn main() {
@@ -14,7 +13,7 @@ fn main() {
     root_dir_only();
 }
 
-#[allow(dead_code)]
+#[cfg(dev_tools)]
 fn root_dir_only() {
     let (asset_dir, dest_path) = get_dirs();
     println!("cargo:rerun-if-changed={}", asset_dir.to_string_lossy());
