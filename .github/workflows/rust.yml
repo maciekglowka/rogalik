@@ -11,7 +11,7 @@ env:
 
 jobs:
   lints:
-    name: Check ${{ matrix.target }}${{ rustflags }}
+    name: Check ${{ matrix.target }}${{ matrix.rustflags }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
