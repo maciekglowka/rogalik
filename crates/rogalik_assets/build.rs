@@ -25,9 +25,7 @@ fn root_dir_only() {
     asset_file
         .write_all(
             format!(
-                "
-           const ASSET_ROOT: &str = r\"{}\";\n\n
-        ",
+                "const ASSET_ROOT: &str = r\"{}\";\n\n",
                 asset_dir.as_path().to_str().unwrap()
             )
             .as_ref(),
@@ -59,9 +57,7 @@ fn embedded() {
         asset_file
             .write_all(
                 format!(
-                    "
-                assets.insert({:?}, include_bytes!({:?}).as_slice());
-            ",
+                    "assets.insert({:?}, include_bytes!({:?}).as_slice());",
                     path,
                     absolute.to_string_lossy(),
                 )
@@ -70,14 +66,7 @@ fn embedded() {
             .unwrap();
     }
 
-    asset_file
-        .write_all(
-            "
-        assets
-        }\n\n"
-                .as_ref(),
-        )
-        .unwrap();
+    asset_file.write_all("assets\n}\n\n".as_ref()).unwrap();
 }
 
 fn get_dirs() -> (PathBuf, PathBuf) {
