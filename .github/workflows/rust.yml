@@ -11,7 +11,7 @@ env:
 
 jobs:
   lints:
-    name: Check ${{ matrix.target }}
+    name: Check ${{ matrix.target }}${{ rustflags }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -27,6 +27,10 @@ jobs:
             os: windows-latest
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            rustflags: '--cfg dev_tools'
+
     steps:
     - uses: actions/checkout@v7
     - name: Install toolchain
@@ -42,8 +46,12 @@ jobs:
       with:
         key: ${{ matrix.target }}
     - name: Check
+      env:
+        RUSTFLAGS: ${{ matrix.rustflags }}
       run: cargo check --target ${{ matrix.target }} --all-features
     - name: Clippy
+      env:
+        RUSTFLAGS: ${{ matrix.rustflags }}
       run: cargo clippy --target ${{ matrix.target }} --all-features -- -D warnings
       
 
