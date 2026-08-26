@@ -8,9 +8,9 @@ use std::{
 const ASSET_FILE_NAME: &str = "included_assets.rs";
 
 fn main() {
-    #[cfg(not(debug_assertions))]
+    #[cfg(not(dev_tools))]
     embedded();
-    #[cfg(debug_assertions)]
+    #[cfg(dev_tools)]
     root_dir_only();
 }
 
@@ -36,7 +36,7 @@ fn root_dir_only() {
         .unwrap();
 }
 
-#[allow(dead_code)]
+#[cfg(not(dev_tools))]
 fn embedded() {
     let (asset_dir, dest_path) = get_dirs();
     println!("cargo:rerun-if-changed={}", asset_dir.to_string_lossy());

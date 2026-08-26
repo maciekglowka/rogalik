@@ -16,3 +16,6 @@ categories = ["games", "game-engines", "game-development"]
 rogalik_common = { path = "../rogalik_common", version = "0.3.0" }
 
 log = { workspace = true }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(dev_tools)'] }

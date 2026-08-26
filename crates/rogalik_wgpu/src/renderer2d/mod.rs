@@ -313,8 +313,7 @@ impl Renderer2d {
 
         queue.submit(std::iter::once(encoder.finish()));
 
-        // #[cfg(all(debug_assertions, feature = "capture"))]
-        #[cfg(feature = "capture")]
+        #[cfg(all(dev_tools, feature = "capture"))]
         {
             self.recorder.handle_queue(
                 self.uniforms.globals.viewport_size[0] as u32,

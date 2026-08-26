@@ -117,7 +117,7 @@ impl AudioSource {
         if let Some(asset) = asset_store.get(self.asset_id) {
             if asset.state == AssetState::Updated {
                 let _ = self.create_data(asset_store);
-                #[cfg(debug_assertions)]
+                #[cfg(dev_tools)]
                 asset_store.mark_read(self.asset_id);
             }
         }

@@ -1,15 +1,15 @@
 use rogalik_common::{structs::AssetId, EngineError, ResourceId};
 
-#[cfg(debug_assertions)]
+#[cfg(dev_tools)]
 mod dev_file_store;
 
-#[cfg(not(debug_assertions))]
+#[cfg(not(dev_tools))]
 mod embedded_store;
 
-#[cfg(debug_assertions)]
+#[cfg(dev_tools)]
 pub use dev_file_store::DevFileStore as AssetStore;
 
-#[cfg(not(debug_assertions))]
+#[cfg(not(dev_tools))]
 pub use embedded_store::EmbeddedStore as AssetStore;
 
 pub struct Asset {

@@ -37,4 +37,5 @@ features = ["png"]
 wgpu = { version = "23.0", features = ["webgl"] }
 wasm-bindgen-futures = "0.4"
 
-
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(dev_tools)'] }

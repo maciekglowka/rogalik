@@ -185,7 +185,7 @@ impl WgpuAssets {
                     texture.update_bytes(asset.data.get());
                     updated_textures.insert(i);
 
-                    #[cfg(debug_assertions)]
+                    #[cfg(dev_tools)]
                     store.mark_read(texture.asset_id.unwrap());
                 }
             }
@@ -212,7 +212,7 @@ impl WgpuAssets {
             {
                 log::debug!("Shader reload failed!");
             }
-            #[cfg(debug_assertions)]
+            #[cfg(dev_tools)]
             store.mark_read(shader.asset_id);
         }
 

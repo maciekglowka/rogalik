@@ -31,15 +31,6 @@ impl<T, S: ArenaIndex> Default for Arena<T, S> {
         Self::new()
     }
 }
-// impl<T> Arena<T> {
-//     pub fn new<S: ArenaIndex>() -> Arena<T, S> {
-//         Arena {
-//             sparse: vec![],
-//             dense: Zipped::new(),
-//             recycled_head: None,
-//         }
-//     }
-// }
 impl<T, S> Arena<T, S>
 where
     S: ArenaIndex,

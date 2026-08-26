@@ -105,8 +105,8 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
                 // TODO check if can accept input when remote keyboard commands are impl.
                 self.context.input.handle_keyboard(&event);
 
-                // reload assets
-                #[cfg(debug_assertions)]
+                // Trigger asset reload
+                #[cfg(dev_tools)]
                 if let PhysicalKey::Code(code) = event.physical_key {
                     if let ElementState::Pressed = event.state {
                         // TODO add CTRL or SHIFT modifier
