@@ -45,12 +45,12 @@ jobs:
         targets: ${{ matrix.target }}
         components: clippy
     - name: Install Linux deps
-      if: matrix.tartet == 'x86_64-unknown-linux-gnu'
+      if: matrix.target == 'x86_64-unknown-linux-gnu'
       run: sudo apt-get update && sudo apt install -yy libasound2-dev
     - name: Cache
       uses: Swatinem/rust-cache@v2
       with:
-        key: ${{ matrix.target }}
+        key: ${{ matrix.target }}-${{ matrix.rustflags }}
     - name: Check
       env:
         RUSTFLAGS: ${{ matrix.rustflags }}
