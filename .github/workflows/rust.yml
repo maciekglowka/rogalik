@@ -51,8 +51,6 @@ jobs:
       uses: Swatinem/rust-cache@v2
       with:
         key: ${{ matrix.target }}-${{ matrix.rustflags }}
-    - name: Ensure asset dir
-      run: mkdir assets
     - name: Check
       env:
         RUSTFLAGS: ${{ matrix.rustflags }}

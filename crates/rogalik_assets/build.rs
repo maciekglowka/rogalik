@@ -22,6 +22,8 @@ fn root_dir_only() {
     let mut asset_file = File::create(&dest_path)
         .unwrap_or_else(|_| panic!("Can't create the asset_file at {:?}", dest_path));
 
+    println!("@@@@@@@@@@@ {dest_path:?}");
+
     asset_file
         .write_all(
             format!(
