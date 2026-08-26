@@ -49,6 +49,8 @@ impl WgpuContext {
             clear_color: wgpu::Color::BLACK,
             renderer2d: renderer2d::Renderer2d::new(),
             rendering_resolution: None,
+            // This is a WASM only `allow` - to keep code the same across targets.
+            #[allow(clippy::arc_with_non_send_sync)]
             surface_state: Arc::new(Mutex::new(None)),
             time: 0.,
         }
