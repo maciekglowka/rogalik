@@ -64,6 +64,8 @@ jobs:
       run: |
         tree target/debug/build/rogalik_assets-*
         tree target/x86_64-unknown-linux-gnu/debug/build/rogalik_assets-*
+        cat target/x86_64-unknown-linux-gnu/debug/build/rogalik_assets-e33de55fa5e51fd7/out/included_assets.rs
+
       
 
   # test:
