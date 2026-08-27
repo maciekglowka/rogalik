@@ -16,6 +16,10 @@ fn main() {
 #[cfg(dev_tools)]
 fn root_dir_only() {
     let (asset_dir, dest_path) = get_dirs();
+    println!("cargo::warning={:?}", asset_dir);
+    println!("cargo::warning={:?}", dest_path);
+    println!("cargo::warning={:?}", std::env::var("OUT_DIR"));
+
     println!("cargo:rerun-if-changed={}", asset_dir.to_string_lossy());
     println!("cargo:rerun-if-env-changed=ROGALIK_ASSETS");
 
@@ -82,6 +86,7 @@ fn get_dirs() -> (PathBuf, PathBuf) {
     }
 }
 
+#[cfg(not(dev_tools))]
 fn find_paths(root: &Path, root_str: String) -> Vec<String> {
     if !root.is_dir() {
         return vec![root_str];
