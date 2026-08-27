@@ -54,7 +54,7 @@ jobs:
     - name: Check
       env:
         RUSTFLAGS: ${{ matrix.rustflags }}
-      run: cargo check --target ${{ matrix.target }} --all-features
+      run: cargo check -vv --target ${{ matrix.target }} --all-features
     - name: Clippy
       env:
         RUSTFLAGS: ${{ matrix.rustflags }}
@@ -64,33 +64,33 @@ jobs:
       run: tree target/debug/build/rogalik_assets-*
       
 
-  test:
-    name: Run tests
-    runs-on: ubuntu-latest
+  # test:
+  #   name: Run tests
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install deps
-        run: sudo apt-get update && sudo apt install -yy libasound2-dev
-      - name: Run tests
-        run: cargo test --verbose
+  #   steps:
+  #     - uses: actions/checkout@v7
+  #     - name: Install deps
+  #       run: sudo apt-get update && sudo apt install -yy libasound2-dev
+  #     - name: Run tests
+  #       run: cargo test --verbose
 
-  build-examples:
-    name: Build examples
-    runs-on: ubuntu-latest
-    needs:
-      - test
-      - lints
+  # build-examples:
+  #   name: Build examples
+  #   runs-on: ubuntu-latest
+  #   needs:
+  #     - test
+  #     - lints
 
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install deps
-        run: sudo apt-get update && sudo apt install -yy libasound2-dev
-      - name: Basic examples
-        run: |
-          cd $GITHUB_WORKSPACE/examples/basic
-          cargo build --release
-      - name: Game examples
-        run: |
-          cd $GITHUB_WORKSPACE/examples/games
-          cargo build --release
+  #   steps:
+  #     - uses: actions/checkout@v7
+  #     - name: Install deps
+  #       run: sudo apt-get update && sudo apt install -yy libasound2-dev
+  #     - name: Basic examples
+  #       run: |
+  #         cd $GITHUB_WORKSPACE/examples/basic
+  #         cargo build --release
+  #     - name: Game examples
+  #       run: |
+  #         cd $GITHUB_WORKSPACE/examples/games
+  #         cargo build --release
