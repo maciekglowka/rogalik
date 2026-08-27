@@ -7,13 +7,15 @@ use std::{
 const ASSET_FILE_NAME: &str = "included_assets.rs";
 
 fn main() {
-    #[cfg(not(dev_tools))]
-    embedded();
-    #[cfg(dev_tools)]
-    root_dir_only();
+    let dev_tools = std::env::var_os("CARGO_CFG_DEV_TOOLS").is_some();
+
+    if dev_tools {
+        root_dir_only();
+    } else {
+        embedded();
+    }
 }
 
-#[cfg(dev_tools)]
 fn root_dir_only() {
     let (asset_dir, dest_path) = get_dirs();
     println!("cargo:rerun-if-changed={}", asset_dir.to_string_lossy());
@@ -33,7 +35,6 @@ fn root_dir_only() {
         .unwrap();
 }
 
-#[cfg(not(dev_tools))]
 fn embedded() {
     let (asset_dir, dest_path) = get_dirs();
     println!("cargo:rerun-if-changed={}", asset_dir.to_string_lossy());
@@ -89,7 +90,6 @@ fn get_dirs() -> (PathBuf, PathBuf) {
     }
 }
 
-#[cfg(not(dev_tools))]
 fn find_paths(root: &Path, root_str: String) -> Vec<String> {
     if !root.is_dir() {
         return vec![root_str];

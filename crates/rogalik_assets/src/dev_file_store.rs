@@ -8,7 +8,6 @@ use rogalik_common::{structs::AssetId, EngineError, ResourceId};
 
 use super::{Asset, AssetBytes, AssetContext, AssetState};
 
-// include!(concat!(env!("OUT_DIR"), "/included_assets.rs"));
 include!(env!("ROGALIK_ASSET_FILE"));
 
 pub struct DevFileStore {
