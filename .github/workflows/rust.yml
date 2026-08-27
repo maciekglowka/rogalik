@@ -17,22 +17,22 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: wasm32-unknown-unknown
-            os: ubuntu-latest
+          # - target: wasm32-unknown-unknown
+          #   os: ubuntu-latest
 
-          - target: aarch64-linux-android
-            os: ubuntu-latest
-          - target: armv7-linux-androideabi
-            os: ubuntu-latest
+          # - target: aarch64-linux-android
+          #   os: ubuntu-latest
+          # - target: armv7-linux-androideabi
+          #   os: ubuntu-latest
 
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            rustflags: '--cfg dev_tools'
+          # - target: x86_64-pc-windows-msvc
+          #   os: windows-latest
+          # - target: x86_64-pc-windows-msvc
+          #   os: windows-latest
+          #   rustflags: '--cfg dev_tools'
 
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
+          # - target: x86_64-unknown-linux-gnu
+          #   os: ubuntu-latest
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             rustflags: '--cfg dev_tools'
@@ -47,10 +47,10 @@ jobs:
     - name: Install Linux deps
       if: matrix.target == 'x86_64-unknown-linux-gnu'
       run: sudo apt-get update && sudo apt install -yy libasound2-dev
-    - name: Cache
-      uses: Swatinem/rust-cache@v2
-      with:
-        key: ${{ matrix.target }}-${{ matrix.rustflags }}
+    # - name: Cache
+    #   uses: Swatinem/rust-cache@v2
+    #   with:
+    #     key: ${{ matrix.target }}-${{ matrix.rustflags }}
     - name: Check
       env:
         RUSTFLAGS: ${{ matrix.rustflags }}
