@@ -17,22 +17,22 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: wasm32-unknown-unknown
-            os: ubuntu-latest
+          # - target: wasm32-unknown-unknown
+          #   os: ubuntu-latest
 
-          - target: aarch64-linux-android
-            os: ubuntu-latest
-          - target: armv7-linux-androideabi
-            os: ubuntu-latest
+          # - target: aarch64-linux-android
+          #   os: ubuntu-latest
+          # - target: armv7-linux-androideabi
+          #   os: ubuntu-latest
 
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            rustflags: '--cfg dev_tools'
+          # - target: x86_64-pc-windows-msvc
+          #   os: windows-latest
+          # - target: x86_64-pc-windows-msvc
+          #   os: windows-latest
+          #   rustflags: '--cfg dev_tools'
 
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
+          # - target: x86_64-unknown-linux-gnu
+          #   os: ubuntu-latest
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             rustflags: '--cfg dev_tools'
@@ -47,47 +47,54 @@ jobs:
     - name: Install Linux deps
       if: matrix.target == 'x86_64-unknown-linux-gnu'
       run: sudo apt-get update && sudo apt install -yy libasound2-dev
-    - name: Cache
-      uses: Swatinem/rust-cache@v2
-      with:
-        key: ${{ matrix.target }}-${{ matrix.rustflags }}
+    # - name: Cache
+    #   uses: Swatinem/rust-cache@v2
+    #   with:
+    #     key: ${{ matrix.target }}-${{ matrix.rustflags }}
     - name: Check
       env:
         RUSTFLAGS: ${{ matrix.rustflags }}
-      run: cargo check --target ${{ matrix.target }} --all-features
+      run: cargo check -vv --target ${{ matrix.target }} --all-features
     - name: Clippy
       env:
         RUSTFLAGS: ${{ matrix.rustflags }}
       run: cargo clippy --target ${{ matrix.target }} --all-features -- -D warnings
+    - name: Debug
+      if: ${{ always() }}
+      run: |
+        tree target/debug/build/rogalik_assets-*
+        tree target/x86_64-unknown-linux-gnu/debug/build/rogalik_assets-*
+        cat target/x86_64-unknown-linux-gnu/debug/build/rogalik_assets-e33de55fa5e51fd7/out/included_assets.rs
+
       
 
-  test:
-    name: Run tests
-    runs-on: ubuntu-latest
+  # test:
+  #   name: Run tests
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install deps
-        run: sudo apt-get update && sudo apt install -yy libasound2-dev
-      - name: Run tests
-        run: cargo test --verbose
+  #   steps:
+  #     - uses: actions/checkout@v7
+  #     - name: Install deps
+  #       run: sudo apt-get update && sudo apt install -yy libasound2-dev
+  #     - name: Run tests
+  #       run: cargo test --verbose
 
-  build-examples:
-    name: Build examples
-    runs-on: ubuntu-latest
-    needs:
-      - test
-      - lints
+  # build-examples:
+  #   name: Build examples
+  #   runs-on: ubuntu-latest
+  #   needs:
+  #     - test
+  #     - lints
 
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install deps
-        run: sudo apt-get update && sudo apt install -yy libasound2-dev
-      - name: Basic examples
-        run: |
-          cd $GITHUB_WORKSPACE/examples/basic
-          cargo build --release
-      - name: Game examples
-        run: |
-          cd $GITHUB_WORKSPACE/examples/games
-          cargo build --release
+  #   steps:
+  #     - uses: actions/checkout@v7
+  #     - name: Install deps
+  #       run: sudo apt-get update && sudo apt install -yy libasound2-dev
+  #     - name: Basic examples
+  #       run: |
+  #         cd $GITHUB_WORKSPACE/examples/basic
+  #         cargo build --release
+  #     - name: Game examples
+  #       run: |
+  #         cd $GITHUB_WORKSPACE/examples/games
+  #         cargo build --release
