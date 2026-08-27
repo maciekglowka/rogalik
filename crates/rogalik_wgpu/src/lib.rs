@@ -477,9 +477,10 @@ impl GraphicsDevTools for WgpuContext {
         self.renderer2d.recorder.request_screenshot();
     }
     fn take_screenshot(&mut self) -> Option<Vec<u8>> {
-        #[cfg(all(dev_tools, feature = "capture"))]
-        return self.renderer2d.recorder.take_screenshot();
-        None
+        cfg_select! {
+            all(dev_tools, feature = "capture") => self.renderer2d.recorder.take_screenshot(),
+            _ => None,
+        }
     }
 }
 
