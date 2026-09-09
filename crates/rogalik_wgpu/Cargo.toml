@@ -16,6 +16,7 @@ categories = ["games", "game-engines", "game-development"]
 capture = []
 
 [dependencies]
+rogalik_arena = { path = "../rogalik_arena", version = "0.3.0" }
 rogalik_assets = { path = "../rogalik_assets", version = "0.3.0" }
 rogalik_common = { path = "../rogalik_common", version = "0.3.0" }
 rogalik_math = { path = "../rogalik_math", version = "0.3.0" }

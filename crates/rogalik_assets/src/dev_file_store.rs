@@ -4,23 +4,22 @@ use std::{
     path::Path,
 };
 
-use rogalik_common::{structs::AssetId, EngineError, ResourceId};
+use rogalik_arena::{Arena, ResourceId};
+use rogalik_common::EngineError;
 
 use super::{Asset, AssetBytes, AssetContext, AssetState};
 
 include!(env!("ROGALIK_ASSET_FILE"));
 
 pub struct DevFileStore {
-    next_id: ResourceId<AssetId>,
-    assets: HashMap<ResourceId<AssetId>, Asset>,
-    meta: HashMap<ResourceId<AssetId>, FileAssetMeta>,
+    assets: Arena<Asset>,
+    meta: HashMap<ResourceId<Asset>, FileAssetMeta>,
     root: String,
 }
 impl Default for DevFileStore {
     fn default() -> Self {
         log::debug!("Dev Asset Store init.");
         Self {
-            next_id: ResourceId::new(0),
             assets: HashMap::new(),
             meta: HashMap::new(),
             root: ASSET_ROOT.to_string(),
@@ -53,20 +52,12 @@ impl DevFileStore {
             }
         }
     }
-    fn bump_id(&mut self) {
-        self.next_id = ResourceId::new(self.next_id.0 + 1);
-    }
 }
 impl AssetContext for DevFileStore {
-    fn load_bytes(&mut self, data: &'static [u8]) -> ResourceId<AssetId> {
-        let id = self.next_id;
-        self.assets.insert(id, Asset::borrowed(data));
-        self.bump_id();
-        id
+    fn load_bytes(&mut self, data: &'static [u8]) -> ResourceId<Asset> {
+        self.assets.insert(Asset::borrowed(data))
     }
     fn load(&mut self, path: &str) -> Result<ResourceId<AssetId>, EngineError> {
-        let id = self.next_id;
-
         let abs_path = Path::new(&self.root).join(path);
         let data = fs::read(&abs_path).map_err(|_| EngineError::ResourceNotFound)?;
 
@@ -75,6 +66,7 @@ impl AssetContext for DevFileStore {
 
         log::debug!("Loaded asset from: {}. {} bytes.", path, data.len());
         self.assets.insert(id, Asset::owned(data));
+        let id = self.assets.insert(Asset::owned(data));
         self.meta.insert(
             id,
             FileAssetMeta {
@@ -82,13 +74,12 @@ impl AssetContext for DevFileStore {
                 modified,
             },
         );
-        self.bump_id();
         Ok(id)
     }
-    fn get(&self, asset_id: ResourceId<AssetId>) -> Option<&Asset> {
+    fn get(&self, asset_id: ResourceId<Asset>) -> Option<&Asset> {
         self.assets.get(&asset_id)
     }
-    fn mark_read(&mut self, asset_id: ResourceId<AssetId>) {
+    fn mark_read(&mut self, asset_id: ResourceId<Asset>) {
         if let Some(asset) = self.assets.get_mut(&asset_id) {
             asset.state = AssetState::Loaded;
         }

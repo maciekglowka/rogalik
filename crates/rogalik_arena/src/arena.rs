@@ -20,6 +20,12 @@ impl<T, S: Copy> Clone for ResourceId<T, S> {
 }
 impl<T, S: Copy> Copy for ResourceId<T, S> {}
 
+impl<T> std::fmt::Debug for ResourceId<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ResourceId({}, {})", self.id, self.generation)
+    }
+}
+
 pub struct Arena<T, S = u16> {
     sparse: Vec<SparseEntry<S>>,
     dense: Zipped<T, S>,
@@ -94,9 +100,9 @@ where
             self.sparse[swapped_sparse_index.to_index()].dense_index = dense_index;
         }
 
-        // This has to be done as a last step, as otherwise fixing dense index of a swap
-        // element might overwrite recycled linked list (if removed element is
-        // last in the dense array).
+        // This has to be done as a last step, as otherwise fixing dense index
+        // of a swap element might overwrite recycled linked list (if
+        // removed element is last in the dense array).
         self.push_recycled(id.id);
 
         Some(item)
@@ -124,8 +130,9 @@ where
 
     fn push_recycled(&mut self, id: S) {
         if let Some(head) = self.recycled_head {
-            // Temporarily using dense index (since it's not valid for recycled entries
-            // anyway) as a pointer in a recycled-linked-list.
+            // Temporarily using dense index (since it's not valid for recycled
+            // entries anyway) as a pointer in a
+            // recycled-linked-list.
             self.sparse[id.to_index()].dense_index = head;
             self.recycled_head = Some(id)
         } else {

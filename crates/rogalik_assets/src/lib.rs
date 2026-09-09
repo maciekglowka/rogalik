@@ -1,4 +1,5 @@
-use rogalik_common::{structs::AssetId, EngineError, ResourceId};
+use rogalik_arena::ResourceId;
+use rogalik_common::EngineError;
 
 #[cfg(dev_tools)]
 mod dev_file_store;
@@ -51,8 +52,8 @@ pub enum AssetState {
 }
 
 pub trait AssetContext: Default {
-    fn load_bytes(&mut self, data: &'static [u8]) -> ResourceId<AssetId>;
-    fn load(&mut self, path: &str) -> Result<ResourceId<AssetId>, EngineError>;
-    fn get(&self, asset_id: ResourceId<AssetId>) -> Option<&Asset>;
-    fn mark_read(&mut self, _asset_id: ResourceId<AssetId>) {}
+    fn load_bytes(&mut self, data: &'static [u8]) -> ResourceId<Asset>;
+    fn load(&mut self, path: &str) -> Result<ResourceId<Asset>, EngineError>;
+    fn get(&self, asset_id: ResourceId<Asset>) -> Option<&Asset>;
+    fn mark_read(&mut self, _asset_id: ResourceId<Asset>) {}
 }
