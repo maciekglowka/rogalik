@@ -1,7 +1,10 @@
-use rogalik_common::{
-    structs::{CameraId, ShaderId},
-    ResourceId,
-};
+use crate::data::U8_TO_SRGB;
+use crate::{Camera2d, Material, Shader};
+
+#[cfg(feature = "serialize")]
+use serde::{Deserialize, Serialize};
+
+use rogalik_arena::ResourceId;
 
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
@@ -30,106 +33,6 @@ impl Default for Color {
     fn default() -> Self {
         Self(255, 255, 255, 255)
     }
-}
-
-#[derive(Clone, Copy, Default)]
-pub struct SpriteParams {
-    pub color: Color,
-    pub flip_x: bool,
-    pub flip_y: bool,
-    pub rotate: f32,
-    pub slice: Option<u32>,
-}
-
-#[derive(Clone, Default)]
-pub struct MaterialParams {
-    pub atlas: Option<AtlasParams>,
-    pub diffuse_texture: Option<ResourceId<TextureId>>,
-    pub normal_texture: Option<ResourceId<TextureId>>,
-    pub shader: Option<ResourceId<ShaderId>>,
-    pub repeat: TextureRepeat,
-    pub filtering: TextureFiltering,
-}
-
-#[derive(Clone, Copy)]
-pub struct PostProcessParams {
-    pub texture: Option<ResourceId<TextureId>>,
-    pub shader: ResourceId<ShaderId>,
-    pub repeat: TextureRepeat,
-    pub filtering: TextureFiltering,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct AtlasPosition {
-    pub x: u32,
-    pub y: u32,
-    pub w: u32,
-    pub h: u32,
-}
-impl AtlasPosition {
-    pub fn new(x: u32, y: u32, w: u32, h: u32) -> Self {
-        Self { x, y, w, h }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum AtlasParams {
-    Grid {
-        cols: usize,
-        rows: usize,
-        padding: Option<(u32, u32)>,
-    },
-    Free(Vec<AtlasPosition>),
-}
-
-#[derive(Clone, Copy, Debug, Default)]
-pub struct FontParams<'a> {
-    /// For TTF determines which glyphs should be rendered into atlas.
-    /// For bitmap fonts specifies the order of glyphs on the provided atlas.
-    ///
-    /// If not provided ASCII mapping is used.
-    pub charset: Option<&'a [char]>,
-    pub filtering: TextureFiltering,
-    pub shader: Option<ResourceId<ShaderId>>,
-    /// Horizontal spacing between characters.
-    ///
-    /// Typically this only should be set for bitmap atlas fonts.
-    ///
-    /// Relative to font size.
-    /// E.g. spacing value 0.25 will result in 2px gap
-    /// on 8px font and 4px gap on 16px font.
-    pub character_spacing: Option<f32>,
-    /// Line spacing, relative to font size.
-    pub line_spacing: Option<f32>,
-}
-
-#[derive(Clone, Copy, Default)]
-pub enum TextureRepeat {
-    #[default]
-    Clamp,
-    Repeat,
-    MirrorRepeat,
-}
-
-#[derive(Clone, Copy, Debug, Default)]
-pub enum TextureFiltering {
-    #[default]
-    Nearest,
-    Linear,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub enum ShaderKind {
-    Sprite,
-    PostProcess,
-}
-
-#[derive(Hash, Eq, PartialEq, Debug)]
-pub enum BuiltInShader {
-    SpriteUnlit,
-    SpriteLit,
-    Upscale,
-    Lut,
 }
 
 pub(crate) type Quad = ([Vertex; 4], [u16; 6]);
@@ -165,7 +68,7 @@ pub(crate) struct Triangle {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct BindParams {
-    pub shader_id: ResourceId<ShaderId>,
-    pub material_id: ResourceId<MaterialId>,
-    pub camera_id: ResourceId<CameraId>,
+    pub shader_id: ResourceId<Shader>,
+    pub material_id: ResourceId<Material>,
+    pub camera_id: ResourceId<Camera2d>,
 }

@@ -1,15 +1,41 @@
 use std::collections::HashMap;
 
-use rogalik_common::{
-    structs::{AssetId, AtlasPosition, ShaderId},
-    AtlasParams, EngineError, FontParams, ResourceId, SpriteParams, TextureFiltering,
-};
+use rogalik_arena::ResourceId;
+use rogalik_assets::Asset;
 use rogalik_math::vectors::Vector2f;
 
 use crate::{
-    assets::WgpuAssets,
-    structs::{MaterialId, Quad},
+    assets::{
+        atlas::{AtlasParams, AtlasPosition, SpriteParams},
+        material::Material,
+        shader::Shader,
+        texture::TextureFiltering,
+        WgpuAssets,
+    },
+    structs::Quad,
+    GraphicsError,
 };
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct FontParams<'a> {
+    /// For TTF determines which glyphs should be rendered into atlas.
+    /// For bitmap fonts specifies the order of glyphs on the provided atlas.
+    ///
+    /// If not provided ASCII mapping is used.
+    pub charset: Option<&'a [char]>,
+    pub filtering: TextureFiltering,
+    pub shader: Option<ResourceId<Shader>>,
+    /// Horizontal spacing between characters.
+    ///
+    /// Typically this only should be set for bitmap atlas fonts.
+    ///
+    /// Relative to font size.
+    /// E.g. spacing value 0.25 will result in 2px gap
+    /// on 8px font and 4px gap on 16px font.
+    pub character_spacing: Option<f32>,
+    /// Line spacing, relative to font size.
+    pub line_spacing: Option<f32>,
+}
 
 pub(crate) struct Font {
     pub(crate) charset: Vec<char>,
@@ -18,10 +44,10 @@ pub(crate) struct Font {
     character_spacing: Option<f32>,
     line_spacing: Option<f32>,
     pub(crate) filtering: TextureFiltering,
-    pub(crate) shader: Option<ResourceId<ShaderId>>,
+    pub(crate) shader: Option<ResourceId<Shader>>,
 }
 impl Font {
-    pub(crate) fn new_from_atlas(params: &FontParams, material_id: ResourceId<MaterialId>) -> Self {
+    pub(crate) fn new_from_atlas(params: &FontParams, material_id: ResourceId<Material>) -> Self {
         let charset = params
             .charset
             .map(|c| c.to_vec())
@@ -39,7 +65,7 @@ impl Font {
         }
     }
 
-    pub(crate) fn new_from_ttf(params: &FontParams, asset_id: ResourceId<AssetId>) -> Self {
+    pub(crate) fn new_from_ttf(params: &FontParams, asset_id: ResourceId<Asset>) -> Self {
         let charset = params
             .charset
             .map(|c| c.to_vec())
@@ -70,7 +96,7 @@ pub(crate) struct LineMetrics {
 }
 
 pub(crate) struct FontSize {
-    pub(crate) material_id: ResourceId<MaterialId>,
+    pub(crate) material_id: ResourceId<Material>,
     pub(crate) char_metrics: Vec<CharMetric>,
     pub(crate) line_metrics: LineMetrics,
 }
@@ -82,10 +108,10 @@ pub(crate) fn text_key_size(size: f32) -> u32 {
 
 pub(crate) enum FontKind {
     /// Single atlas. Stores material id.
-    Bitmap(ResourceId<MaterialId>),
+    Bitmap(ResourceId<Material>),
     Ttf {
         /// Ttf source file.
-        asset_id: ResourceId<AssetId>,
+        asset_id: ResourceId<Asset>,
         /// Material ids by font size.
         sizes: HashMap<u32, FontSize>,
     },
@@ -110,7 +136,7 @@ pub(crate) struct TextLayout {
     chars: Vec<LayoutChar>,
     pub(crate) width: f32,
     pub(crate) height: f32,
-    pub(crate) material_id: ResourceId<MaterialId>,
+    pub(crate) material_id: ResourceId<Material>,
 }
 
 pub(crate) struct TtfGlyphs {
@@ -129,7 +155,7 @@ pub(crate) fn get_text_layout(
     text: &str,
     font: &Font,
     size: f32,
-) -> Result<TextLayout, EngineError> {
+) -> Result<TextLayout, GraphicsError> {
     calculate_layout(assets, [[text]], font, size, None)
 }
 /// Get base wrapped text box layout from an existing atlas.
@@ -141,7 +167,7 @@ pub(crate) fn get_textbox_layout(
     font: &Font,
     size: f32,
     max_width: f32,
-) -> Result<TextLayout, EngineError> {
+) -> Result<TextLayout, GraphicsError> {
     let lines = text.split('\n').map(|s| s.split_inclusive(' '));
     calculate_layout(assets, lines, font, size, Some(max_width))
 }
@@ -152,7 +178,7 @@ fn calculate_layout<T, U, S>(
     font: &Font,
     size: f32,
     max_width: Option<f32>,
-) -> Result<TextLayout, EngineError>
+) -> Result<TextLayout, GraphicsError>
 where
     T: IntoIterator<Item = U>,
     U: IntoIterator<Item = S>,
@@ -171,12 +197,11 @@ where
         }
     };
     let material = assets
-        .get_material(material_id)
-        .ok_or(EngineError::ResourceNotFound)?;
-    let atlas = material
-        .atlas
-        .as_ref()
-        .ok_or(EngineError::GraphicsNotReady)?;
+        .get_material(&material_id)
+        .ok_or(GraphicsError::ResourceNotFound(format!(
+            "material {material_id:?}"
+        )))?;
+    let atlas = material.atlas.as_ref().ok_or(GraphicsError::NotReady)?;
 
     // Text is anchored top-left (unlike regular sprites).
     let mut offset = Vector2f::new(0., -(size));
@@ -281,14 +306,15 @@ pub(crate) fn get_text_sprites(
     layout: &TextLayout,
     position: Vector2f,
     params: SpriteParams,
-) -> Result<Vec<Quad>, EngineError> {
-    let material = assets
-        .get_material(layout.material_id)
-        .ok_or(EngineError::ResourceNotFound)?;
-    let atlas = material
-        .atlas
-        .as_ref()
-        .ok_or(EngineError::GraphicsNotReady)?;
+) -> Result<Vec<Quad>, GraphicsError> {
+    let material =
+        assets
+            .get_material(&layout.material_id)
+            .ok_or(GraphicsError::ResourceNotFound(format!(
+                "material: {:?}",
+                layout.material_id
+            )))?;
+    let atlas = material.atlas.as_ref().ok_or(GraphicsError::NotReady)?;
 
     Ok(layout
         .chars
@@ -328,14 +354,16 @@ pub(crate) fn render_ttf_glyphs(
     charset: &[char],
     font_data: &[u8],
     size: f32,
-) -> Result<TtfGlyphs, EngineError> {
+) -> Result<TtfGlyphs, GraphicsError> {
     let ttf = fontdue::Font::from_bytes(font_data, fontdue::FontSettings::default())
         .inspect_err(|e| log::error!("Error while loading TTF: {e}"))
-        .map_err(|_| EngineError::InvalidResource)?;
+        .map_err(|e| GraphicsError::FontError(e.to_string()))?;
 
     let line_metrics = ttf
         .horizontal_line_metrics(size)
-        .ok_or(EngineError::InvalidResource)?;
+        .ok_or(GraphicsError::FontError(
+            "can't obtain line metrics".to_string(),
+        ))?;
 
     // Use fixed height for simplicity (bit wasteful).
     let h = (line_metrics.ascent - line_metrics.descent) as usize;
@@ -356,7 +384,9 @@ pub(crate) fn render_ttf_glyphs(
         // Sum row characters + 1px gap.
         .map(|row| row.iter().map(|(m, _)| m.width).sum::<usize>() + row.len())
         .max()
-        .ok_or(EngineError::InvalidResource)?;
+        .ok_or(GraphicsError::TextureError(
+            "can't calculate font texture width".to_string(),
+        ))?;
 
     let texture_h = h_step * row_no;
 

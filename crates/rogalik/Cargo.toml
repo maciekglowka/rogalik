@@ -20,6 +20,7 @@ crate-type = ["cdylib", "rlib"]
 serialize = [
     "dep:serde",
     "rogalik_math/serialize",
+    "rogalik_wgpu/serialize",
  ]
 capture = [
     "rogalik_wgpu/capture",

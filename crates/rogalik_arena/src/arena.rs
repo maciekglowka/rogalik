@@ -20,6 +20,13 @@ impl<T, S: Copy> Clone for ResourceId<T, S> {
 }
 impl<T, S: Copy> Copy for ResourceId<T, S> {}
 
+impl<T, S: ArenaIndex> PartialEq for ResourceId<T, S> {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.generation == other.generation
+    }
+}
+impl<T, S: ArenaIndex> Eq for ResourceId<T, S> {}
+
 impl<T> std::fmt::Debug for ResourceId<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "ResourceId({}, {})", self.id, self.generation)

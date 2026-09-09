@@ -1,3 +1,18 @@
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
+use winit::window::Window;
+
+use rogalik_arena::ResourceId;
+use rogalik_math::vectors::Vector2f;
+
+use crate::{
+    AtlasParams, BuiltInShader, Camera2d, Color, FontParams, GraphicsDevTools, GraphicsError,
+    GraphicsSetup, MaterialParams, PostProcessParams, Shader, ShaderKind, SpriteParams,
+    TextureData,
+};
+
 const MAX_TIME: f32 = 3600.;
 
 // because of WASM
@@ -14,10 +29,10 @@ struct SurfaceState {
 }
 
 pub struct WgpuContext {
-    assets: assets::WgpuAssets,
-    current_camera_id: ResourceId<CameraId>,
+    assets: crate::assets::WgpuAssets,
+    current_camera_id: Option<ResourceId<Camera2d>>,
     clear_color: wgpu::Color,
-    renderer2d: renderer2d::Renderer2d,
+    renderer2d: crate::renderer2d::Renderer2d,
     rendering_resolution: Option<(u32, u32)>,
     surface_state: Arc<Mutex<Option<SurfaceState>>>, // because of WASM
     time: f32,
@@ -26,8 +41,8 @@ pub struct WgpuContext {
 /// Public API
 impl WgpuContext {
     /// Sets the color used to clear the rendering target before each frame.
-    pub fn set_clear_color(&mut self, color: rogalik_common::Color) {
-        self.clear_color = utils::color_to_wgpu(color);
+    pub fn set_clear_color(&mut self, color: Color) {
+        self.clear_color = crate::utils::color_to_wgpu(color);
         self.renderer2d.set_clear_color(self.clear_color);
     }
     /// Sets a custom rendering resolution, enabling pixel-perfect rendering and
@@ -62,7 +77,7 @@ impl WgpuContext {
         self.resize_cameras();
     }
     /// Loads a texture from the given file path and returns its `ResourceId`.
-    pub fn load_texture(&mut self, path: &str) -> ResourceId<TextureId> {
+    pub fn load_texture(&mut self, path: &str) -> ResourceId<TextureData> {
         self.assets.texture_from_path(path)
     }
     /// Loads a material with the given name and parameters.
@@ -71,17 +86,13 @@ impl WgpuContext {
     pub fn create_material(
         &mut self,
         name: &str,
-        params: rogalik_common::MaterialParams,
-    ) -> Result<(), EngineError> {
+        params: MaterialParams,
+    ) -> Result<(), GraphicsError> {
         self.assets.create_material(name, params).map(|_| ())
         // TODO if self.surface_state build bind_group
     }
     /// Loads a shader from the given file path and returns its `ResourceId`.
-    pub fn load_shader(
-        &mut self,
-        kind: rogalik_common::ShaderKind,
-        path: &str,
-    ) -> ResourceId<ShaderId> {
+    pub fn load_shader(&mut self, kind: ShaderKind, path: &str) -> ResourceId<Shader> {
         // TODO if self.surface_state build pipeline
         self.assets.create_shader(kind, path)
     }
@@ -91,7 +102,7 @@ impl WgpuContext {
         name: &str,
         path: &str,
         params: FontParams,
-    ) -> Result<(), EngineError> {
+    ) -> Result<(), GraphicsError> {
         self.assets.load_font(name, path, params)
     }
     /// Loads a font from a texture atlas, allowing text rendering.
@@ -101,11 +112,11 @@ impl WgpuContext {
         path: &str,
         atlas: AtlasParams,
         params: FontParams,
-    ) -> Result<(), EngineError> {
+    ) -> Result<(), GraphicsError> {
         self.assets.load_font_atlas(name, path, atlas, params)
     }
     /// Adds a post-processing effect to be applied after scene rendering.
-    pub fn add_post_process(&mut self, name: &str, params: rogalik_common::PostProcessParams) {
+    pub fn add_post_process(&mut self, name: &str, params: PostProcessParams) {
         self.assets.create_post_process(name, params);
     }
     /// Queues a standard sprite for drawing in the next render pass.
@@ -116,7 +127,7 @@ impl WgpuContext {
         z_index: i32,
         size: Vector2f,
         params: SpriteParams,
-    ) -> Result<(), EngineError> {
+    ) -> Result<(), GraphicsError> {
         self.renderer2d.draw_atlas_sprite(
             &self.assets,
             0,
@@ -137,7 +148,7 @@ impl WgpuContext {
         z_index: i32,
         size: rogalik_math::vectors::Vector2f,
         params: SpriteParams,
-    ) -> Result<(), EngineError> {
+    ) -> Result<(), GraphicsError> {
         self.renderer2d.draw_atlas_sprite(
             &self.assets,
             index,
@@ -157,7 +168,7 @@ impl WgpuContext {
         uvs: &[Vector2f],
         indices: &[u16],
         z_index: i32,
-    ) -> Result<(), EngineError> {
+    ) -> Result<(), GraphicsError> {
         let vs = vertices
             .iter()
             .zip(uvs)
@@ -188,7 +199,7 @@ impl WgpuContext {
         z_index: i32,
         size: f32,
         params: SpriteParams,
-    ) -> Result<Vector2f, EngineError> {
+    ) -> Result<Vector2f, GraphicsError> {
         self.ensure_font_size(font, size)?;
         self.renderer2d.draw_text(
             &mut self.assets,
@@ -214,7 +225,7 @@ impl WgpuContext {
         size: f32,
         max_width: f32,
         params: SpriteParams,
-    ) -> Result<Vector2f, EngineError> {
+    ) -> Result<Vector2f, GraphicsError> {
         self.ensure_font_size(font, size)?;
         self.renderer2d.draw_text(
             &mut self.assets,
@@ -229,7 +240,7 @@ impl WgpuContext {
         )
     }
     /// Sets the global ambient light color for the scene.
-    pub fn set_ambient(&mut self, color: rogalik_common::Color) {
+    pub fn set_ambient(&mut self, color: Color) {
         self.renderer2d.set_ambient(color);
     }
     /// Adds a point light source to the scene for the current frame.
@@ -238,20 +249,28 @@ impl WgpuContext {
         &mut self,
         position: Vector2f,
         radius: f32,
-        color: rogalik_common::Color,
+        color: Color,
         falloff: f32,
-    ) -> Result<(), EngineError> {
+    ) -> Result<(), GraphicsError> {
         self.renderer2d.add_light(position, radius, color, falloff)
     }
-    pub fn set_postprocess_strength(&mut self, name: &str, value: f32) -> Result<(), EngineError> {
+    pub fn set_postprocess_strength(
+        &mut self,
+        name: &str,
+        value: f32,
+    ) -> Result<(), GraphicsError> {
         let id = *self
             .assets
             .get_postprocess_id(name)
-            .ok_or(EngineError::ResourceNotFound)?;
+            .ok_or(GraphicsError::ResourceNotFound(format!(
+                "post process {name}"
+            )))?;
         let pass = self
             .assets
             .get_postprocess_mut(id)
-            .ok_or(EngineError::ResourceNotFound)?;
+            .ok_or(GraphicsError::ResourceNotFound(format!(
+                "post process {name}"
+            )))?;
 
         pass.set_strength(value);
 
@@ -291,38 +310,42 @@ impl WgpuContext {
             .unwrap_or(Vector2f::ZERO)
     }
     /// Creates a new 2D camera with a specified scale and target position.
-    pub fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId<CameraId> {
+    pub fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId<Camera2d> {
         let (vw, vh, rw, rh) = self.get_current_resolutions();
-        self.assets
-            .create_camera(vw as f32, vh as f32, rw as f32, rh as f32, scale, target)
+        let id = self
+            .assets
+            .create_camera(vw as f32, vh as f32, rw as f32, rh as f32, scale, target);
+
+        if self.current_camera_id.is_none() {
+            self.current_camera_id = Some(id)
+        }
+
+        id
     }
     /// Sets the currently active camera by its `ResourceId`.
     /// All subsequent draw calls will use this camera's view.
-    pub fn set_camera(&mut self, id: &ResourceId<CameraId>) {
-        self.current_camera_id = *id;
+    pub fn set_camera(&mut self, id: &ResourceId<Camera2d>) {
+        self.current_camera_id = Some(*id);
     }
     /// Retrieves an immutable reference to the currently active camera.
-    pub fn get_current_camera(&self) -> &dyn rogalik_common::Camera {
+    pub fn get_current_camera(&self) -> &Camera2d {
         self.assets.get_camera(self.current_camera_id).unwrap()
     }
     /// Retrieves a mutable reference to the currently active camera.
-    pub fn get_current_camera_mut(&mut self) -> &mut dyn rogalik_common::Camera {
+    pub fn get_current_camera_mut(&mut self) -> &mut Camera2d {
         self.assets.get_camera_mut(self.current_camera_id).unwrap()
     }
     /// Retrieves an immutable reference to a camera by its `ResourceId`.
-    pub fn get_camera(&self, id: &ResourceId<CameraId>) -> Option<&dyn rogalik_common::Camera> {
-        Some(self.assets.get_camera(*id)?)
+    pub fn get_camera(&self, id: &ResourceId<Camera2d>) -> Option<&Camera2d> {
+        self.assets.get_camera(*id)
     }
     /// Retrieves a mutable reference to a camera by its `ResourceId`.
-    pub fn get_camera_mut(
-        &mut self,
-        id: &ResourceId<CameraId>,
-    ) -> Option<&mut dyn rogalik_common::Camera> {
-        Some(self.assets.get_camera_mut(*id)?)
+    pub fn get_camera_mut(&mut self, id: &ResourceId<Camera2d>) -> Option<&mut Camera2d> {
+        self.assets.get_camera_mut(*id)
     }
     /// Retrieves the `ResourceId` of a built-in shader.
     /// Returns `None` if the shader is not found.
-    pub fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId<ShaderId>> {
+    pub fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId<Shader>> {
         self.assets.builtin_shaders.get(&shader).copied()
     }
 }
@@ -349,10 +372,10 @@ impl GraphicsDevTools for WgpuContext {
 impl WgpuContext {
     pub fn new(asset_store: Arc<Mutex<rogalik_assets::AssetStore>>) -> Self {
         Self {
-            assets: assets::WgpuAssets::new(asset_store),
-            current_camera_id: ResourceId::new(0),
+            assets: crate::assets::WgpuAssets::new(asset_store),
+            current_camera_id: None,
             clear_color: wgpu::Color::BLACK,
-            renderer2d: renderer2d::Renderer2d::new(),
+            renderer2d: crate::renderer2d::Renderer2d::new(),
             rendering_resolution: None,
             // This is a WASM only `allow` - to keep code the same across targets.
             #[allow(clippy::arc_with_non_send_sync)]
@@ -425,15 +448,12 @@ impl WgpuContext {
             self.post_surface_state();
         }
     }
-    fn ensure_font_size(&mut self, font: &str, size: f32) -> Result<(), EngineError> {
+    fn ensure_font_size(&mut self, font: &str, size: f32) -> Result<(), GraphicsError> {
         match self.assets.has_font_size(font, size) {
             Ok(true) => Ok(()),
             Ok(false) => {
-                let state = self
-                    .surface_state
-                    .lock()
-                    .map_err(|_| EngineError::GraphicsInternalError)?;
-                let state = state.as_ref().ok_or(EngineError::GraphicsNotReady)?;
+                let state = self.surface_state.lock().unwrap();
+                let state = state.as_ref().ok_or(GraphicsError::NotReady)?;
 
                 self.assets
                     .create_font_size(font, size, &state.device, &state.queue)

@@ -1,10 +1,24 @@
-use rogalik_common::{
-    structs::{ShaderId, TextureId},
-    AtlasParams, EngineError, MaterialParams, ResourceId,
+use rogalik_arena::{Arena, ResourceId};
+
+use super::{
+    atlas::{AtlasParams, SpriteAtlas},
+    shader::Shader,
+    texture::{TextureData, TextureFiltering, TextureRepeat},
+};
+use crate::{
+    utils::{get_wgpu_address_mode, get_wgpu_filter_mode},
+    GraphicsError,
 };
 
-use super::{atlas::SpriteAtlas, texture::TextureData};
-use crate::utils::{get_wgpu_address_mode, get_wgpu_filter_mode};
+#[derive(Clone, Default)]
+pub struct MaterialParams {
+    pub atlas: Option<AtlasParams>,
+    pub diffuse_texture: Option<ResourceId<TextureData>>,
+    pub normal_texture: Option<ResourceId<TextureData>>,
+    pub shader: Option<ResourceId<Shader>>,
+    pub repeat: TextureRepeat,
+    pub filtering: TextureFiltering,
+}
 
 #[derive(Debug)]
 pub struct Material {
@@ -12,16 +26,16 @@ pub struct Material {
     pub atlas: Option<SpriteAtlas>,
     atlas_params: Option<AtlasParams>,
     pub bind_group: Option<wgpu::BindGroup>,
-    pub diffuse_texture_id: ResourceId<TextureId>,
-    pub normal_texture_id: ResourceId<TextureId>,
+    pub diffuse_texture_id: ResourceId<TextureData>,
+    pub normal_texture_id: ResourceId<TextureData>,
     filter_mode: wgpu::FilterMode,
-    pub shader_id: ResourceId<ShaderId>,
+    pub shader_id: ResourceId<Shader>,
 }
 impl Material {
     pub fn new(
-        diffuse_texture_id: ResourceId<TextureId>,
-        normal_texture_id: ResourceId<TextureId>,
-        shader_id: ResourceId<ShaderId>,
+        diffuse_texture_id: ResourceId<TextureData>,
+        normal_texture_id: ResourceId<TextureData>,
+        shader_id: ResourceId<Shader>,
         material_params: MaterialParams,
     ) -> Self {
         let address_mode = get_wgpu_address_mode(material_params.repeat);
@@ -39,17 +53,25 @@ impl Material {
     }
     pub fn create_wgpu_data(
         &mut self,
-        textures: &[TextureData],
+        textures: &Arena<TextureData>,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         bind_group_layout: &wgpu::BindGroupLayout,
-    ) -> Result<(), EngineError> {
-        let diffuse_texture = textures
-            .get(self.diffuse_texture_id.0)
-            .ok_or(EngineError::ResourceNotFound)?;
-        let normal_texture = textures
-            .get(self.normal_texture_id.0)
-            .ok_or(EngineError::ResourceNotFound)?;
+    ) -> Result<(), GraphicsError> {
+        let diffuse_texture =
+            textures
+                .get(&self.diffuse_texture_id)
+                .ok_or(GraphicsError::ResourceNotFound(format!(
+                    "diffuse texture: {:?}",
+                    self.diffuse_texture_id
+                )))?;
+        let normal_texture =
+            textures
+                .get(&self.normal_texture_id)
+                .ok_or(GraphicsError::ResourceNotFound(format!(
+                    "normal texture: {:?}",
+                    self.normal_texture_id
+                )))?;
 
         self.bind_group = Some(get_material_bind_group(
             diffuse_texture,

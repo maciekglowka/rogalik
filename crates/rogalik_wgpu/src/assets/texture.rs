@@ -1,19 +1,38 @@
 use image::{GenericImageView, ImageBuffer, Rgba};
-use rogalik_common::{structs::AssetId, EngineError, ResourceId};
+
+use rogalik_arena::ResourceId;
+use rogalik_assets::Asset;
+
+use crate::GraphicsError;
 
 type BufferOutput = (ImageBuffer<Rgba<u8>, Vec<u8>>, (u32, u32));
 
-pub(crate) struct TextureData {
+#[derive(Clone, Copy, Default)]
+pub enum TextureRepeat {
+    #[default]
+    Clamp,
+    Repeat,
+    MirrorRepeat,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub enum TextureFiltering {
+    #[default]
+    Nearest,
+    Linear,
+}
+
+pub struct TextureData {
     /// Asset handle used for hot reloading.
-    pub asset_id: Option<ResourceId<AssetId>>,
-    pub buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
-    pub dim: (u32, u32),
+    pub(crate) asset_id: Option<ResourceId<Asset>>,
+    pub(crate) buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
+    pub(crate) dim: (u32, u32),
 }
 impl TextureData {
     pub(crate) fn from_file_bytes(
-        asset_id: Option<ResourceId<AssetId>>,
+        asset_id: Option<ResourceId<Asset>>,
         bytes: &[u8],
-    ) -> Result<Self, EngineError> {
+    ) -> Result<Self, GraphicsError> {
         let (rgba, dim) = TextureData::get_buffer_from_file(bytes)?;
         Ok(Self {
             dim,
@@ -21,7 +40,7 @@ impl TextureData {
             asset_id,
         })
     }
-    pub(crate) fn from_raw(bytes: &[u8], width: u32, height: u32) -> Result<Self, EngineError> {
+    pub(crate) fn from_raw(bytes: &[u8], width: u32, height: u32) -> Result<Self, GraphicsError> {
         let (rgba, dim) = TextureData::get_buffer_from_raw(bytes, width, height)?;
         Ok(Self {
             dim,
@@ -80,10 +99,10 @@ impl TextureData {
         texture
     }
 
-    fn get_buffer_from_file(bytes: &[u8]) -> Result<BufferOutput, EngineError> {
+    fn get_buffer_from_file(bytes: &[u8]) -> Result<BufferOutput, GraphicsError> {
         let img = image::load_from_memory(bytes)
             .inspect_err(|e| log::error!("Failed to load texture: {e}"))
-            .map_err(|_| EngineError::InvalidResource)?;
+            .map_err(|e| GraphicsError::TextureError(e.to_string()))?;
         let rgba = img.to_rgba8();
         let dim = img.dimensions();
 
@@ -94,9 +113,10 @@ impl TextureData {
         bytes: &[u8],
         width: u32,
         height: u32,
-    ) -> Result<BufferOutput, EngineError> {
-        let buf = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(width, height, bytes.to_vec())
-            .ok_or(EngineError::InvalidResource)?;
+    ) -> Result<BufferOutput, GraphicsError> {
+        let buf = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(width, height, bytes.to_vec()).ok_or(
+            GraphicsError::TextureError("can't create image buffer".to_string()),
+        )?;
         Ok((buf, (width, height)))
     }
 }

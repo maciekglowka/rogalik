@@ -1,25 +1,25 @@
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
-};
+use std::sync::Arc;
 use winit::window::Window;
 
-use rogalik_arena::ResourceId;
-use rogalik_common::{
-    structs::{CameraId, ShaderId, TextureId},
-    traits::{GraphicsDevTools, GraphicsSetup},
-    AtlasParams, BuiltInShader, EngineError, FontParams, GraphicsContext, SpriteParams,
-};
-use rogalik_math::vectors::Vector2f;
+use rogalik_assets::AssetError;
 
 mod assets;
 mod context;
+mod data;
 mod renderer2d;
 mod structs;
 mod tools;
 mod utils;
 
+pub use assets::atlas::{AtlasParams, AtlasPosition, SpriteParams};
+pub use assets::camera::Camera2d;
+pub use assets::font::FontParams;
+pub use assets::material::{Material, MaterialParams};
+pub use assets::postprocess::PostProcessParams;
+pub use assets::shader::{BuiltInShader, Shader, ShaderKind};
+pub use assets::texture::TextureData;
 pub use context::WgpuContext;
+pub use structs::Color;
 
 pub trait GraphicsSetup {
     /// Creates and initializes the graphics context and surface.
@@ -54,4 +54,50 @@ pub trait GraphicsDevTools {
     fn toggle_recording(&mut self);
     fn request_screenshot(&mut self);
     fn take_screenshot(&mut self) -> Option<Vec<u8>>;
+}
+
+#[derive(Debug)]
+pub enum GraphicsError {
+    AssetError(String),
+    FontError(String),
+    InternalError,
+    NotReady,
+    MaterialError(String),
+    ResourceNotFound(String),
+    ShaderError(String),
+    TextureError(String),
+}
+impl std::fmt::Display for GraphicsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::AssetError(inner) => {
+                write!(f, "audio asset error: {inner}")
+            }
+            Self::FontError(inner) => {
+                write!(f, "font error: {inner}")
+            }
+            Self::InternalError => {
+                write!(f, "internal error")
+            }
+            Self::NotReady => {
+                write!(f, "graphics not ready")
+            }
+            Self::ResourceNotFound(inner) => {
+                write!(f, "resource not found: {inner}")
+            }
+            Self::ShaderError(inner) => {
+                write!(f, "shader error: {inner}")
+            }
+            Self::TextureError(inner) => {
+                write!(f, "texture error: {inner}")
+            }
+        }
+    }
+}
+impl std::error::Error for GraphicsError {}
+
+impl From<AssetError> for GraphicsError {
+    fn from(value: AssetError) -> Self {
+        Self::AssetError(value.to_string())
+    }
 }

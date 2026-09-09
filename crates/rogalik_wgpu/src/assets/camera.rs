@@ -1,11 +1,12 @@
 use wgpu::util::DeviceExt;
 
-use rogalik_common::{Camera, EngineError};
 use rogalik_math::vectors::Vector2f;
+
+use crate::GraphicsError;
 
 const Z_RANGE: f32 = 100.;
 
-pub struct Camera2D {
+pub struct Camera2d {
     scale: f32,
     target: Vector2f,
     vw: f32, // viewport
@@ -17,7 +18,7 @@ pub struct Camera2D {
 }
 
 /// Public API.
-impl Camera2D {
+impl Camera2d {
     /// Returns the current scale (zoom level) of the camera.
     pub fn get_scale(&self) -> f32 {
         self.scale
@@ -59,7 +60,7 @@ impl Camera2D {
 }
 
 /// Camera internals.
-impl Camera2D {
+impl Camera2d {
     pub fn new(vw: f32, vh: f32, rw: f32, rh: f32, scale: f32, target: Vector2f) -> Self {
         Self {
             scale,
@@ -73,13 +74,13 @@ impl Camera2D {
         }
     }
     pub fn create_wgpu_data(&mut self, device: &wgpu::Device, layout: &wgpu::BindGroupLayout) {
-        let (bind_group, buffer) = Camera2D::create_bind_group(device, layout, self.get_matrix());
+        let (bind_group, buffer) = Camera2d::create_bind_group(device, layout, self.get_matrix());
         self.bind_group = Some(bind_group);
         self.buffer = Some(buffer);
     }
-    pub fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), EngineError> {
+    pub fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), GraphicsError> {
         queue.write_buffer(
-            self.buffer.as_ref().ok_or(EngineError::GraphicsNotReady)?,
+            self.buffer.as_ref().ok_or(GraphicsError::NotReady)?,
             0,
             bytemuck::cast_slice(&[self.get_matrix()]),
         );
