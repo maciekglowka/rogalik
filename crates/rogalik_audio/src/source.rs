@@ -4,10 +4,10 @@ use symphonia::core::{
     meta::MetadataOptions, probe::Hint,
 };
 
-use rogalik_assets::{AssetContext, AssetState, AssetStore};
-use rogalik_common::{structs::AssetId, EngineError, ResourceId};
+use rogalik_arena::ResourceId;
+use rogalik_assets::{Asset, AssetContext, AssetState, AssetStore};
 
-use super::CHANNEL_COUNT;
+use crate::{engine::CHANNEL_COUNT, AudioError};
 
 #[derive(PartialEq)]
 enum SourceState {
@@ -16,7 +16,7 @@ enum SourceState {
 }
 
 pub(crate) struct AudioSource {
-    asset_id: ResourceId<AssetId>,
+    asset_id: ResourceId<Asset>,
     state: SourceState,
     looped: bool,
     samples: Vec<f32>,
@@ -26,10 +26,7 @@ pub(crate) struct AudioSource {
     pan: f32,
 }
 impl AudioSource {
-    pub fn new(
-        asset_id: ResourceId<AssetId>,
-        asset_store: &AssetStore,
-    ) -> Result<Self, EngineError> {
+    pub fn new(asset_id: ResourceId<Asset>, asset_store: &AssetStore) -> Result<Self, AudioError> {
         let mut source = AudioSource {
             asset_id,
             state: SourceState::Stopped,
@@ -124,10 +121,13 @@ impl AudioSource {
     }
 
     /// Create sample and channel_count data from the asset.
-    fn create_data(&mut self, asset_store: &AssetStore) -> Result<(), EngineError> {
+    fn create_data(&mut self, asset_store: &AssetStore) -> Result<(), AudioError> {
         let asset = asset_store
             .get(self.asset_id)
-            .ok_or(EngineError::ResourceNotFound)?;
+            .ok_or(AudioError::AssetError(format!(
+                "invalid asset id: {:?}",
+                self.asset_id
+            )))?;
 
         let source = Cursor::new(asset.data.get().to_vec());
         let source_stream = MediaSourceStream::new(Box::new(source), Default::default());
@@ -140,7 +140,7 @@ impl AudioSource {
 
         let mut probed = symphonia::default::get_probe()
             .format(&Hint::new(), source_stream, &fmt_opts, &meta_opts)
-            .map_err(|_| EngineError::InvalidResource)?;
+            .map_err(|e| AudioError::SourceError(e.to_string()))?;
 
         // First track only!
         let track = probed
@@ -148,23 +148,25 @@ impl AudioSource {
             .tracks()
             .iter()
             .next()
-            .ok_or(EngineError::InvalidResource)?;
+            .ok_or(AudioError::SourceError("first track not found".to_string()))?;
 
         let mut decoder = symphonia::default::get_codecs()
             .make(&track.codec_params, &DecoderOptions::default())
-            .map_err(|_| EngineError::InvalidResource)?;
+            .map_err(|e| AudioError::SourceError(e.to_string()))?;
 
         let mut samples: Vec<f32> = Vec::new();
 
         while let Ok(packet) = probed.format.next_packet() {
             let decoded = decoder
                 .decode(&packet)
-                .map_err(|_| EngineError::InvalidResource)?;
+                .map_err(|e| AudioError::SourceError(e.to_string()))?;
 
             let channel_count = decoded.spec().channels.count();
             if channel_count > 2 {
                 // Only mono and stereo tracks are supported.
-                return Err(EngineError::InvalidResource);
+                return Err(AudioError::SourceError(format!(
+                    "invalid channel count: {channel_count}"
+                )));
             }
             self.channel_count = channel_count;
 

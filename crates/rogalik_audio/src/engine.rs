@@ -1,3 +1,11 @@
+use std::sync::{Arc, Mutex};
+
+use tinyaudio::{run_output_device, OutputDevice, OutputDeviceParameters};
+
+use crate::{AudioDeviceParams, AudioError};
+
+pub(crate) const CHANNEL_COUNT: usize = 2;
+
 pub struct AudioEngine {
     device: Option<OutputDevice>,
     params: Option<AudioDeviceParams>,
@@ -5,18 +13,18 @@ pub struct AudioEngine {
 }
 
 /// Public API.
-impl AudioContext for AudioEngine {
+impl AudioEngine {
     /// Sets the global master volume for all audio playback.
-    fn set_master_volume(&mut self, volume: f32) {
+    pub fn set_master_volume(&mut self, volume: f32) {
         self.state.lock().unwrap().volume = volume;
     }
     /// Loads an audio source from a given path and associates it with a `name`.
-    fn load_source(&mut self, name: &str, path: &str) -> Result<(), rogalik_common::EngineError> {
+    pub fn load_source(&mut self, name: &str, path: &str) -> Result<(), AudioError> {
         self.state.lock().unwrap().assets.load_source(name, path)
     }
     /// Starts playing the audio source identified by `name`.
     /// If `looped` is true, the audio will loop indifinitely.
-    fn play(&mut self, name: &str, looped: bool) -> Result<(), rogalik_common::EngineError> {
+    pub fn play(&mut self, name: &str, looped: bool) -> Result<(), AudioError> {
         self.state
             .lock()
             .unwrap()
@@ -24,7 +32,7 @@ impl AudioContext for AudioEngine {
             .with_source_mut(name, |s| s.play(looped))
     }
     /// Stops the audio source identified by `name`.
-    fn stop(&mut self, name: &str) -> Result<(), rogalik_common::EngineError> {
+    pub fn stop(&mut self, name: &str) -> Result<(), AudioError> {
         self.state
             .lock()
             .unwrap()
@@ -32,7 +40,7 @@ impl AudioContext for AudioEngine {
             .with_source_mut(name, |s| s.stop())
     }
     /// Resumes playing a previously stopped audio source identified by `name`.
-    fn resume(&mut self, name: &str) -> Result<(), rogalik_common::EngineError> {
+    pub fn resume(&mut self, name: &str) -> Result<(), AudioError> {
         self.state
             .lock()
             .unwrap()
@@ -41,7 +49,7 @@ impl AudioContext for AudioEngine {
     }
     /// Sets the individual volume for the audio source identified by `name`.
     /// `volume`: A value between 0.0 and 1.0.
-    fn set_volume(&mut self, name: &str, volume: f32) -> Result<(), rogalik_common::EngineError> {
+    pub fn set_volume(&mut self, name: &str, volume: f32) -> Result<(), AudioError> {
         self.state
             .lock()
             .unwrap()
@@ -50,7 +58,7 @@ impl AudioContext for AudioEngine {
     }
     /// Sets the pan (left-right balance) for the audio source identified by
     /// `name`. `pan` should be between -1.0 (full left) and 1.0 (full right).
-    fn set_pan(&mut self, name: &str, pan: f32) -> Result<(), rogalik_common::EngineError> {
+    pub fn set_pan(&mut self, name: &str, pan: f32) -> Result<(), AudioError> {
         self.state
             .lock()
             .unwrap()
@@ -71,7 +79,7 @@ impl AudioEngine {
             device: None,
             params,
             state: Arc::new(Mutex::new(AudioState {
-                assets: assets::AudioAssets::new(asset_store),
+                assets: crate::assets::AudioAssets::new(asset_store),
                 volume: 1.,
             })),
         }
@@ -79,7 +87,7 @@ impl AudioEngine {
 }
 
 /// Setup methods, hidden behind a trait.
-impl AudioSetup for AudioEngine {
+impl crate::AudioSetup for AudioEngine {
     fn create_context(&mut self) {
         if self.params.is_none() {
             return;
@@ -133,6 +141,6 @@ impl AudioSetup for AudioEngine {
 }
 
 struct AudioState {
-    assets: assets::AudioAssets,
+    assets: crate::assets::AudioAssets,
     volume: f32,
 }

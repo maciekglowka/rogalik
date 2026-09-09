@@ -5,9 +5,8 @@ use std::{
 };
 
 use rogalik_arena::{Arena, ResourceId};
-use rogalik_common::EngineError;
 
-use super::{Asset, AssetBytes, AssetContext, AssetState};
+use crate::{Asset, AssetBytes, AssetContext, AssetError, AssetState};
 
 include!(env!("ROGALIK_ASSET_FILE"));
 
@@ -57,11 +56,13 @@ impl AssetContext for DevFileStore {
     fn load_bytes(&mut self, data: &'static [u8]) -> ResourceId<Asset> {
         self.assets.insert(Asset::borrowed(data))
     }
-    fn load(&mut self, path: &str) -> Result<ResourceId<AssetId>, EngineError> {
+    fn load(&mut self, path: &str) -> Result<ResourceId<AssetId>, AssetError> {
         let abs_path = Path::new(&self.root).join(path);
-        let data = fs::read(&abs_path).map_err(|_| EngineError::ResourceNotFound)?;
+        let data = fs::read(&abs_path)
+            .map_err(|e| AssetError::PathError(path.to_string(), e.to_string()))?;
 
-        let meta = fs::metadata(abs_path.as_path()).map_err(|_| EngineError::ResourceNotFound)?;
+        let meta = fs::metadata(abs_path.as_path())
+            .map_err(|e| AssetError::MetaDataError(e.to_string()))?;
         let modified = get_modified_u64(&meta)?;
 
         log::debug!("Loaded asset from: {}. {} bytes.", path, data.len());
@@ -90,11 +91,11 @@ struct FileAssetMeta {
     modified: u64,
 }
 
-fn get_modified_u64(meta: &std::fs::Metadata) -> Result<u64, EngineError> {
+fn get_modified_u64(meta: &std::fs::Metadata) -> Result<u64, AssetError> {
     Ok(meta
         .modified()
-        .map_err(|_| EngineError::ResourceNotFound)?
+        .map_err(|e| AssetError::MetaDataError(e.to_string()))?
         .duration_since(std::time::SystemTime::UNIX_EPOCH)
-        .map_err(|_| EngineError::ResourceNotFound)?
+        .map_err(|e| AssetError::MetaDataError(e.to_string()))?
         .as_secs())
 }
