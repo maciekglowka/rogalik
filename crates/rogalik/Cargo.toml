@@ -32,6 +32,7 @@ remote = [
 ]
 
 [dependencies]
+rogalik_arena = { path = "../rogalik_arena", version = "0.3.0" }
 rogalik_assets = { path = "../rogalik_assets", version = "0.3.0" }
 rogalik_audio = { path = "../rogalik_audio", version = "0.3.0" }
 rogalik_math = { path = "../rogalik_math", version = "0.3.0" }

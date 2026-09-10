@@ -16,7 +16,9 @@ use crate::{
     scenes::{update_scenes, SceneManager},
     Game, Scene,
 };
-use rogalik_common::traits::{AudioSetup, GraphicsDevTools, GraphicsSetup};
+
+use rogalik_audio::AudioSetup;
+use rogalik_wgpu::{GraphicsDevTools, GraphicsSetup};
 
 pub struct App<T> {
     pub context: Context,
@@ -102,7 +104,8 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
     ) {
         match event {
             WindowEvent::KeyboardInput { event, .. } => {
-                // TODO check if can accept input when remote keyboard commands are impl.
+                // TODO check if can accept input when remote keyboard commands
+                // are impl.
                 self.context.input.handle_keyboard(&event);
 
                 // Trigger asset reload

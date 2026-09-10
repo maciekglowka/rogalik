@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
 #[cfg(feature = "serialize")]
 use serde::{Deserialize, Serialize};
 #[cfg(all(feature = "serialize", not(target_arch = "wasm32")))]
 use serde::{Deserializer, Serializer};
 
-use rogalik_common::{structs::TimerId, ResourceId};
+use rogalik_arena::{Arena, Id};
 
 pub struct Time {
     // Game engine start ts
@@ -14,8 +12,7 @@ pub struct Time {
     fps: f32,
     fps_frames: usize,
     last_fps_update: Instant,
-    timers: HashMap<ResourceId<TimerId>, Timer>,
-    next_timer_id: usize,
+    timers: Arena<Timer>,
     frame_start: Instant,
 }
 impl Time {
@@ -26,8 +23,7 @@ impl Time {
             fps: 0.,
             fps_frames: 0,
             last_fps_update: Instant::now(),
-            timers: HashMap::default(),
-            next_timer_id: 0,
+            timers: Arena::new(),
             frame_start: Instant::now(),
         }
     }
@@ -41,21 +37,18 @@ impl Time {
             timer.update(self.delta);
         }
     }
-    pub fn add_timer(&mut self, tick: f32) -> ResourceId<TimerId> {
+    pub fn add_timer(&mut self, tick: f32) -> Id<Timer> {
         let timer = Timer::new(tick);
-        let id = ResourceId::new(self.next_timer_id);
-        self.timers.insert(id, timer);
-        self.next_timer_id += 1;
-        id
+        self.timers.insert(timer)
     }
-    pub fn remove_timer(&mut self, id: ResourceId<TimerId>) {
-        self.timers.remove(&id);
+    pub fn remove_timer(&mut self, id: Id<Timer>) {
+        self.timers.remove(id);
     }
     pub fn get_delta(&self) -> f32 {
         self.delta
     }
-    pub fn get_timer(&self, id: ResourceId<TimerId>) -> Option<&Timer> {
-        self.timers.get(&id)
+    pub fn get_timer(&self, id: &Id<Timer>) -> Option<&Timer> {
+        self.timers.get(id)
     }
     /// Returns the amount of seconds ca. since the game start.
     pub fn elapsed(&self) -> f32 {

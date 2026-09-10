@@ -30,10 +30,12 @@ pub mod prelude {
     pub use crate::engine::{Context, EngineBuilder};
     pub use crate::scenes::SceneController;
     pub use crate::traits::{Game, Scene};
+
     pub use rogalik_assets::{AssetContext, AssetState};
-    pub use rogalik_common::{
-        structs::*,
-        traits::{AudioContext, Camera, GraphicsContext},
-    };
     pub use rogalik_math::vectors::{Vector2f, Vector2i};
+    pub use rogalik_wgpu::{
+        AtlasParams, AtlasPosition, BuiltInShader, Camera2d, Color, FontParams, Material,
+        MaterialParams, PostProcessParams, Shader, ShaderKind, SpriteParams, TextureData,
+        TextureFiltering, TextureRepeat,
+    };
 }

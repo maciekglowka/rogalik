@@ -201,20 +201,20 @@ impl SpritePass {
                     // counter += 1;
                     if current_params.shader_id != tri.params.shader_id {
                         let pipeline = assets
-                            .get_shader(tri.params.shader_id)
-                            .ok_or(EngineError::GraphicsInternalError)?
+                            .get_shader(&tri.params.shader_id)
+                            .ok_or(GraphicsError::InternalError)?
                             .pipeline
                             .as_ref()
-                            .ok_or(EngineError::GraphicsNotReady)?;
+                            .ok_or(GraphicsError::NotReady)?;
                         pass.set_pipeline(pipeline);
                     }
                     if current_params.material_id != tri.params.material_id {
                         let bind_group = assets
-                            .get_material(tri.params.material_id)
-                            .ok_or(EngineError::GraphicsInternalError)?
+                            .get_material(&tri.params.material_id)
+                            .ok_or(GraphicsError::InternalError)?
                             .bind_group
                             .as_ref()
-                            .ok_or(EngineError::GraphicsNotReady)?;
+                            .ok_or(GraphicsError::NotReady)?;
                         pass.set_bind_group(0, bind_group, &[]);
                     }
                     if current_params.camera_id != tri.params.camera_id {
@@ -222,10 +222,15 @@ impl SpritePass {
                             1,
                             assets
                                 .cameras
-                                .get(tri.params.camera_id.0)
-                                .ok_or(EngineError::ResourceNotFound)?
+                                .get(&tri.params.camera_id)
+                                .ok_or_else(|| {
+                                    GraphicsError::ResourceNotFound(format!(
+                                        "camera: {:?}",
+                                        current_params.camera_id
+                                    ))
+                                })?
                                 .get_bind_group()
-                                .ok_or(EngineError::GraphicsNotReady)?,
+                                .ok_or(GraphicsError::NotReady)?,
                             &[],
                         );
                     }

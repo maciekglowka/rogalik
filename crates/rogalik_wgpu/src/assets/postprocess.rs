@@ -74,7 +74,7 @@ impl PostProcessPass {
         output: &wgpu::TextureView,
         uniform_bind_groups: &HashMap<UniformKind, wgpu::BindGroup>,
     ) -> Result<(), GraphicsError> {
-        let shader = assets.get_shader(self.shader_id).ok_or_else(|| {
+        let shader = assets.get_shader(&self.shader_id).ok_or_else(|| {
             GraphicsError::ResourceNotFound(format!("shader: {:?}", self.shader_id))
         })?;
 

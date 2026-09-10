@@ -132,7 +132,7 @@ impl WgpuContext {
             &self.assets,
             0,
             material,
-            self.current_camera_id,
+            self.current_camera_id.ok_or(GraphicsError::NotReady)?,
             position,
             z_index,
             size,
@@ -153,7 +153,7 @@ impl WgpuContext {
             &self.assets,
             index,
             atlas,
-            self.current_camera_id,
+            self.current_camera_id.ok_or(GraphicsError::NotReady)?,
             position,
             z_index,
             size,
@@ -182,7 +182,7 @@ impl WgpuContext {
         self.renderer2d.draw_mesh(
             &self.assets,
             material,
-            self.current_camera_id,
+            self.current_camera_id.ok_or(GraphicsError::NotReady)?,
             &vs,
             indices,
             z_index,
@@ -205,7 +205,7 @@ impl WgpuContext {
             &mut self.assets,
             font,
             text,
-            self.current_camera_id,
+            self.current_camera_id.ok_or(GraphicsError::NotReady)?,
             position,
             z_index,
             size,
@@ -231,7 +231,7 @@ impl WgpuContext {
             &mut self.assets,
             font,
             text,
-            self.current_camera_id,
+            self.current_camera_id.ok_or(GraphicsError::NotReady)?,
             position,
             z_index,
             size,
@@ -265,7 +265,7 @@ impl WgpuContext {
             .ok_or_else(|| GraphicsError::ResourceNotFound(format!("post process {name}")))?;
         let pass = self
             .assets
-            .get_postprocess_mut(id)
+            .get_postprocess_mut(&id)
             .ok_or_else(|| GraphicsError::ResourceNotFound(format!("post process {name}")))?;
 
         pass.set_strength(value);
@@ -325,19 +325,23 @@ impl WgpuContext {
     }
     /// Retrieves an immutable reference to the currently active camera.
     pub fn get_current_camera(&self) -> &Camera2d {
-        self.assets.get_camera(self.current_camera_id).unwrap()
+        self.assets
+            .get_camera(&self.current_camera_id.unwrap())
+            .unwrap()
     }
     /// Retrieves a mutable reference to the currently active camera.
     pub fn get_current_camera_mut(&mut self) -> &mut Camera2d {
-        self.assets.get_camera_mut(self.current_camera_id).unwrap()
+        self.assets
+            .get_camera_mut(&self.current_camera_id.unwrap())
+            .unwrap()
     }
     /// Retrieves an immutable reference to a camera by its `Id`.
     pub fn get_camera(&self, id: &Id<Camera2d>) -> Option<&Camera2d> {
-        self.assets.get_camera(*id)
+        self.assets.get_camera(id)
     }
     /// Retrieves a mutable reference to a camera by its `Id`.
     pub fn get_camera_mut(&mut self, id: &Id<Camera2d>) -> Option<&mut Camera2d> {
-        self.assets.get_camera_mut(*id)
+        self.assets.get_camera_mut(id)
     }
     /// Retrieves the `Id` of a built-in shader.
     /// Returns `None` if the shader is not found.
@@ -404,7 +408,7 @@ impl WgpuContext {
     }
     fn resize_cameras(&mut self) {
         let (vw, vh, rw, rh) = self.get_current_resolutions();
-        for camera in self.assets.cameras.iter_mut() {
+        for camera in self.assets.cameras.values_mut() {
             camera.resize_viewport(vw as f32, vh as f32, rw as f32, rh as f32);
         }
     }

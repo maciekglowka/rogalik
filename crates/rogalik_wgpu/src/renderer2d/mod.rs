@@ -208,7 +208,7 @@ impl Renderer2d {
             .get(assets, font_name, text, size, max_width)?;
         let sprites = get_text_sprites(assets, layout, position, params)?;
 
-        let material = assets.get_material(layout.material_id).ok_or_else(|| {
+        let material = assets.get_material(&layout.material_id).ok_or_else(|| {
             GraphicsError::ResourceNotFound(format!("material: {:?}", layout.material_id))
         })?;
 
@@ -255,7 +255,7 @@ impl Renderer2d {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> Result<(), GraphicsError> {
-        for camera in assets.cameras.iter() {
+        for camera in assets.cameras.values() {
             camera.write_buffer(queue)?;
         }
 
@@ -282,7 +282,7 @@ impl Renderer2d {
         post_process_queue.extend(
             assets
                 .postprocess
-                .iter()
+                .values()
                 .filter(|p| p.get_strength() > 0.001),
         );
 

@@ -79,6 +79,9 @@ impl std::fmt::Display for GraphicsError {
             Self::InternalError => {
                 write!(f, "internal error")
             }
+            Self::MaterialError(inner) => {
+                write!(f, "material error: {inner}")
+            }
             Self::NotReady => {
                 write!(f, "graphics not ready")
             }

@@ -1,7 +1,9 @@
-use rogalik_common::{Color, EngineError};
-use rogalik_math::vectors::Vector2f;
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
+
+use rogalik_math::vectors::Vector2f;
+
+use crate::{Color, GraphicsError};
 
 #[derive(PartialEq, Eq, Hash)]
 pub enum UniformKind {
@@ -27,18 +29,18 @@ impl Uniforms {
             .insert(UniformKind::Lights, lights_bind_group);
         self.buffers.insert(UniformKind::Lights, lights_buffer);
     }
-    pub fn write_buffers(&self, queue: &wgpu::Queue) -> Result<(), EngineError> {
+    pub fn write_buffers(&self, queue: &wgpu::Queue) -> Result<(), GraphicsError> {
         queue.write_buffer(
             self.buffers
                 .get(&UniformKind::Globals)
-                .ok_or(EngineError::GraphicsNotReady)?,
+                .ok_or(GraphicsError::NotReady)?,
             0,
             bytemuck::cast_slice(&[self.globals]),
         );
         queue.write_buffer(
             self.buffers
                 .get(&UniformKind::Lights)
-                .ok_or(EngineError::GraphicsNotReady)?,
+                .ok_or(GraphicsError::NotReady)?,
             0,
             bytemuck::cast_slice(&[self.lights]),
         );
@@ -105,9 +107,9 @@ impl LightsUniform {
         radius: f32,
         color: Color,
         falloff: f32,
-    ) -> Result<(), EngineError> {
+    ) -> Result<(), GraphicsError> {
         if self.light_count >= super::MAX_LIGHTS {
-            return Err(EngineError::GraphicsInternalError);
+            return Err(GraphicsError::InternalError);
         }
         self.lights[self.light_count as usize] = PointLight::new(position, radius, color, falloff);
         self.light_count += 1;
