@@ -198,9 +198,7 @@ where
     };
     let material = assets
         .get_material(&material_id)
-        .ok_or(GraphicsError::ResourceNotFound(format!(
-            "material {material_id:?}"
-        )))?;
+        .ok_or_else(|| GraphicsError::ResourceNotFound(format!("material {material_id:?}")))?;
     let atlas = material.atlas.as_ref().ok_or(GraphicsError::NotReady)?;
 
     // Text is anchored top-left (unlike regular sprites).
@@ -307,13 +305,9 @@ pub(crate) fn get_text_sprites(
     position: Vector2f,
     params: SpriteParams,
 ) -> Result<Vec<Quad>, GraphicsError> {
-    let material =
-        assets
-            .get_material(&layout.material_id)
-            .ok_or(GraphicsError::ResourceNotFound(format!(
-                "material: {:?}",
-                layout.material_id
-            )))?;
+    let material = assets.get_material(&layout.material_id).ok_or_else(|| {
+        GraphicsError::ResourceNotFound(format!("material: {:?}", layout.material_id))
+    })?;
     let atlas = material.atlas.as_ref().ok_or(GraphicsError::NotReady)?;
 
     Ok(layout
@@ -361,9 +355,7 @@ pub(crate) fn render_ttf_glyphs(
 
     let line_metrics = ttf
         .horizontal_line_metrics(size)
-        .ok_or(GraphicsError::FontError(
-            "can't obtain line metrics".to_string(),
-        ))?;
+        .ok_or_else(|| GraphicsError::FontError("can't obtain line metrics".to_string()))?;
 
     // Use fixed height for simplicity (bit wasteful).
     let h = (line_metrics.ascent - line_metrics.descent) as usize;
@@ -384,9 +376,9 @@ pub(crate) fn render_ttf_glyphs(
         // Sum row characters + 1px gap.
         .map(|row| row.iter().map(|(m, _)| m.width).sum::<usize>() + row.len())
         .max()
-        .ok_or(GraphicsError::TextureError(
-            "can't calculate font texture width".to_string(),
-        ))?;
+        .ok_or_else(|| {
+            GraphicsError::TextureError("can't calculate font texture width".to_string())
+        })?;
 
     let texture_h = h_step * row_no;
 

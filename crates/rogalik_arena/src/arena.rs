@@ -32,6 +32,18 @@ impl<T, S: std::hash::Hash> std::hash::Hash for Id<T, S> {
         self.generation.hash(state);
     }
 }
+impl<T, S: ArenaIndex + Ord> Ord for Id<T, S> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.id
+            .cmp(&other.id)
+            .then(self.generation.cmp(&other.generation))
+    }
+}
+impl<T, S: ArenaIndex + Ord> PartialOrd for Id<T, S> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 impl<T> std::fmt::Debug for Id<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

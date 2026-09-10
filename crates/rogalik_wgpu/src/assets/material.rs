@@ -58,20 +58,15 @@ impl Material {
         queue: &wgpu::Queue,
         bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Result<(), GraphicsError> {
-        let diffuse_texture =
-            textures
-                .get(&self.diffuse_texture_id)
-                .ok_or(GraphicsError::ResourceNotFound(format!(
-                    "diffuse texture: {:?}",
-                    self.diffuse_texture_id
-                )))?;
-        let normal_texture =
-            textures
-                .get(&self.normal_texture_id)
-                .ok_or(GraphicsError::ResourceNotFound(format!(
-                    "normal texture: {:?}",
-                    self.normal_texture_id
-                )))?;
+        let diffuse_texture = textures.get(&self.diffuse_texture_id).ok_or_else(|| {
+            GraphicsError::ResourceNotFound(format!(
+                "diffuse texture: {:?}",
+                self.diffuse_texture_id
+            ))
+        })?;
+        let normal_texture = textures.get(&self.normal_texture_id).ok_or_else(|| {
+            GraphicsError::ResourceNotFound(format!("normal texture: {:?}", self.normal_texture_id))
+        })?;
 
         self.bind_group = Some(get_material_bind_group(
             diffuse_texture,

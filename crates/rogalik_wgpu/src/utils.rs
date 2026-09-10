@@ -1,4 +1,4 @@
-use rogalik_common::{Color, TextureFiltering, TextureRepeat};
+use crate::{Color, TextureFiltering, TextureRepeat};
 
 pub fn color_to_wgpu(color: Color) -> wgpu::Color {
     let col = color.as_srgb();

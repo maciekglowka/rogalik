@@ -74,12 +74,9 @@ impl PostProcessPass {
         output: &wgpu::TextureView,
         uniform_bind_groups: &HashMap<UniformKind, wgpu::BindGroup>,
     ) -> Result<(), GraphicsError> {
-        let shader = assets
-            .get_shader(self.shader_id)
-            .ok_or(GraphicsError::ResourceNotFound(format!(
-                "shader: {:?}",
-                self.shader_id
-            )))?;
+        let shader = assets.get_shader(self.shader_id).ok_or_else(|| {
+            GraphicsError::ResourceNotFound(format!("shader: {:?}", self.shader_id))
+        })?;
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("PostProcess"),
@@ -146,9 +143,7 @@ impl PostProcessPass {
     ) -> Result<(wgpu::BindGroup, wgpu::Buffer), GraphicsError> {
         let texture = textures
             .get(texture_id)
-            .ok_or(GraphicsError::ResourceNotFound(format!(
-                "texture: {texture_id:?}"
-            )))?;
+            .ok_or_else(|| GraphicsError::ResourceNotFound(format!("texture: {texture_id:?}")))?;
 
         let texture_view = texture
             .to_wgpu_texture(device, queue, true)

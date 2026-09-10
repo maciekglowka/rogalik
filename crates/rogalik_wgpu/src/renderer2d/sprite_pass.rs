@@ -1,8 +1,8 @@
-use rogalik_common::EngineError;
 use std::collections::HashMap;
 
 use crate::assets::WgpuAssets;
 use crate::structs::{BindParams, Triangle, Vertex};
+use crate::GraphicsError;
 
 use super::uniforms::UniformKind;
 
@@ -64,8 +64,8 @@ impl SpritePass {
         }
     }
     pub(crate) fn create_wgpu_data(&mut self) {
-        // Currently only clear dynamic buffers, so they will get recreated on a first
-        // draw.
+        // Currently only clear dynamic buffers, so they will get recreated on a
+        // first draw.
         self.vertex_buffer.clear();
         self.index_buffer.clear();
     }
@@ -94,7 +94,7 @@ impl SpritePass {
         queue: &wgpu::Queue,
         uniform_bind_groups: &HashMap<UniformKind, wgpu::BindGroup>,
         view: &wgpu::TextureView,
-    ) -> Result<(), EngineError> {
+    ) -> Result<(), GraphicsError> {
         if self.triangle_queue.is_empty() {
             self.vertex_queue.clear();
             return Ok(());
@@ -153,29 +153,34 @@ impl SpritePass {
             let mut current_params = self.triangle_queue[0].params;
 
             let pipeline = assets
-                .get_shader(current_params.shader_id)
-                .ok_or(EngineError::GraphicsInternalError)?
+                .get_shader(&current_params.shader_id)
+                .ok_or(GraphicsError::InternalError)?
                 .pipeline
                 .as_ref()
-                .ok_or(EngineError::GraphicsNotReady)?;
+                .ok_or(GraphicsError::NotReady)?;
             pass.set_pipeline(pipeline);
 
             let bind_group = assets
-                .get_material(current_params.material_id)
-                .ok_or(EngineError::GraphicsInternalError)?
+                .get_material(&current_params.material_id)
+                .ok_or(GraphicsError::InternalError)?
                 .bind_group
                 .as_ref()
-                .ok_or(EngineError::GraphicsNotReady)?;
+                .ok_or(GraphicsError::NotReady)?;
             pass.set_bind_group(0, bind_group, &[]);
 
             pass.set_bind_group(
                 1,
                 assets
                     .cameras
-                    .get(current_params.camera_id.0)
-                    .ok_or(EngineError::ResourceNotFound)?
+                    .get(&current_params.camera_id)
+                    .ok_or_else(|| {
+                        GraphicsError::ResourceNotFound(format!(
+                            "camera: {:?}",
+                            current_params.camera_id
+                        ))
+                    })?
                     .get_bind_group()
-                    .ok_or(EngineError::GraphicsNotReady)?,
+                    .ok_or(GraphicsError::NotReady)?,
                 &[],
             );
             pass.set_bind_group(2, uniform_bind_groups.get(&UniformKind::Globals), &[]);

@@ -57,12 +57,9 @@ impl Shader {
         texture_format: &wgpu::TextureFormat,
         pipeline_layouts: &HashMap<ShaderKind, wgpu::PipelineLayout>,
     ) -> Result<(), GraphicsError> {
-        let asset = asset_store
-            .get(self.asset_id)
-            .ok_or(GraphicsError::ResourceNotFound(format!(
-                "shader: {:?}",
-                self.asset_id
-            )))?;
+        let asset = asset_store.get(self.asset_id).ok_or_else(|| {
+            GraphicsError::ResourceNotFound(format!("shader: {:?}", self.asset_id))
+        })?;
 
         let layout = pipeline_layouts
             .get(&self.kind)

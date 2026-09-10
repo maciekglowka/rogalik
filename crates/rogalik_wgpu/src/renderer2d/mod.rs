@@ -161,7 +161,7 @@ impl Renderer2d {
             let s = material
                 .atlas
                 .as_ref()
-                .ok_or(GraphicsError::MaterialError("atlas error".to_string()))?
+                .ok_or_else(|| GraphicsError::MaterialError("atlas error".to_string()))?
                 .get_sliced_sprite(index, position, size, params);
             self.sprite_pass
                 .add_to_queue(&s.0, &s.1, z_index, bind_params);
@@ -169,7 +169,7 @@ impl Renderer2d {
             let s = material
                 .atlas
                 .as_ref()
-                .ok_or(GraphicsError::MaterialError("atlas error".to_string()))?
+                .ok_or_else(|| GraphicsError::MaterialError("atlas error".to_string()))?
                 .get_sprite(index, position, size, params);
             self.sprite_pass
                 .add_to_queue(&s.0, &s.1, z_index, bind_params);
@@ -208,13 +208,9 @@ impl Renderer2d {
             .get(assets, font_name, text, size, max_width)?;
         let sprites = get_text_sprites(assets, layout, position, params)?;
 
-        let material =
-            assets
-                .get_material(layout.material_id)
-                .ok_or(GraphicsError::ResourceNotFound(format!(
-                    "material: {:?}",
-                    layout.material_id
-                )))?;
+        let material = assets.get_material(layout.material_id).ok_or_else(|| {
+            GraphicsError::ResourceNotFound(format!("material: {:?}", layout.material_id))
+        })?;
 
         let bind_params = BindParams {
             camera_id,
@@ -348,11 +344,9 @@ fn get_material<'a>(
 ) -> Result<(Id<Material>, &'a Material), GraphicsError> {
     let material_id = assets
         .get_material_id(name)
-        .ok_or(GraphicsError::ResourceNotFound(format!("material: {name}")))?;
+        .ok_or_else(|| GraphicsError::ResourceNotFound(format!("material: {name}")))?;
     let material = assets
         .get_material(material_id)
-        .ok_or(GraphicsError::ResourceNotFound(format!(
-            "material: {material_id:?}"
-        )))?;
+        .ok_or_else(|| GraphicsError::ResourceNotFound(format!("material: {material_id:?}")))?;
     Ok((*material_id, material))
 }

@@ -114,9 +114,8 @@ impl TextureData {
         width: u32,
         height: u32,
     ) -> Result<BufferOutput, GraphicsError> {
-        let buf = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(width, height, bytes.to_vec()).ok_or(
-            GraphicsError::TextureError("can't create image buffer".to_string()),
-        )?;
+        let buf = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(width, height, bytes.to_vec())
+            .ok_or_else(|| GraphicsError::TextureError("can't create image buffer".to_string()))?;
         Ok((buf, (width, height)))
     }
 }

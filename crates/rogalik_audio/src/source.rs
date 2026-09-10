@@ -122,12 +122,9 @@ impl AudioSource {
 
     /// Create sample and channel_count data from the asset.
     fn create_data(&mut self, asset_store: &AssetStore) -> Result<(), AudioError> {
-        let asset = asset_store
-            .get(self.asset_id)
-            .ok_or(AudioError::AssetError(format!(
-                "invalid asset id: {:?}",
-                self.asset_id
-            )))?;
+        let asset = asset_store.get(self.asset_id).ok_or_else(|| {
+            AudioError::AssetError(format!("invalid asset id: {:?}", self.asset_id))
+        })?;
 
         let source = Cursor::new(asset.data.get().to_vec());
         let source_stream = MediaSourceStream::new(Box::new(source), Default::default());
@@ -148,7 +145,7 @@ impl AudioSource {
             .tracks()
             .iter()
             .next()
-            .ok_or(AudioError::SourceError("first track not found".to_string()))?;
+            .ok_or_else(|| AudioError::SourceError("first track not found".to_string()))?;
 
         let mut decoder = symphonia::default::get_codecs()
             .make(&track.codec_params, &DecoderOptions::default())

@@ -262,15 +262,11 @@ impl WgpuContext {
         let id = *self
             .assets
             .get_postprocess_id(name)
-            .ok_or(GraphicsError::ResourceNotFound(format!(
-                "post process {name}"
-            )))?;
+            .ok_or_else(|| GraphicsError::ResourceNotFound(format!("post process {name}")))?;
         let pass = self
             .assets
             .get_postprocess_mut(id)
-            .ok_or(GraphicsError::ResourceNotFound(format!(
-                "post process {name}"
-            )))?;
+            .ok_or_else(|| GraphicsError::ResourceNotFound(format!("post process {name}")))?;
 
         pass.set_strength(value);
 

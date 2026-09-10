@@ -46,9 +46,9 @@ impl AudioAssets {
             .get_mut(
                 self.source_names
                     .get(name)
-                    .ok_or(AudioError::SourceNotFound(name.to_string()))?,
+                    .ok_or_else(|| AudioError::SourceNotFound(name.to_string()))?,
             )
-            .ok_or(AudioError::SourceNotFound(name.to_string()))?;
+            .ok_or_else(|| AudioError::SourceNotFound(name.to_string()))?;
         f(source);
         Ok(())
     }

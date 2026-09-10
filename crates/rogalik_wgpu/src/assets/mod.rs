@@ -273,7 +273,7 @@ impl WgpuAssets {
 
             let asset = store
                 .get(asset_id)
-                .ok_or(GraphicsError::ResourceNotFound(path.to_string()))
+                .ok_or_else(|| GraphicsError::ResourceNotFound(path.to_string()))
                 .expect("Invalid texture asset!");
 
             // TODO error handling.
@@ -342,7 +342,7 @@ impl WgpuAssets {
         let font = self
             .fonts
             .get(name)
-            .ok_or(GraphicsError::ResourceNotFound(name.to_string()))?;
+            .ok_or_else(|| GraphicsError::ResourceNotFound(name.to_string()))?;
 
         match &font.kind {
             font::FontKind::Bitmap(_) => Ok(true),
@@ -359,7 +359,7 @@ impl WgpuAssets {
         let font = self
             .fonts
             .get(name)
-            .ok_or(GraphicsError::ResourceNotFound(name.to_string()))?;
+            .ok_or_else(|| GraphicsError::ResourceNotFound(name.to_string()))?;
 
         let asset_id = if let font::FontKind::Ttf { asset_id, .. } = font.kind {
             asset_id
@@ -377,9 +377,7 @@ impl WgpuAssets {
 
             let asset = store
                 .get(asset_id)
-                .ok_or(GraphicsError::ResourceNotFound(format!(
-                    "font {asset_id:?}"
-                )))?;
+                .ok_or_else(|| GraphicsError::ResourceNotFound(format!("font {asset_id:?}")))?;
 
             render_ttf_glyphs(&font.charset, asset.data.get(), size)
         }?;

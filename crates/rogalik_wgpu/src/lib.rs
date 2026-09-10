@@ -17,7 +17,7 @@ pub use assets::font::FontParams;
 pub use assets::material::{Material, MaterialParams};
 pub use assets::postprocess::PostProcessParams;
 pub use assets::shader::{BuiltInShader, Shader, ShaderKind};
-pub use assets::texture::TextureData;
+pub use assets::texture::{TextureData, TextureFiltering, TextureRepeat};
 pub use context::WgpuContext;
 pub use structs::Color;
 
