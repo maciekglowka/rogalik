@@ -1,4 +1,4 @@
-use rogalik_arena::{Arena, ResourceId};
+use rogalik_arena::{Arena, Id};
 
 use super::{
     atlas::{AtlasParams, SpriteAtlas},
@@ -13,9 +13,9 @@ use crate::{
 #[derive(Clone, Default)]
 pub struct MaterialParams {
     pub atlas: Option<AtlasParams>,
-    pub diffuse_texture: Option<ResourceId<TextureData>>,
-    pub normal_texture: Option<ResourceId<TextureData>>,
-    pub shader: Option<ResourceId<Shader>>,
+    pub diffuse_texture: Option<Id<TextureData>>,
+    pub normal_texture: Option<Id<TextureData>>,
+    pub shader: Option<Id<Shader>>,
     pub repeat: TextureRepeat,
     pub filtering: TextureFiltering,
 }
@@ -26,16 +26,16 @@ pub struct Material {
     pub atlas: Option<SpriteAtlas>,
     atlas_params: Option<AtlasParams>,
     pub bind_group: Option<wgpu::BindGroup>,
-    pub diffuse_texture_id: ResourceId<TextureData>,
-    pub normal_texture_id: ResourceId<TextureData>,
+    pub diffuse_texture_id: Id<TextureData>,
+    pub normal_texture_id: Id<TextureData>,
     filter_mode: wgpu::FilterMode,
-    pub shader_id: ResourceId<Shader>,
+    pub shader_id: Id<Shader>,
 }
 impl Material {
     pub fn new(
-        diffuse_texture_id: ResourceId<TextureData>,
-        normal_texture_id: ResourceId<TextureData>,
-        shader_id: ResourceId<Shader>,
+        diffuse_texture_id: Id<TextureData>,
+        normal_texture_id: Id<TextureData>,
+        shader_id: Id<Shader>,
         material_params: MaterialParams,
     ) -> Self {
         let address_mode = get_wgpu_address_mode(material_params.repeat);

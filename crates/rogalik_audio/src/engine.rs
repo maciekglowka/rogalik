@@ -118,7 +118,8 @@ impl crate::AudioSetup for AudioEngine {
                                 data_samples[i] = 0.;
                             }
 
-                            for source in state.assets.sources.iter_mut().filter(|s| s.is_playing())
+                            for source in
+                                state.assets.sources.values_mut().filter(|s| s.is_playing())
                             {
                                 let source_samples = source.next();
                                 for i in 0..CHANNEL_COUNT {

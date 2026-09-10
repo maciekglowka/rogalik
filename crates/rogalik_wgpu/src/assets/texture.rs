@@ -1,6 +1,6 @@
 use image::{GenericImageView, ImageBuffer, Rgba};
 
-use rogalik_arena::ResourceId;
+use rogalik_arena::Id;
 use rogalik_assets::Asset;
 
 use crate::GraphicsError;
@@ -24,13 +24,13 @@ pub enum TextureFiltering {
 
 pub struct TextureData {
     /// Asset handle used for hot reloading.
-    pub(crate) asset_id: Option<ResourceId<Asset>>,
+    pub(crate) asset_id: Option<Id<Asset>>,
     pub(crate) buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
     pub(crate) dim: (u32, u32),
 }
 impl TextureData {
     pub(crate) fn from_file_bytes(
-        asset_id: Option<ResourceId<Asset>>,
+        asset_id: Option<Id<Asset>>,
         bytes: &[u8],
     ) -> Result<Self, GraphicsError> {
         let (rgba, dim) = TextureData::get_buffer_from_file(bytes)?;

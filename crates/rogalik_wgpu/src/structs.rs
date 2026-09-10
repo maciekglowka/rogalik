@@ -4,7 +4,7 @@ use crate::{Camera2d, Material, Shader};
 #[cfg(feature = "serialize")]
 use serde::{Deserialize, Serialize};
 
-use rogalik_arena::ResourceId;
+use rogalik_arena::Id;
 
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
@@ -68,7 +68,7 @@ pub(crate) struct Triangle {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct BindParams {
-    pub shader_id: ResourceId<Shader>,
-    pub material_id: ResourceId<Material>,
-    pub camera_id: ResourceId<Camera2d>,
+    pub shader_id: Id<Shader>,
+    pub material_id: Id<Material>,
+    pub camera_id: Id<Camera2d>,
 }

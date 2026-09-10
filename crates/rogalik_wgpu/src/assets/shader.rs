@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rogalik_arena::ResourceId;
+use rogalik_arena::Id;
 use rogalik_assets::{Asset, AssetContext, AssetStore};
 
 use super::bind_groups::BindGroupLayoutKind;
@@ -38,12 +38,12 @@ pub fn get_pipeline_layouts(
 
 #[derive(Debug)]
 pub struct Shader {
-    pub asset_id: ResourceId<Asset>,
+    pub asset_id: Id<Asset>,
     pub kind: ShaderKind,
     pub pipeline: Option<wgpu::RenderPipeline>,
 }
 impl Shader {
-    pub(crate) fn new(kind: ShaderKind, asset_id: ResourceId<Asset>) -> Self {
+    pub(crate) fn new(kind: ShaderKind, asset_id: Id<Asset>) -> Self {
         Self {
             asset_id,
             kind,

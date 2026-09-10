@@ -4,7 +4,7 @@ use symphonia::core::{
     meta::MetadataOptions, probe::Hint,
 };
 
-use rogalik_arena::ResourceId;
+use rogalik_arena::Id;
 use rogalik_assets::{Asset, AssetContext, AssetState, AssetStore};
 
 use crate::{engine::CHANNEL_COUNT, AudioError};
@@ -16,7 +16,7 @@ enum SourceState {
 }
 
 pub(crate) struct AudioSource {
-    asset_id: ResourceId<Asset>,
+    asset_id: Id<Asset>,
     state: SourceState,
     looped: bool,
     samples: Vec<f32>,
@@ -26,7 +26,7 @@ pub(crate) struct AudioSource {
     pan: f32,
 }
 impl AudioSource {
-    pub fn new(asset_id: ResourceId<Asset>, asset_store: &AssetStore) -> Result<Self, AudioError> {
+    pub fn new(asset_id: Id<Asset>, asset_store: &AssetStore) -> Result<Self, AudioError> {
         let mut source = AudioSource {
             asset_id,
             state: SourceState::Stopped,

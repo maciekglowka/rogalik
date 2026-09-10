@@ -4,7 +4,7 @@ use std::sync::{
 };
 use winit::window::Window;
 
-use rogalik_arena::ResourceId;
+use rogalik_arena::Id;
 use rogalik_math::vectors::Vector2f;
 
 use crate::{
@@ -30,7 +30,7 @@ struct SurfaceState {
 
 pub struct WgpuContext {
     assets: crate::assets::WgpuAssets,
-    current_camera_id: Option<ResourceId<Camera2d>>,
+    current_camera_id: Option<Id<Camera2d>>,
     clear_color: wgpu::Color,
     renderer2d: crate::renderer2d::Renderer2d,
     rendering_resolution: Option<(u32, u32)>,
@@ -76,8 +76,8 @@ impl WgpuContext {
         }
         self.resize_cameras();
     }
-    /// Loads a texture from the given file path and returns its `ResourceId`.
-    pub fn load_texture(&mut self, path: &str) -> ResourceId<TextureData> {
+    /// Loads a texture from the given file path and returns its `Id`.
+    pub fn load_texture(&mut self, path: &str) -> Id<TextureData> {
         self.assets.texture_from_path(path)
     }
     /// Loads a material with the given name and parameters.
@@ -91,8 +91,8 @@ impl WgpuContext {
         self.assets.create_material(name, params).map(|_| ())
         // TODO if self.surface_state build bind_group
     }
-    /// Loads a shader from the given file path and returns its `ResourceId`.
-    pub fn load_shader(&mut self, kind: ShaderKind, path: &str) -> ResourceId<Shader> {
+    /// Loads a shader from the given file path and returns its `Id`.
+    pub fn load_shader(&mut self, kind: ShaderKind, path: &str) -> Id<Shader> {
         // TODO if self.surface_state build pipeline
         self.assets.create_shader(kind, path)
     }
@@ -310,7 +310,7 @@ impl WgpuContext {
             .unwrap_or(Vector2f::ZERO)
     }
     /// Creates a new 2D camera with a specified scale and target position.
-    pub fn create_camera(&mut self, scale: f32, target: Vector2f) -> ResourceId<Camera2d> {
+    pub fn create_camera(&mut self, scale: f32, target: Vector2f) -> Id<Camera2d> {
         let (vw, vh, rw, rh) = self.get_current_resolutions();
         let id = self
             .assets
@@ -322,9 +322,9 @@ impl WgpuContext {
 
         id
     }
-    /// Sets the currently active camera by its `ResourceId`.
+    /// Sets the currently active camera by its `Id`.
     /// All subsequent draw calls will use this camera's view.
-    pub fn set_camera(&mut self, id: &ResourceId<Camera2d>) {
+    pub fn set_camera(&mut self, id: &Id<Camera2d>) {
         self.current_camera_id = Some(*id);
     }
     /// Retrieves an immutable reference to the currently active camera.
@@ -335,17 +335,17 @@ impl WgpuContext {
     pub fn get_current_camera_mut(&mut self) -> &mut Camera2d {
         self.assets.get_camera_mut(self.current_camera_id).unwrap()
     }
-    /// Retrieves an immutable reference to a camera by its `ResourceId`.
-    pub fn get_camera(&self, id: &ResourceId<Camera2d>) -> Option<&Camera2d> {
+    /// Retrieves an immutable reference to a camera by its `Id`.
+    pub fn get_camera(&self, id: &Id<Camera2d>) -> Option<&Camera2d> {
         self.assets.get_camera(*id)
     }
-    /// Retrieves a mutable reference to a camera by its `ResourceId`.
-    pub fn get_camera_mut(&mut self, id: &ResourceId<Camera2d>) -> Option<&mut Camera2d> {
+    /// Retrieves a mutable reference to a camera by its `Id`.
+    pub fn get_camera_mut(&mut self, id: &Id<Camera2d>) -> Option<&mut Camera2d> {
         self.assets.get_camera_mut(*id)
     }
-    /// Retrieves the `ResourceId` of a built-in shader.
+    /// Retrieves the `Id` of a built-in shader.
     /// Returns `None` if the shader is not found.
-    pub fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<ResourceId<Shader>> {
+    pub fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<Id<Shader>> {
         self.assets.builtin_shaders.get(&shader).copied()
     }
 }

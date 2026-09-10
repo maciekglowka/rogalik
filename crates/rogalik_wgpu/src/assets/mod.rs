@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use rogalik_arena::{Arena, ResourceId};
+use rogalik_arena::{Arena, Id};
 use rogalik_assets::{Asset, AssetContext, AssetState, AssetStore};
 use rogalik_math::vectors::Vector2f;
 
@@ -29,17 +29,17 @@ use texture::TextureData;
 pub struct WgpuAssets {
     pub(crate) asset_store: Arc<Mutex<AssetStore>>,
     pub(crate) bind_group_layouts: HashMap<bind_groups::BindGroupLayoutKind, wgpu::BindGroupLayout>,
-    pub(crate) builtin_shaders: HashMap<BuiltInShader, ResourceId<Shader>>,
+    pub(crate) builtin_shaders: HashMap<BuiltInShader, Id<Shader>>,
     pub(crate) cameras: Arena<camera::Camera2d>,
-    pub(crate) default_shader: Option<ResourceId<Shader>>,
-    pub(crate) default_normal: Option<ResourceId<TextureData>>,
-    pub(crate) default_diffuse: Option<ResourceId<TextureData>>,
+    pub(crate) default_shader: Option<Id<Shader>>,
+    pub(crate) default_normal: Option<Id<TextureData>>,
+    pub(crate) default_diffuse: Option<Id<TextureData>>,
     pub(crate) fonts: HashMap<String, Font>,
     pub(crate) pipeline_layouts: HashMap<ShaderKind, wgpu::PipelineLayout>,
-    material_names: HashMap<String, ResourceId<Material>>, // lookup
+    material_names: HashMap<String, Id<Material>>, // lookup
     materials: Arena<Material>,
     pub(crate) postprocess: Arena<PostProcessPass>,
-    postprocess_names: HashMap<String, ResourceId<PostProcessPass>>, // lookup
+    postprocess_names: HashMap<String, Id<PostProcessPass>>, // lookup
     shaders: Arena<Shader>,
     pub(crate) textures: Arena<TextureData>,
 }
@@ -113,19 +113,19 @@ impl WgpuAssets {
             .get(&bind_groups::BindGroupLayoutKind::Sprite)
             .ok_or(GraphicsError::InternalError)?;
 
-        for material in self.materials.iter_mut() {
+        for material in self.materials.values_mut() {
             log::debug!("Creating material: {:?}", material);
             material.create_wgpu_data(&self.textures, device, queue, material_layout)?;
         }
 
-        for shader in self.shaders.iter_mut() {
+        for shader in self.shaders.values_mut() {
             log::debug!("Creating shader: {:?}", shader);
             shader.create_wgpu_data(&mut store, device, texture_format, &self.pipeline_layouts)?;
         }
         drop(store);
         self.update_postprocess_wgpu_data(w, h, device, queue, texture_format)?;
 
-        for camera in self.cameras.iter_mut() {
+        for camera in self.cameras.values_mut() {
             camera.create_wgpu_data(
                 device,
                 self.bind_group_layouts
@@ -149,7 +149,7 @@ impl WgpuAssets {
             .get(&bind_groups::BindGroupLayoutKind::PostProcess)
             .ok_or(GraphicsError::InternalError)?;
 
-        for pass in self.postprocess.iter_mut() {
+        for pass in self.postprocess.values_mut() {
             pass.create_wgpu_data(
                 &self.textures,
                 postprocess_layout,
@@ -180,12 +180,13 @@ impl WgpuAssets {
 
         let mut updated_textures = HashSet::new();
 
-        for (i, texture) in self.textures.iter_mut().enumerate() {
+        // FIXME
+        for (id, texture) in self.textures.iter_mut() {
             if let Some(asset) = texture.asset_id.and_then(|id| store.get(id)) {
                 if asset.state == AssetState::Updated {
-                    log::debug!("Updating texture {}, Asset: {:?}", i, texture.asset_id);
+                    log::debug!("Updating texture {:?}, Asset: {:?}", id, texture.asset_id);
                     texture.update_bytes(asset.data.get());
-                    updated_textures.insert(i);
+                    updated_textures.insert(id);
 
                     #[cfg(dev_tools)]
                     store.mark_read(texture.asset_id.unwrap());
@@ -193,9 +194,9 @@ impl WgpuAssets {
             }
         }
 
-        for material in self.materials.iter_mut() {
-            if updated_textures.contains(&material.diffuse_texture_id.0)
-                || updated_textures.contains(&material.normal_texture_id.0)
+        for material in self.materials.values_mut() {
+            if updated_textures.contains(&material.diffuse_texture_id)
+                || updated_textures.contains(&material.normal_texture_id)
             {
                 log::debug!("Updating material {:?}", material);
                 if material
@@ -207,7 +208,7 @@ impl WgpuAssets {
             }
         }
 
-        for shader in self.shaders.iter_mut() {
+        for shader in self.shaders.values_mut() {
             if shader
                 .create_wgpu_data(&mut store, device, texture_format, &self.pipeline_layouts)
                 .is_err()
@@ -227,7 +228,7 @@ impl WgpuAssets {
         self.pipeline_layouts = shader::get_pipeline_layouts(&self.bind_group_layouts, device)?;
         Ok(())
     }
-    pub fn create_shader(&mut self, kind: ShaderKind, path: &str) -> ResourceId<Shader> {
+    pub fn create_shader(&mut self, kind: ShaderKind, path: &str) -> Id<Shader> {
         let asset_id = self.load_asset(path);
         let shader = shader::Shader::new(kind, asset_id);
         self.shaders.insert(shader)
@@ -236,15 +237,19 @@ impl WgpuAssets {
         &mut self,
         name: &str,
         params: MaterialParams,
-    ) -> Result<ResourceId<Material>, GraphicsError> {
+    ) -> Result<Id<Material>, GraphicsError> {
         if self.material_names.contains_key(name) {
             return Err(GraphicsError::MaterialError(format!(
                 "name conflict: {name}"
             )));
         }
-        let diffuse_id = params.diffuse_texture.unwrap_or(self.default_diffuse);
-        let normal_id = params.normal_texture.unwrap_or(self.default_normal);
-        let shader_id = params.shader.unwrap_or(self.default_shader);
+        let diffuse_id = params
+            .diffuse_texture
+            .unwrap_or(self.default_diffuse.unwrap());
+        let normal_id = params
+            .normal_texture
+            .unwrap_or(self.default_normal.unwrap());
+        let shader_id = params.shader.unwrap_or(self.default_shader.unwrap());
 
         let material = material::Material::new(diffuse_id, normal_id, shader_id, params);
         let material_id = self.materials.insert(material);
@@ -258,7 +263,7 @@ impl WgpuAssets {
         self.postprocess_names
             .insert(name.to_string(), postprocess_id);
     }
-    pub(crate) fn texture_from_path(&mut self, path: &str) -> ResourceId<TextureData> {
+    pub(crate) fn texture_from_path(&mut self, path: &str) -> Id<TextureData> {
         let texture = {
             let asset_id = self.load_asset(path);
             let store = self
@@ -276,11 +281,11 @@ impl WgpuAssets {
         };
         self.add_texture(texture)
     }
-    fn texture_from_bytes(&mut self, bytes: &[u8]) -> ResourceId<TextureData> {
+    fn texture_from_bytes(&mut self, bytes: &[u8]) -> Id<TextureData> {
         // TODO error handling
         self.add_texture(texture::TextureData::from_file_bytes(None, bytes).unwrap())
     }
-    fn add_texture(&mut self, texture: texture::TextureData) -> ResourceId<TextureData> {
+    fn add_texture(&mut self, texture: texture::TextureData) -> Id<TextureData> {
         self.textures.insert(texture)
     }
     pub fn create_camera(
@@ -291,7 +296,7 @@ impl WgpuAssets {
         rh: f32,
         scale: f32,
         target: Vector2f,
-    ) -> ResourceId<Camera2d> {
+    ) -> Id<Camera2d> {
         let camera = camera::Camera2d::new(vw, vh, rw, rh, scale, target);
         self.cameras.insert(camera)
     }
@@ -421,34 +426,34 @@ impl WgpuAssets {
 
         Ok(())
     }
-    pub fn get_material_id(&self, name: &str) -> Option<&ResourceId<Material>> {
+    pub fn get_material_id(&self, name: &str) -> Option<&Id<Material>> {
         self.material_names.get(name)
     }
-    pub fn get_material(&self, id: &ResourceId<Material>) -> Option<&material::Material> {
+    pub fn get_material(&self, id: &Id<Material>) -> Option<&material::Material> {
         self.materials.get(id)
     }
     pub fn get_font(&self, name: &str) -> Option<&Font> {
         self.fonts.get(name)
     }
-    pub fn get_shader(&self, id: &ResourceId<Shader>) -> Option<&shader::Shader> {
+    pub fn get_shader(&self, id: &Id<Shader>) -> Option<&shader::Shader> {
         self.shaders.get(id)
     }
-    pub fn get_camera(&self, id: &ResourceId<Camera2d>) -> Option<&camera::Camera2d> {
+    pub fn get_camera(&self, id: &Id<Camera2d>) -> Option<&camera::Camera2d> {
         self.cameras.get(id)
     }
-    pub fn get_camera_mut(&mut self, id: &ResourceId<Camera2d>) -> Option<&mut camera::Camera2d> {
+    pub fn get_camera_mut(&mut self, id: &Id<Camera2d>) -> Option<&mut camera::Camera2d> {
         self.cameras.get_mut(id)
     }
-    pub fn get_postprocess_id(&self, name: &str) -> Option<&ResourceId<PostProcessPass>> {
+    pub fn get_postprocess_id(&self, name: &str) -> Option<&Id<PostProcessPass>> {
         self.postprocess_names.get(name)
     }
     pub fn get_postprocess_mut(
         &mut self,
-        id: &ResourceId<PostProcessPass>,
+        id: &Id<PostProcessPass>,
     ) -> Option<&mut postprocess::PostProcessPass> {
         self.postprocess.get_mut(id)
     }
-    fn load_asset(&self, path: &str) -> ResourceId<Asset> {
+    fn load_asset(&self, path: &str) -> Id<Asset> {
         let mut store = self
             .asset_store
             .lock()

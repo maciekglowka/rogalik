@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rogalik_arena::{Arena, ResourceId};
+use rogalik_arena::{Arena, Id};
 
 use crate::{Asset, AssetContext, AssetError};
 
@@ -20,10 +20,10 @@ impl Default for EmbeddedStore {
     }
 }
 impl AssetContext for EmbeddedStore {
-    fn load_bytes(&mut self, data: &'static [u8]) -> ResourceId<Asset> {
+    fn load_bytes(&mut self, data: &'static [u8]) -> Id<Asset> {
         self.assets.insert(Asset::borrowed(data))
     }
-    fn load(&mut self, path: &str) -> Result<ResourceId<Asset>, AssetError> {
+    fn load(&mut self, path: &str) -> Result<Id<Asset>, AssetError> {
         let data = self.embedded.get(path).ok_or(AssetError::PathError(
             path.to_string(),
             "embedded path not found".to_string(),
@@ -36,7 +36,7 @@ impl AssetContext for EmbeddedStore {
         );
         Ok(self.assets.insert(Asset::borrowed(data)))
     }
-    fn get(&self, asset_id: ResourceId<Asset>) -> Option<&Asset> {
+    fn get(&self, asset_id: Id<Asset>) -> Option<&Asset> {
         self.assets.get(&asset_id)
     }
 }

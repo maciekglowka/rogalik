@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
-use rogalik_arena::{Arena, ResourceId};
+use rogalik_arena::{Arena, Id};
 
 use crate::renderer2d::uniforms::UniformKind;
 use crate::utils::{get_wgpu_address_mode, get_wgpu_filter_mode};
@@ -16,16 +16,16 @@ use crate::{
 
 #[derive(Clone, Copy)]
 pub struct PostProcessParams {
-    pub texture: Option<ResourceId<TextureData>>,
-    pub shader: ResourceId<Shader>,
+    pub texture: Option<Id<TextureData>>,
+    pub shader: Id<Shader>,
     pub repeat: TextureRepeat,
     pub filtering: TextureFiltering,
 }
 
 #[derive(Debug)]
 pub struct PostProcessPass {
-    pub shader_id: ResourceId<Shader>,
-    texture_id: ResourceId<TextureData>,
+    pub shader_id: Id<Shader>,
+    texture_id: Id<TextureData>,
     bind_group: Option<wgpu::BindGroup>,
     uniform_buffer: Option<wgpu::Buffer>,
     uniform_data: PostProcessUniform,
@@ -34,7 +34,7 @@ pub struct PostProcessPass {
     view: Option<wgpu::TextureView>,
 }
 impl PostProcessPass {
-    pub fn new(texture_id: ResourceId<TextureData>, params: PostProcessParams) -> Self {
+    pub fn new(texture_id: Id<TextureData>, params: PostProcessParams) -> Self {
         let address_mode = get_wgpu_address_mode(params.repeat);
         let filter_mode = get_wgpu_filter_mode(params.filtering);
         Self {
@@ -140,7 +140,7 @@ impl PostProcessPass {
         view: &wgpu::TextureView,
         filter_mode: wgpu::FilterMode,
         address_mode: wgpu::AddressMode,
-        texture_id: &ResourceId<TextureData>,
+        texture_id: &Id<TextureData>,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> Result<(wgpu::BindGroup, wgpu::Buffer), GraphicsError> {

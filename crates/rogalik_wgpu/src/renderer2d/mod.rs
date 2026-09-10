@@ -1,4 +1,4 @@
-use rogalik_arena::ResourceId;
+use rogalik_arena::Id;
 use rogalik_math::vectors::Vector2f;
 
 use crate::assets::{
@@ -143,7 +143,7 @@ impl Renderer2d {
         assets: &WgpuAssets,
         index: usize,
         material_name: &str,
-        camera_id: ResourceId<Camera2d>,
+        camera_id: Id<Camera2d>,
         position: Vector2f,
         z_index: i32,
         size: Vector2f,
@@ -196,7 +196,7 @@ impl Renderer2d {
         assets: &mut WgpuAssets,
         font_name: &str,
         text: &str,
-        camera_id: ResourceId<Camera2d>,
+        camera_id: Id<Camera2d>,
         position: Vector2f,
         z_index: i32,
         size: f32,
@@ -233,7 +233,7 @@ impl Renderer2d {
         &mut self,
         assets: &WgpuAssets,
         material_name: &str,
-        camera_id: ResourceId<Camera2d>,
+        camera_id: Id<Camera2d>,
         vertices: &[crate::structs::Vertex],
         indices: &[u16],
         z_index: i32,
@@ -345,7 +345,7 @@ impl Renderer2d {
 fn get_material<'a>(
     name: &str,
     assets: &'a WgpuAssets,
-) -> Result<(ResourceId<Material>, &'a Material), GraphicsError> {
+) -> Result<(Id<Material>, &'a Material), GraphicsError> {
     let material_id = assets
         .get_material_id(name)
         .ok_or(GraphicsError::ResourceNotFound(format!("material: {name}")))?;

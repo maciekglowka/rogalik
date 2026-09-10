@@ -3,14 +3,14 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use rogalik_arena::{Arena, ResourceId};
+use rogalik_arena::{Arena, Id};
 use rogalik_assets::{AssetContext, AssetStore};
 
 use crate::{source::AudioSource, AudioError};
 
 pub(crate) struct AudioAssets {
     asset_store: Arc<Mutex<AssetStore>>,
-    source_names: HashMap<String, ResourceId<AudioSource>>, // lookup
+    source_names: HashMap<String, Id<AudioSource>>, // lookup
     pub(crate) sources: Arena<AudioSource>,
 }
 impl AudioAssets {
@@ -57,7 +57,7 @@ impl AudioAssets {
             .asset_store
             .lock()
             .expect("Can't acquire the asset store");
-        for source in self.sources.iter_mut() {
+        for source in self.sources.values_mut() {
             source.check_update(&mut store);
         }
     }
