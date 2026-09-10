@@ -68,7 +68,7 @@ impl WgpuAssets {
     }
     /// Only (and immediately) to be called in a constructor
     fn load_builtins(&mut self) {
-        self.load_builtin_shader(
+        let unlit_id = self.load_builtin_shader(
             include_bytes!("include/sprite_unlit.wgsl"),
             ShaderKind::Sprite,
             BuiltInShader::SpriteUnlit,
@@ -89,6 +89,7 @@ impl WgpuAssets {
             BuiltInShader::Lut,
         );
 
+        self.default_shader = Some(unlit_id);
         self.default_normal =
             Some(self.texture_from_bytes(include_bytes!("include/default_normal.png")));
         self.default_diffuse = Some(self.texture_from_bytes(include_bytes!("include/white.png")));
@@ -465,7 +466,7 @@ impl WgpuAssets {
         bytes: &'static [u8],
         kind: ShaderKind,
         builtin_id: BuiltInShader,
-    ) {
+    ) -> Id<Shader> {
         let mut store = self
             .asset_store
             .lock()
@@ -474,5 +475,6 @@ impl WgpuAssets {
         let shader = shader::Shader::new(kind, asset_id);
         let id = self.shaders.insert(shader);
         self.builtin_shaders.insert(builtin_id, id);
+        id
     }
 }

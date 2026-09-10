@@ -95,7 +95,7 @@ impl SpriteAtlas {
             texture_size,
         }
     }
-    pub(crate) fn from_entries(entries: &[AtlasPosition], texture_size: (u32, u32)) -> Self {
+    pub fn from_entries(entries: &[AtlasPosition], texture_size: (u32, u32)) -> Self {
         let entries = entries
             .iter()
             .map(|e| AtlasEntry {
@@ -117,7 +117,7 @@ impl SpriteAtlas {
         self.entries.get(index)
     }
 
-    pub fn get_sprite(
+    pub(crate) fn get_sprite(
         &self,
         index: usize,
         position: Vector2f,
@@ -186,7 +186,7 @@ impl SpriteAtlas {
         (vertices, indices)
     }
 
-    pub fn get_sliced_sprite(
+    pub(crate) fn get_sliced_sprite(
         &self,
         index: usize,
         position: Vector2f,
