@@ -29,13 +29,16 @@ pub use rogalik_wgpu as wgpu;
 pub mod prelude {
     pub use crate::engine::{Context, EngineBuilder};
     pub use crate::scenes::SceneController;
+    pub use crate::time::Timer;
     pub use crate::traits::{Game, Scene};
 
-    pub use rogalik_assets::{AssetContext, AssetState};
+    pub use rogalik_arena::{Arena, Id};
+    pub use rogalik_assets::{Asset, AssetContext, AssetError, AssetState};
+    pub use rogalik_audio::{AudioDeviceParams, AudioError};
     pub use rogalik_math::vectors::{Vector2f, Vector2i};
     pub use rogalik_wgpu::{
-        AtlasParams, AtlasPosition, BuiltInShader, Camera2d, Color, FontParams, Material,
-        MaterialParams, PostProcessParams, Shader, ShaderKind, SpriteParams, TextureData,
+        AtlasParams, AtlasPosition, BuiltInShader, Camera2d, Color, FontParams, GraphicsError,
+        Material, MaterialParams, PostProcessParams, Shader, ShaderKind, SpriteParams, TextureData,
         TextureFiltering, TextureRepeat,
     };
 }
