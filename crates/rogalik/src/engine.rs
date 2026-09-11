@@ -10,8 +10,7 @@ use winit::{
 };
 
 use rogalik_assets::AssetStore;
-use rogalik_audio::AudioEngine;
-use rogalik_common::AudioDeviceParams;
+use rogalik_audio::{AudioDeviceParams, AudioEngine};
 use rogalik_wgpu::WgpuContext;
 
 use crate::{

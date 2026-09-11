@@ -1,7 +1,38 @@
 use rogalik_math::vectors::Vector2f;
 
-use crate::structs::{Quad, Vertex};
-use rogalik_common::{structs::AtlasPosition, SpriteParams};
+use crate::structs::{Color, Quad, Vertex};
+
+#[derive(Clone, Copy, Default)]
+pub struct SpriteParams {
+    pub color: Color,
+    pub flip_x: bool,
+    pub flip_y: bool,
+    pub rotate: f32,
+    pub slice: Option<u32>,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct AtlasPosition {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+}
+impl AtlasPosition {
+    pub fn new(x: u32, y: u32, w: u32, h: u32) -> Self {
+        Self { x, y, w, h }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum AtlasParams {
+    Grid {
+        cols: usize,
+        rows: usize,
+        padding: Option<(u32, u32)>,
+    },
+    Free(Vec<AtlasPosition>),
+}
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct AtlasEntry {
@@ -64,7 +95,7 @@ impl SpriteAtlas {
             texture_size,
         }
     }
-    pub(crate) fn from_entries(entries: &[AtlasPosition], texture_size: (u32, u32)) -> Self {
+    pub fn from_entries(entries: &[AtlasPosition], texture_size: (u32, u32)) -> Self {
         let entries = entries
             .iter()
             .map(|e| AtlasEntry {
@@ -86,7 +117,7 @@ impl SpriteAtlas {
         self.entries.get(index)
     }
 
-    pub fn get_sprite(
+    pub(crate) fn get_sprite(
         &self,
         index: usize,
         position: Vector2f,
@@ -155,7 +186,7 @@ impl SpriteAtlas {
         (vertices, indices)
     }
 
-    pub fn get_sliced_sprite(
+    pub(crate) fn get_sliced_sprite(
         &self,
         index: usize,
         position: Vector2f,

@@ -1,12 +1,17 @@
-use rogalik_common::structs::CameraId;
-use rogalik_common::{
-    Color, EngineError, PostProcessParams, ResourceId, SpriteParams, TextureRepeat,
-};
+use rogalik_arena::Id;
 use rogalik_math::vectors::Vector2f;
 
-use crate::assets::font::get_text_sprites;
-use crate::assets::{material::Material, postprocess::PostProcessPass, WgpuAssets};
-use crate::structs::{BindParams, MaterialId};
+use crate::assets::{
+    atlas::SpriteParams,
+    camera::Camera2d,
+    font::get_text_sprites,
+    material::Material,
+    postprocess::{PostProcessParams, PostProcessPass},
+    texture::{TextureFiltering, TextureRepeat},
+    WgpuAssets,
+};
+use crate::structs::{BindParams, Color};
+use crate::GraphicsError;
 
 mod sprite_pass;
 mod text;
@@ -50,17 +55,17 @@ impl Renderer2d {
         assets: &mut WgpuAssets,
         w: u32,
         h: u32,
-    ) -> Result<(), EngineError> {
+    ) -> Result<(), GraphicsError> {
         self.rendering_resolution = Some((w, h));
         let shader_id = assets
             .builtin_shaders
             .get(&crate::BuiltInShader::Upscale)
-            .ok_or(EngineError::GraphicsInternalError)?;
+            .ok_or(GraphicsError::InternalError)?;
         self.upscale_pass = Some(PostProcessPass::new(
-            assets.default_diffuse,
+            assets.default_diffuse.unwrap(),
             PostProcessParams {
                 shader: *shader_id,
-                filtering: rogalik_common::TextureFiltering::Nearest,
+                filtering: TextureFiltering::Nearest,
                 repeat: TextureRepeat::default(),
                 texture: None,
             },
@@ -74,17 +79,17 @@ impl Renderer2d {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         texture_format: &wgpu::TextureFormat,
-    ) -> Result<(), EngineError> {
+    ) -> Result<(), GraphicsError> {
         if let Some((w, h)) = self.rendering_resolution {
             log::debug!("Creating upscale pass with w:{}, h:{}", w, h);
             let postprocess_layout = assets
                 .bind_group_layouts
                 .get(&crate::assets::bind_groups::BindGroupLayoutKind::PostProcess)
-                .ok_or(EngineError::GraphicsInternalError)?;
+                .ok_or(GraphicsError::InternalError)?;
             return self
                 .upscale_pass
                 .as_mut()
-                .ok_or(EngineError::GraphicsInternalError)?
+                .ok_or(GraphicsError::InternalError)?
                 .create_wgpu_data(
                     &assets.textures,
                     postprocess_layout,
@@ -106,7 +111,7 @@ impl Renderer2d {
         radius: f32,
         color: Color,
         falloff: f32,
-    ) -> Result<(), EngineError> {
+    ) -> Result<(), GraphicsError> {
         self.uniforms
             .lights
             .add_light(position, radius, color, falloff)
@@ -119,14 +124,14 @@ impl Renderer2d {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         texture_format: &wgpu::TextureFormat,
-    ) -> Result<(), EngineError> {
+    ) -> Result<(), GraphicsError> {
         log::debug!("Creating Renderer2d data with w:{}, h:{}", width, height);
         self.create_upscale_pass(assets, device, queue, texture_format)?;
         self.uniforms.create_wgpu_data(
             assets
                 .bind_group_layouts
                 .get(&crate::assets::bind_groups::BindGroupLayoutKind::Uniform)
-                .ok_or(EngineError::GraphicsInternalError)?,
+                .ok_or(GraphicsError::InternalError)?,
             device,
         );
         self.sprite_pass.create_wgpu_data();
@@ -138,12 +143,12 @@ impl Renderer2d {
         assets: &WgpuAssets,
         index: usize,
         material_name: &str,
-        camera_id: ResourceId<CameraId>,
+        camera_id: Id<Camera2d>,
         position: Vector2f,
         z_index: i32,
         size: Vector2f,
         params: SpriteParams,
-    ) -> Result<(), EngineError> {
+    ) -> Result<(), GraphicsError> {
         let (material_id, material) = get_material(material_name, assets)?;
 
         let bind_params = BindParams {
@@ -156,7 +161,7 @@ impl Renderer2d {
             let s = material
                 .atlas
                 .as_ref()
-                .ok_or(EngineError::InvalidResource)?
+                .ok_or_else(|| GraphicsError::MaterialError("atlas error".to_string()))?
                 .get_sliced_sprite(index, position, size, params);
             self.sprite_pass
                 .add_to_queue(&s.0, &s.1, z_index, bind_params);
@@ -164,7 +169,7 @@ impl Renderer2d {
             let s = material
                 .atlas
                 .as_ref()
-                .ok_or(EngineError::InvalidResource)?
+                .ok_or_else(|| GraphicsError::MaterialError("atlas error".to_string()))?
                 .get_sprite(index, position, size, params);
             self.sprite_pass
                 .add_to_queue(&s.0, &s.1, z_index, bind_params);
@@ -191,21 +196,21 @@ impl Renderer2d {
         assets: &mut WgpuAssets,
         font_name: &str,
         text: &str,
-        camera_id: ResourceId<CameraId>,
+        camera_id: Id<Camera2d>,
         position: Vector2f,
         z_index: i32,
         size: f32,
         max_width: Option<f32>,
         params: SpriteParams,
-    ) -> Result<Vector2f, EngineError> {
+    ) -> Result<Vector2f, GraphicsError> {
         let layout = self
             .text_cache
             .get(assets, font_name, text, size, max_width)?;
         let sprites = get_text_sprites(assets, layout, position, params)?;
 
-        let material = assets
-            .get_material(layout.material_id)
-            .ok_or(EngineError::ResourceNotFound)?;
+        let material = assets.get_material(&layout.material_id).ok_or_else(|| {
+            GraphicsError::ResourceNotFound(format!("material: {:?}", layout.material_id))
+        })?;
 
         let bind_params = BindParams {
             camera_id,
@@ -224,11 +229,11 @@ impl Renderer2d {
         &mut self,
         assets: &WgpuAssets,
         material_name: &str,
-        camera_id: ResourceId<CameraId>,
+        camera_id: Id<Camera2d>,
         vertices: &[crate::structs::Vertex],
         indices: &[u16],
         z_index: i32,
-    ) -> Result<(), EngineError> {
+    ) -> Result<(), GraphicsError> {
         let (material_id, material) = get_material(material_name, assets)?;
 
         let bind_params = BindParams {
@@ -249,8 +254,8 @@ impl Renderer2d {
         surface: &wgpu::Surface,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-    ) -> Result<(), EngineError> {
-        for camera in assets.cameras.iter() {
+    ) -> Result<(), GraphicsError> {
+        for camera in assets.cameras.values() {
             camera.write_buffer(queue)?;
         }
 
@@ -259,7 +264,7 @@ impl Renderer2d {
 
         let output = surface
             .get_current_texture()
-            .map_err(|_| EngineError::GraphicsNotReady)?;
+            .map_err(|_| GraphicsError::NotReady)?;
 
         let view = output
             .texture
@@ -277,12 +282,12 @@ impl Renderer2d {
         post_process_queue.extend(
             assets
                 .postprocess
-                .iter()
+                .values()
                 .filter(|p| p.get_strength() > 0.001),
         );
 
         let mut current_view = if let Some(pass) = post_process_queue.first() {
-            pass.get_view().ok_or(EngineError::GraphicsNotReady)?
+            pass.get_view().ok_or(GraphicsError::NotReady)?
         } else {
             &view
         };
@@ -299,7 +304,7 @@ impl Renderer2d {
         let mut post_processes = post_process_queue.iter().peekable();
         while let Some(pass) = post_processes.next() {
             current_view = if let Some(next_pass) = post_processes.peek() {
-                next_pass.get_view().ok_or(EngineError::GraphicsNotReady)?
+                next_pass.get_view().ok_or(GraphicsError::NotReady)?
             } else {
                 &view
             };
@@ -336,12 +341,12 @@ impl Renderer2d {
 fn get_material<'a>(
     name: &str,
     assets: &'a WgpuAssets,
-) -> Result<(ResourceId<MaterialId>, &'a Material), EngineError> {
-    let &material_id = assets
+) -> Result<(Id<Material>, &'a Material), GraphicsError> {
+    let material_id = assets
         .get_material_id(name)
-        .ok_or(EngineError::ResourceNotFound)?;
+        .ok_or_else(|| GraphicsError::ResourceNotFound(format!("material: {name}")))?;
     let material = assets
         .get_material(material_id)
-        .ok_or(EngineError::ResourceNotFound)?;
-    Ok((material_id, material))
+        .ok_or_else(|| GraphicsError::ResourceNotFound(format!("material: {material_id:?}")))?;
+    Ok((*material_id, material))
 }

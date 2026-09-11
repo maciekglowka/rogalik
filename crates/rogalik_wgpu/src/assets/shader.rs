@@ -1,15 +1,29 @@
 use std::collections::HashMap;
 
-use rogalik_assets::{AssetContext, AssetStore};
-use rogalik_common::{structs::AssetId, EngineError, ResourceId, ShaderKind};
+use rogalik_arena::Id;
+use rogalik_assets::{Asset, AssetContext, AssetStore};
 
 use super::bind_groups::BindGroupLayoutKind;
-use crate::structs::Vertex;
+use crate::{structs::Vertex, GraphicsError};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub enum ShaderKind {
+    Sprite,
+    PostProcess,
+}
+
+#[derive(Hash, Eq, PartialEq, Debug)]
+pub enum BuiltInShader {
+    SpriteUnlit,
+    SpriteLit,
+    Upscale,
+    Lut,
+}
 
 pub fn get_pipeline_layouts(
     bind_group_layous: &HashMap<BindGroupLayoutKind, wgpu::BindGroupLayout>,
     device: &wgpu::Device,
-) -> Result<HashMap<ShaderKind, wgpu::PipelineLayout>, EngineError> {
+) -> Result<HashMap<ShaderKind, wgpu::PipelineLayout>, GraphicsError> {
     Ok(HashMap::from_iter([
         (
             ShaderKind::Sprite,
@@ -24,38 +38,38 @@ pub fn get_pipeline_layouts(
 
 #[derive(Debug)]
 pub struct Shader {
-    pub asset_id: ResourceId<AssetId>,
+    pub asset_id: Id<Asset>,
     pub kind: ShaderKind,
     pub pipeline: Option<wgpu::RenderPipeline>,
 }
 impl Shader {
-    pub fn new(kind: ShaderKind, asset_id: ResourceId<AssetId>) -> Self {
+    pub(crate) fn new(kind: ShaderKind, asset_id: Id<Asset>) -> Self {
         Self {
             asset_id,
             kind,
             pipeline: None,
         }
     }
-    pub fn create_wgpu_data(
+    pub(crate) fn create_wgpu_data(
         &mut self,
         asset_store: &mut AssetStore,
         device: &wgpu::Device,
         texture_format: &wgpu::TextureFormat,
         pipeline_layouts: &HashMap<ShaderKind, wgpu::PipelineLayout>,
-    ) -> Result<(), EngineError> {
-        let asset = asset_store
-            .get(self.asset_id)
-            .ok_or(EngineError::ResourceNotFound)?;
+    ) -> Result<(), GraphicsError> {
+        let asset = asset_store.get(self.asset_id).ok_or_else(|| {
+            GraphicsError::ResourceNotFound(format!("shader: {:?}", self.asset_id))
+        })?;
 
         let layout = pipeline_layouts
             .get(&self.kind)
-            .ok_or(EngineError::GraphicsInternalError)?;
+            .ok_or(GraphicsError::InternalError)?;
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some(&format!("Shader {:?}", self.asset_id)),
             source: wgpu::ShaderSource::Wgsl(
                 std::str::from_utf8(asset.data.get())
-                    .map_err(|_| EngineError::InvalidResource)?
+                    .map_err(|e| GraphicsError::ShaderError(e.to_string()))?
                     .into(),
             ),
         });
@@ -173,23 +187,23 @@ fn get_post_process_shader_pipeline(
 fn get_sprite_shader_pipeline_layout(
     bind_group_layous: &HashMap<BindGroupLayoutKind, wgpu::BindGroupLayout>,
     device: &wgpu::Device,
-) -> Result<wgpu::PipelineLayout, EngineError> {
+) -> Result<wgpu::PipelineLayout, GraphicsError> {
     Ok(
         device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Sprite Pipeline Layout"),
             bind_group_layouts: &[
                 bind_group_layous
                     .get(&BindGroupLayoutKind::Sprite)
-                    .ok_or(EngineError::GraphicsInternalError)?,
+                    .ok_or(GraphicsError::InternalError)?,
                 bind_group_layous
                     .get(&BindGroupLayoutKind::Uniform) // Camera
-                    .ok_or(EngineError::GraphicsInternalError)?,
+                    .ok_or(GraphicsError::InternalError)?,
                 bind_group_layous
                     .get(&BindGroupLayoutKind::Uniform) // Globals
-                    .ok_or(EngineError::GraphicsInternalError)?,
+                    .ok_or(GraphicsError::InternalError)?,
                 bind_group_layous
                     .get(&BindGroupLayoutKind::Uniform) // Lights
-                    .ok_or(EngineError::GraphicsInternalError)?,
+                    .ok_or(GraphicsError::InternalError)?,
             ],
             push_constant_ranges: &[],
         }),
@@ -199,17 +213,17 @@ fn get_sprite_shader_pipeline_layout(
 fn get_post_process_pipeline_layout(
     bind_group_layous: &HashMap<BindGroupLayoutKind, wgpu::BindGroupLayout>,
     device: &wgpu::Device,
-) -> Result<wgpu::PipelineLayout, EngineError> {
+) -> Result<wgpu::PipelineLayout, GraphicsError> {
     Ok(
         device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Postprocess Pipeline Layout"),
             bind_group_layouts: &[
                 bind_group_layous
                     .get(&BindGroupLayoutKind::PostProcess)
-                    .ok_or(EngineError::GraphicsInternalError)?,
+                    .ok_or(GraphicsError::InternalError)?,
                 bind_group_layous
                     .get(&BindGroupLayoutKind::Uniform) // Globals
-                    .ok_or(EngineError::GraphicsInternalError)?,
+                    .ok_or(GraphicsError::InternalError)?,
             ],
             push_constant_ranges: &[],
         }),

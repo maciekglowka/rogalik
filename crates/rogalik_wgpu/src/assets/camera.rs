@@ -1,11 +1,12 @@
 use wgpu::util::DeviceExt;
 
-use rogalik_common::{Camera, EngineError};
 use rogalik_math::vectors::Vector2f;
+
+use crate::GraphicsError;
 
 const Z_RANGE: f32 = 100.;
 
-pub struct Camera2D {
+pub struct Camera2d {
     scale: f32,
     target: Vector2f,
     vw: f32, // viewport
@@ -15,20 +16,27 @@ pub struct Camera2D {
     bind_group: Option<wgpu::BindGroup>,
     buffer: Option<wgpu::Buffer>,
 }
-impl Camera for Camera2D {
-    fn get_scale(&self) -> f32 {
+
+/// Public API.
+impl Camera2d {
+    /// Returns the current scale (zoom level) of the camera.
+    pub fn get_scale(&self) -> f32 {
         self.scale
     }
-    fn get_target(&self) -> Vector2f {
-        self.target
-    }
-    fn set_scale(&mut self, scale: f32) {
+    /// Sets the camera's scale (zoom level).
+    pub fn set_scale(&mut self, scale: f32) {
         self.scale = scale;
     }
-    fn set_target(&mut self, target: Vector2f) {
+    /// Returns the current target position of the camera in world coordinates.
+    pub fn get_target(&self) -> Vector2f {
+        self.target
+    }
+    /// Sets the camera's target position in world coordinates.
+    pub fn set_target(&mut self, target: Vector2f) {
         self.target = target;
     }
-    fn camera_to_world(&self, v: Vector2f) -> Vector2f {
+    /// Converts a point from camera coordinates to world coordinates.
+    pub fn camera_to_world(&self, v: Vector2f) -> Vector2f {
         // in physical pixels
         let x = v.x * self.rw / self.vw;
         let y = v.y * self.rh / self.vh;
@@ -37,7 +45,11 @@ impl Camera for Camera2D {
             (y - 0.5 * self.rh) / self.scale + self.target.y,
         )
     }
-    fn get_bounds(&self) -> (Vector2f, Vector2f) {
+    /// Returns the current rectangular bounds of the camera's view in world
+    /// coordinates. The return value is a tuple `(min_vector, max_vector)`
+    /// representing the bottom-left and top-right corners of the camera's
+    /// view.
+    pub fn get_bounds(&self) -> (Vector2f, Vector2f) {
         let hx = 0.5 * self.rw / self.scale;
         let hy = 0.5 * self.rh / self.scale;
         (
@@ -46,7 +58,9 @@ impl Camera for Camera2D {
         )
     }
 }
-impl Camera2D {
+
+/// Camera internals.
+impl Camera2d {
     pub fn new(vw: f32, vh: f32, rw: f32, rh: f32, scale: f32, target: Vector2f) -> Self {
         Self {
             scale,
@@ -60,13 +74,13 @@ impl Camera2D {
         }
     }
     pub fn create_wgpu_data(&mut self, device: &wgpu::Device, layout: &wgpu::BindGroupLayout) {
-        let (bind_group, buffer) = Camera2D::create_bind_group(device, layout, self.get_matrix());
+        let (bind_group, buffer) = Camera2d::create_bind_group(device, layout, self.get_matrix());
         self.bind_group = Some(bind_group);
         self.buffer = Some(buffer);
     }
-    pub fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), EngineError> {
+    pub fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), GraphicsError> {
         queue.write_buffer(
-            self.buffer.as_ref().ok_or(EngineError::GraphicsNotReady)?,
+            self.buffer.as_ref().ok_or(GraphicsError::NotReady)?,
             0,
             bytemuck::cast_slice(&[self.get_matrix()]),
         );

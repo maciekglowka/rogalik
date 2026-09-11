@@ -3,40 +3,35 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use rogalik_arena::{Arena, Id};
 use rogalik_assets::{AssetContext, AssetStore};
-use rogalik_common::{EngineError, ResourceId};
 
-use crate::source::AudioSource;
-
-pub(crate) struct AudioId;
+use crate::{source::AudioSource, AudioError};
 
 pub(crate) struct AudioAssets {
     asset_store: Arc<Mutex<AssetStore>>,
-    source_names: HashMap<String, ResourceId<AudioId>>, // lookup
-    pub(crate) sources: Vec<AudioSource>,
+    source_names: HashMap<String, Id<AudioSource>>, // lookup
+    pub(crate) sources: Arena<AudioSource>,
 }
 impl AudioAssets {
     pub(crate) fn new(asset_store: Arc<Mutex<AssetStore>>) -> Self {
         Self {
             asset_store,
             source_names: HashMap::new(),
-            sources: Vec::new(),
+            sources: Arena::new(),
         }
     }
-    pub(crate) fn load_source(&mut self, name: &str, path: &str) -> Result<(), EngineError> {
+    pub(crate) fn load_source(&mut self, name: &str, path: &str) -> Result<(), AudioError> {
         let mut store = self
             .asset_store
             .lock()
             .expect("Can't acquire the asset store!");
 
-        let asset_id = store
-            .load(path)
-            .unwrap_or_else(|_| panic!("Can't load {path}!"));
+        let asset_id = store.load(path)?;
 
         let source = AudioSource::new(asset_id, &store)?;
 
-        let source_id = ResourceId::new(self.sources.len());
-        self.sources.push(source);
+        let source_id = self.sources.insert(source);
         self.source_names.insert(name.to_string(), source_id);
 
         Ok(())
@@ -45,16 +40,15 @@ impl AudioAssets {
         &mut self,
         name: &str,
         mut f: impl FnMut(&mut AudioSource),
-    ) -> Result<(), EngineError> {
+    ) -> Result<(), AudioError> {
         let source = self
             .sources
             .get_mut(
                 self.source_names
                     .get(name)
-                    .ok_or(EngineError::ResourceNotFound)?
-                    .0,
+                    .ok_or_else(|| AudioError::SourceNotFound(name.to_string()))?,
             )
-            .ok_or(EngineError::ResourceNotFound)?;
+            .ok_or_else(|| AudioError::SourceNotFound(name.to_string()))?;
         f(source);
         Ok(())
     }
@@ -63,7 +57,7 @@ impl AudioAssets {
             .asset_store
             .lock()
             .expect("Can't acquire the asset store");
-        for source in self.sources.iter_mut() {
+        for source in self.sources.values_mut() {
             source.check_update(&mut store);
         }
     }

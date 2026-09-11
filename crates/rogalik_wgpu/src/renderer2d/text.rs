@@ -1,10 +1,11 @@
 use std::collections::{hash_map::Entry, HashMap};
 
-use rogalik_common::EngineError;
-
-use crate::assets::{
-    font::{get_text_layout, get_textbox_layout, text_key_size, TextLayout},
-    WgpuAssets,
+use crate::{
+    assets::{
+        font::{get_text_layout, get_textbox_layout, text_key_size, TextLayout},
+        WgpuAssets,
+    },
+    GraphicsError,
 };
 
 /// (font, text, 100 * size, max_width)
@@ -30,7 +31,7 @@ impl TextCache {
         text: &str,
         size: f32,
         max_width: Option<f32>,
-    ) -> Result<&TextLayout, EngineError> {
+    ) -> Result<&TextLayout, GraphicsError> {
         let key = (
             font_name.to_string(),
             text.to_string(),

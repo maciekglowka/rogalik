@@ -14,16 +14,19 @@ categories = ["games", "game-engines", "game-development"]
 
 [features]
 capture = []
+serialize = ["dep:serde"]
 
 [dependencies]
+rogalik_arena = { path = "../rogalik_arena", version = "0.3.0" }
 rogalik_assets = { path = "../rogalik_assets", version = "0.3.0" }
-rogalik_common = { path = "../rogalik_common", version = "0.3.0" }
 rogalik_math = { path = "../rogalik_math", version = "0.3.0" }
 
 bytemuck = { version = "1.12", features = ["derive"] }
 fontdue = "0.9"
 log = { workspace = true }
 pollster = "0.3"
+
+serde = { workspace = true, optional = true }
 
 wgpu = "23.0"
 winit = { workspace = true }

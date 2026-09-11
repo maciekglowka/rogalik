@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 
-use rogalik_common::{structs::AssetId, EngineError, ResourceId};
+use rogalik_arena::{Arena, Id};
 
-use super::{Asset, AssetContext};
+use crate::{Asset, AssetContext, AssetError};
 
 include!(env!("ROGALIK_ASSET_FILE"));
 
 pub struct EmbeddedStore {
-    next_id: ResourceId<AssetId>,
-    assets: HashMap<ResourceId<AssetId>, Asset>,
+    assets: Arena<Asset>,
     embedded: HashMap<&'static str, &'static [u8]>,
 }
 impl Default for EmbeddedStore {
@@ -16,41 +15,28 @@ impl Default for EmbeddedStore {
         log::debug!("Embedded Asset Store init.");
         Self {
             embedded: get_embedded(),
-            next_id: ResourceId::new(0),
-            assets: HashMap::new(),
+            assets: Arena::new(),
         }
     }
 }
-impl EmbeddedStore {
-    fn bump_id(&mut self) {
-        self.next_id = ResourceId::new(self.next_id.0 + 1);
-    }
-}
 impl AssetContext for EmbeddedStore {
-    fn load_bytes(&mut self, data: &'static [u8]) -> ResourceId<AssetId> {
-        let id = self.next_id;
-        self.assets.insert(id, Asset::borrowed(data));
-        self.bump_id();
-        id
+    fn load_bytes(&mut self, data: &'static [u8]) -> Id<Asset> {
+        self.assets.insert(Asset::borrowed(data))
     }
-    fn load(&mut self, path: &str) -> Result<ResourceId<AssetId>, EngineError> {
-        let id = self.next_id;
-
-        let data = self
-            .embedded
-            .get(path)
-            .ok_or(EngineError::ResourceNotFound)?;
+    fn load(&mut self, path: &str) -> Result<Id<Asset>, AssetError> {
+        let data = self.embedded.get(path).ok_or(AssetError::PathError(
+            path.to_string(),
+            "embedded path not found".to_string(),
+        ))?;
 
         log::debug!(
             "Loaded embedded asset from: {}. {} bytes.",
             path,
             data.len()
         );
-        self.assets.insert(id, Asset::borrowed(data));
-        self.bump_id();
-        Ok(id)
+        Ok(self.assets.insert(Asset::borrowed(data)))
     }
-    fn get(&self, asset_id: ResourceId<AssetId>) -> Option<&Asset> {
+    fn get(&self, asset_id: Id<Asset>) -> Option<&Asset> {
         self.assets.get(&asset_id)
     }
 }

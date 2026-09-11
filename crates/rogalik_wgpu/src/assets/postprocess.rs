@@ -1,17 +1,31 @@
-use rogalik_common::structs::{ShaderId, TextureId};
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
-use rogalik_common::{EngineError, PostProcessParams, ResourceId};
+use rogalik_arena::{Arena, Id};
 
-use crate::assets::{texture::TextureData, WgpuAssets};
 use crate::renderer2d::uniforms::UniformKind;
 use crate::utils::{get_wgpu_address_mode, get_wgpu_filter_mode};
+use crate::{
+    assets::{
+        shader::Shader,
+        texture::{TextureData, TextureFiltering, TextureRepeat},
+        WgpuAssets,
+    },
+    GraphicsError,
+};
+
+#[derive(Clone, Copy)]
+pub struct PostProcessParams {
+    pub texture: Option<Id<TextureData>>,
+    pub shader: Id<Shader>,
+    pub repeat: TextureRepeat,
+    pub filtering: TextureFiltering,
+}
 
 #[derive(Debug)]
 pub struct PostProcessPass {
-    pub shader_id: ResourceId<ShaderId>,
-    texture_id: ResourceId<TextureId>,
+    pub shader_id: Id<Shader>,
+    texture_id: Id<TextureData>,
     bind_group: Option<wgpu::BindGroup>,
     uniform_buffer: Option<wgpu::Buffer>,
     uniform_data: PostProcessUniform,
@@ -20,7 +34,7 @@ pub struct PostProcessPass {
     view: Option<wgpu::TextureView>,
 }
 impl PostProcessPass {
-    pub fn new(texture_id: ResourceId<TextureId>, params: PostProcessParams) -> Self {
+    pub fn new(texture_id: Id<TextureData>, params: PostProcessParams) -> Self {
         let address_mode = get_wgpu_address_mode(params.repeat);
         let filter_mode = get_wgpu_filter_mode(params.filtering);
         Self {
@@ -43,11 +57,11 @@ impl PostProcessPass {
     pub fn get_strength(&self) -> f32 {
         self.uniform_data.strength
     }
-    pub fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), EngineError> {
+    pub fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), GraphicsError> {
         queue.write_buffer(
             self.uniform_buffer
                 .as_ref()
-                .ok_or(EngineError::GraphicsNotReady)?,
+                .ok_or(GraphicsError::NotReady)?,
             0,
             bytemuck::cast_slice(&[self.uniform_data]),
         );
@@ -59,10 +73,11 @@ impl PostProcessPass {
         encoder: &mut wgpu::CommandEncoder,
         output: &wgpu::TextureView,
         uniform_bind_groups: &HashMap<UniformKind, wgpu::BindGroup>,
-    ) -> Result<(), EngineError> {
-        let shader = assets
-            .get_shader(self.shader_id)
-            .ok_or(EngineError::GraphicsInternalError)?;
+    ) -> Result<(), GraphicsError> {
+        let shader = assets.get_shader(&self.shader_id).ok_or_else(|| {
+            GraphicsError::ResourceNotFound(format!("shader: {:?}", self.shader_id))
+        })?;
+
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("PostProcess"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -76,17 +91,10 @@ impl PostProcessPass {
             depth_stencil_attachment: None,
             ..Default::default()
         });
-        pass.set_pipeline(
-            shader
-                .pipeline
-                .as_ref()
-                .ok_or(EngineError::GraphicsNotReady)?,
-        );
+        pass.set_pipeline(shader.pipeline.as_ref().ok_or(GraphicsError::NotReady)?);
         pass.set_bind_group(
             0,
-            self.bind_group
-                .as_ref()
-                .ok_or(EngineError::GraphicsNotReady)?,
+            self.bind_group.as_ref().ok_or(GraphicsError::NotReady)?,
             &[],
         );
         pass.set_bind_group(1, uniform_bind_groups.get(&UniformKind::Globals), &[]);
@@ -96,14 +104,14 @@ impl PostProcessPass {
     #[allow(clippy::too_many_arguments)]
     pub fn create_wgpu_data(
         &mut self,
-        textures: &[TextureData],
+        textures: &Arena<TextureData>,
         bind_group_layout: &wgpu::BindGroupLayout,
         w: u32,
         h: u32,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         texture_format: &wgpu::TextureFormat,
-    ) -> Result<(), EngineError> {
+    ) -> Result<(), GraphicsError> {
         let view = Self::get_texture_view(w, h, device, texture_format);
         let (bind_group, uniform_buffer) = Self::get_bind_group(
             textures,
@@ -112,7 +120,7 @@ impl PostProcessPass {
             &view,
             self.filter_mode,
             self.address_mode,
-            self.texture_id,
+            &self.texture_id,
             device,
             queue,
         )?;
@@ -123,19 +131,19 @@ impl PostProcessPass {
     }
     #[allow(clippy::too_many_arguments)]
     fn get_bind_group(
-        textures: &[TextureData],
+        textures: &Arena<TextureData>,
         uniform_data: &PostProcessUniform,
         bind_group_layout: &wgpu::BindGroupLayout,
         view: &wgpu::TextureView,
         filter_mode: wgpu::FilterMode,
         address_mode: wgpu::AddressMode,
-        texture_id: ResourceId<TextureId>,
+        texture_id: &Id<TextureData>,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-    ) -> Result<(wgpu::BindGroup, wgpu::Buffer), EngineError> {
+    ) -> Result<(wgpu::BindGroup, wgpu::Buffer), GraphicsError> {
         let texture = textures
-            .get(texture_id.0)
-            .ok_or(EngineError::ResourceNotFound)?;
+            .get(texture_id)
+            .ok_or_else(|| GraphicsError::ResourceNotFound(format!("texture: {texture_id:?}")))?;
 
         let texture_view = texture
             .to_wgpu_texture(device, queue, true)

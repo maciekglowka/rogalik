@@ -1,4 +1,4 @@
-use rogalik_common::{structs::AssetId, EngineError, ResourceId};
+use rogalik_arena::Id;
 
 #[cfg(dev_tools)]
 mod dev_file_store;
@@ -51,8 +51,25 @@ pub enum AssetState {
 }
 
 pub trait AssetContext: Default {
-    fn load_bytes(&mut self, data: &'static [u8]) -> ResourceId<AssetId>;
-    fn load(&mut self, path: &str) -> Result<ResourceId<AssetId>, EngineError>;
-    fn get(&self, asset_id: ResourceId<AssetId>) -> Option<&Asset>;
-    fn mark_read(&mut self, _asset_id: ResourceId<AssetId>) {}
+    fn load_bytes(&mut self, data: &'static [u8]) -> Id<Asset>;
+    fn load(&mut self, path: &str) -> Result<Id<Asset>, AssetError>;
+    fn get(&self, asset_id: Id<Asset>) -> Option<&Asset>;
+    fn mark_read(&mut self, _asset_id: Id<Asset>) {}
 }
+
+#[derive(Debug)]
+pub enum AssetError {
+    PathError(String, String),
+    MetaDataError(String),
+}
+impl std::fmt::Display for AssetError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::PathError(path, inner) => {
+                write!(f, "reading path failed: {path}, reason: {inner}")
+            }
+            Self::MetaDataError(inner) => write!(f, "reading meta data failed: {inner}"),
+        }
+    }
+}
+impl std::error::Error for AssetError {}

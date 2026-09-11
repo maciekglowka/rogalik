@@ -1,3 +1,3 @@
 mod arena;
 
-pub use arena::{Arena, ResourceId};
+pub use arena::{Arena, Id};
