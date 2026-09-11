@@ -216,6 +216,7 @@ impl WgpuContext {
     /// Queues wrapped multiline text for drawing using a specified font.
     ///
     /// On success textbox dimensions are returned.
+    #[allow(clippy::too_many_arguments)]
     pub fn draw_textbox(
         &mut self,
         font: &str,
