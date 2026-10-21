@@ -24,6 +24,7 @@ pub struct App<T> {
     pub context: Context,
     pub game: T,
     pub scene_manager: SceneManager<T>,
+    paused: bool,
     window: Option<Arc<Window>>,
     window_attributes: WindowAttributes,
     #[cfg(all(dev_tools, feature = "remote"))]
@@ -41,6 +42,7 @@ impl<T: Game> App<T> {
             game,
             scene_manager: SceneManager::new(scene),
             window: None,
+            paused: false,
             window_attributes,
             #[cfg(all(dev_tools, feature = "remote"))]
             remote_handle: None,
@@ -65,8 +67,14 @@ impl<T: Game> App<T> {
 }
 
 impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
+    fn suspended(&mut self, _event_loop: &ActiveEventLoop) {
+        self.paused = true;
+    }
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         log::info!("App resume");
+        self.paused = false;
+        self.context.time.resume();
+
         self.window = Some(Arc::new(
             event_loop
                 .create_window(self.window_attributes.clone())
@@ -92,6 +100,9 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
         self.game.resize(&mut self.context);
     }
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        if self.paused {
+            return;
+        }
         if let Some(window) = &self.window {
             window.request_redraw();
         }
@@ -173,6 +184,8 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
             }
             WindowEvent::RedrawRequested => {
                 // let start = std::time::Instant::now();
+
+                // Update time even if paused to avoid enormous `delta`.
                 self.context.time.update();
 
                 // // TEMP

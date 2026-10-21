@@ -16,7 +16,7 @@ pub struct Time {
     frame_start: Instant,
 }
 impl Time {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             start: Instant::now(),
             delta: 1.0,
@@ -27,7 +27,7 @@ impl Time {
             frame_start: Instant::now(),
         }
     }
-    pub fn update(&mut self) {
+    pub(crate) fn update(&mut self) {
         self.delta = self.frame_start.elapsed();
         self.frame_start = Instant::now();
 
@@ -36,6 +36,12 @@ impl Time {
         for timer in self.timers.values_mut() {
             timer.update(self.delta);
         }
+    }
+    /// Resume timer after the engine had been paused.
+    /// Clears `frame_start` to avoid calculating a potentially
+    /// enormous delta.
+    pub(crate) fn resume(&mut self) {
+        self.frame_start = Instant::now();
     }
     pub fn add_timer(&mut self, tick: f32) -> Id<Timer> {
         let timer = Timer::new(tick);
