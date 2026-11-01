@@ -30,6 +30,8 @@ pub struct InputContext {
     // mouse_logical_position: Vector2f,
     touches: HashMap<u64, Touch>,
     touch_click: bool,
+    /// Id of the touch performing click.
+    touch_click_id: Option<u64>,
 }
 impl InputContext {
     pub fn new() -> Self {
@@ -43,6 +45,7 @@ impl InputContext {
             mouse_physical_position: Vector2f::ZERO,
             touches: HashMap::new(),
             touch_click: true,
+            touch_click_id: None,
         }
     }
     pub fn clear(&mut self) {
@@ -117,13 +120,19 @@ impl InputContext {
         );
 
         if self.touch_click {
-            match phase {
-                TouchPhase::Started => {
+            match (phase, self.touch_click_id) {
+                (TouchPhase::Started, None) => {
                     self.handle_mouse_button(&MouseButton::Left, &ElementState::Pressed);
                     self.handle_mouse_move(position, window_size);
+                    self.touch_click_id = Some(id);
                 }
-                TouchPhase::Ended => {
-                    self.handle_mouse_button(&MouseButton::Left, &ElementState::Released)
+                (TouchPhase::Ended, Some(a)) if a == id => {
+                    self.handle_mouse_button(&MouseButton::Left, &ElementState::Released);
+                    self.handle_mouse_move(position, window_size);
+                    self.touch_click_id = None;
+                }
+                (TouchPhase::Moved, Some(a)) if a == id => {
+                    self.handle_mouse_move(position, window_size);
                 }
                 _ => (),
             };
