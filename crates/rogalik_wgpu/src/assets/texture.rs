@@ -24,19 +24,21 @@ pub enum TextureFiltering {
 
 enum TextureSource {
     Asset(Id<Asset>),
-    Raw { bytes: Vec<u8>, dim: (u32, u32) },
+    Raw(Vec<u8>),
 }
 
 pub struct TextureData {
     pub(crate) view: Option<wgpu::TextureView>,
+    pub(crate) dim: (u32, u32),
     source: TextureSource,
     is_data: bool,
 }
 impl TextureData {
     pub(crate) fn from_asset(asset_id: Id<Asset>, is_data: bool) -> Result<Self, GraphicsError> {
-        // let (rgba, dim) = TextureData::get_buffer_from_file(bytes)?;
         Ok(Self {
             source: TextureSource::Asset(asset_id),
+            // Dim will be written on buffer read.
+            dim: (0, 0),
             view: None,
             is_data,
         })
@@ -47,12 +49,11 @@ impl TextureData {
         height: u32,
         is_data: bool,
     ) -> Result<Self, GraphicsError> {
-        // let (rgba, dim) = TextureData::get_buffer_from_raw(bytes, width, height)?;
+        // let (rgba, dim) = TextureData::get_buffer_from_raw(bytes, width,
+        // height)?;
         Ok(Self {
-            source: TextureSource::Raw {
-                bytes: bytes.to_vec(),
-                dim: (width, height),
-            },
+            source: TextureSource::Raw(bytes.to_vec()),
+            dim: (width, height),
             view: None,
             is_data,
         })
@@ -63,23 +64,23 @@ impl TextureData {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> Result<(), GraphicsError> {
-        let (buffer, dim) = match &self.source {
+        let buffer = match &self.source {
             TextureSource::Asset(asset_id) => {
                 let asset = store.get(*asset_id).ok_or_else(|| {
                     GraphicsError::ResourceNotFound(format!(
                         "texture asset not found: {asset_id:?}"
                     ))
                 })?;
-                Self::get_buffer_from_file(asset.data.get())?
+                let (buffer, dim) = Self::get_buffer_from_file(asset.data.get())?;
+                self.dim = dim;
+                buffer
             }
-            TextureSource::Raw { bytes, dim } => {
-                (Self::get_buffer_from_raw(&bytes, dim.0, dim.1)?, *dim)
-            }
+            TextureSource::Raw(bytes) => Self::get_buffer_from_raw(&bytes, self.dim.0, self.dim.1)?,
         };
 
         let size = wgpu::Extent3d {
-            width: dim.0,
-            height: dim.1,
+            width: self.dim.0,
+            height: self.dim.1,
             depth_or_array_layers: 1,
         };
         let format = if self.is_data {
@@ -107,8 +108,8 @@ impl TextureData {
             &buffer,
             wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(4 * dim.0),
-                rows_per_image: Some(dim.1),
+                bytes_per_row: Some(4 * self.dim.0),
+                rows_per_image: Some(self.dim.1),
             },
             size,
         );
@@ -138,8 +139,8 @@ impl TextureData {
     //         sample_count: 1,
     //         dimension: wgpu::TextureDimension::D2,
     //         format,
-    //         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-    //         label: Some("Texture"),
+    //         usage: wgpu::TextureUsages::TEXTURE_BINDING |
+    // wgpu::TextureUsages::COPY_DST,         label: Some("Texture"),
     //         view_formats: &[],
     //     });
     //     queue.write_texture(
@@ -159,6 +160,13 @@ impl TextureData {
     //     );
     //     texture
     // }
+    //
+    pub(crate) fn asset_id(&self) -> Option<Id<Asset>> {
+        match &self.source {
+            TextureSource::Asset(asset_id) => Some(*asset_id),
+            TextureSource::Raw { .. } => None,
+        }
+    }
 
     fn get_buffer_from_file(bytes: &[u8]) -> Result<(BufferOutput, (u32, u32)), GraphicsError> {
         let img = image::load_from_memory(bytes)

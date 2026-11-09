@@ -11,7 +11,7 @@ pub enum UniformKind {
     Lights,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ShaderUniform {
     data: Vec<u8>,
     /// Type Id used for runtime validation of uniform data updates.
@@ -45,6 +45,9 @@ impl ShaderUniform {
         self.data = bytemuck::cast_slice(&[data]).to_vec();
 
         Ok(())
+    }
+    pub(crate) fn data(&self) -> &[u8] {
+        &self.data
     }
 }
 

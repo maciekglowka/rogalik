@@ -7,7 +7,7 @@ use rogalik_arena::{Arena, Id};
 use rogalik_assets::{Asset, AssetContext, AssetState, AssetStore};
 use rogalik_math::vectors::Vector2f;
 
-use crate::GraphicsError;
+use crate::{assets::bind_groups::BindGroupLayoutKind, GraphicsError};
 
 pub(crate) mod atlas;
 pub(crate) mod bind_groups;
@@ -26,9 +26,11 @@ use postprocess::{PostProcessParams, PostProcessPass};
 use shader::{BuiltInShader, Shader, ShaderKind};
 use texture::TextureData;
 
+const DIFFUSE_1PX: &[u8] = &[0xff; 4];
+
 pub(crate) struct WgpuAssets {
     pub(crate) asset_store: Arc<Mutex<AssetStore>>,
-    pub(crate) bind_group_layouts: HashMap<bind_groups::BindGroupLayoutKind, wgpu::BindGroupLayout>,
+    pub(crate) bind_group_layouts: HashMap<BindGroupLayoutKind, wgpu::BindGroupLayout>,
     pub(crate) builtin_shaders: HashMap<BuiltInShader, Id<Shader>>,
     pub(crate) cameras: Arena<camera::Camera2d>,
     pub(crate) default_shader: Option<Id<Shader>>,
@@ -93,7 +95,11 @@ impl WgpuAssets {
         // self.default_normal =
         //     Some(self.texture_from_bytes(include_bytes!("include/
         // default_normal.png")));
-        self.default_diffuse = Some(self.texture_from_bytes(include_bytes!("include/white.png")));
+
+        // FIXME
+        // self.default_diffuse =
+        // Some(self.texture_from_bytes(include_bytes!("include/white.png")));
+        self.default_diffuse = Some(self.texture_from_bytes(DIFFUSE_1PX, 1, 1, false).unwrap())
     }
     pub(crate) fn create_wgpu_data(
         &mut self,
@@ -103,29 +109,40 @@ impl WgpuAssets {
         queue: &wgpu::Queue,
         texture_format: &wgpu::TextureFormat,
     ) -> Result<(), GraphicsError> {
-        self.create_bind_group_layouts(device);
-        self.create_pipeline_layouts(device)?;
+        self.init_bind_group_layouts(device);
+
         let mut store = self
             .asset_store
             .lock()
             .expect("Can't acquire the asset store!");
 
-        let material_layout = self
-            .bind_group_layouts
-            .get(&bind_groups::BindGroupLayoutKind::Sprite)
-            .ok_or(GraphicsError::InternalError)?;
+        for texture in self.textures.values_mut() {
+            log::debug!("Creating texture");
+            texture.create_wgpu_data(&mut *store, device, queue);
+        }
 
         for material in self.materials.values_mut() {
+            let material_layout = self
+                .bind_group_layouts
+                .entry(material.bind_group_layout_kind)
+                .or_insert(bind_groups::get_bind_group_layout(
+                    device,
+                    material.bind_group_layout_kind,
+                ));
+
             log::debug!("Creating material: {:?}", material);
-            material.create_wgpu_data(&self.textures, device, queue, material_layout)?;
+            material.create_wgpu_data(&self.textures, device, material_layout)?;
         }
 
         for shader in self.shaders.values_mut() {
             log::debug!("Creating shader: {:?}", shader);
             shader.create_wgpu_data(&mut store, device, texture_format, &self.pipeline_layouts)?;
         }
+
         drop(store);
         self.update_postprocess_wgpu_data(w, h, device, queue, texture_format)?;
+
+        self.create_pipeline_layouts(device)?;
 
         for camera in self.cameras.values_mut() {
             camera.create_wgpu_data(
@@ -184,21 +201,33 @@ impl WgpuAssets {
 
         // FIXME
         for (id, texture) in self.textures.iter_mut() {
-            if let Some(asset) = texture.asset_id.and_then(|id| store.get(id)) {
+            if let Some((asset_id, asset)) = texture
+                .asset_id()
+                .and_then(|id| store.get(id).map(|a| (id, a)))
+            {
                 if asset.state == AssetState::Updated {
-                    log::debug!("Updating texture {:?}, Asset: {:?}", id, texture.asset_id);
-                    texture.update_bytes(asset.data.get());
+                    log::debug!("Updating texture {:?}, Asset: {:?}", id, asset_id);
+
+                    if texture
+                        .create_wgpu_data(&mut *store, device, queue)
+                        .is_err()
+                    {
+                        log::error!("Material reload failed!");
+                    }
+
                     updated_textures.insert(id);
 
                     #[cfg(dev_tools)]
-                    store.mark_read(texture.asset_id.unwrap());
+                    store.mark_read(asset_id.unwrap());
                 }
             }
         }
 
         for material in self.materials.values_mut() {
-            if updated_textures.contains(&material.diffuse_texture_id)
-                || updated_textures.contains(&material.normal_texture_id)
+            if material
+                .textures
+                .iter()
+                .any(|t| updated_textures.contains(t))
             {
                 log::debug!("Updating material {:?}", material);
                 if material
@@ -223,8 +252,11 @@ impl WgpuAssets {
 
         Ok(())
     }
-    fn create_bind_group_layouts(&mut self, device: &wgpu::Device) {
-        self.bind_group_layouts = bind_groups::get_bind_group_layouts(device);
+    fn init_bind_group_layouts(&mut self, device: &wgpu::Device) {
+        self.bind_group_layouts = HashMap::from_iter([(
+            BindGroupLayoutKind::Uniform,
+            bind_groups::get_bind_group_layout(device, BindGroupLayoutKind::Uniform),
+        )]);
     }
     fn create_pipeline_layouts(&mut self, device: &wgpu::Device) -> Result<(), GraphicsError> {
         self.pipeline_layouts = shader::get_pipeline_layouts(&self.bind_group_layouts, device)?;
@@ -250,20 +282,11 @@ impl WgpuAssets {
         if params.shader.is_none() {
             params.shader = self.default_shader;
             if params.textures.is_empty() {
-                params.textures.push(self.default_diffuse);
+                params.textures.push(self.default_diffuse.unwrap());
             }
         }
 
-        // let diffuse_id = params
-        //     .diffuse_texture
-        //     .unwrap_or(self.default_diffuse.unwrap());
-        // let normal_id = params
-        //     .normal_texture
-        //     .unwrap_or(self.default_normal.unwrap());
-        // let shader_id =
-        // params.shader.unwrap_or(self.default_shader.unwrap());
-
-        let material = material::Material::new(diffuse_id, normal_id, shader_id, params);
+        let material = material::Material::new(params);
         let material_id = self.materials.insert(material);
         self.material_names.insert(name.to_string(), material_id);
         Ok(material_id)
@@ -275,27 +298,43 @@ impl WgpuAssets {
         self.postprocess_names
             .insert(name.to_string(), postprocess_id);
     }
-    pub(crate) fn texture_from_path(&mut self, path: &str, is_data: bool) -> Id<TextureData> {
-        let texture = {
-            let asset_id = self.load_asset(path);
-            let store = self
-                .asset_store
-                .lock()
-                .expect("Can't acquire the asset store!");
+    pub(crate) fn texture_from_path(
+        &mut self,
+        path: &str,
+        is_data: bool,
+    ) -> Result<Id<TextureData>, GraphicsError> {
+        // let texture = {
+        // let store = self
+        //     .asset_store
+        //     .lock()
+        //     .expect("Can't acquire the asset store!");
 
-            let asset = store
-                .get(asset_id)
-                .ok_or_else(|| GraphicsError::ResourceNotFound(path.to_string()))
-                .expect("Invalid texture asset!");
+        // let asset = store
+        //     .get(asset_id)
+        //     .ok_or_else(|| GraphicsError::ResourceNotFound(path.to_string()))
+        //     .expect("Invalid texture asset!");
 
-            // TODO error handling.
-            texture::TextureData::from_file_bytes(Some(asset_id), asset.data.get()).unwrap()
-        };
-        self.add_texture(texture)
+        // TODO error handling.
+        // texture::TextureData::from_file_bytes(Some(asset_id),
+        // asset.data.get()).unwrap() texture
+        // };
+        let asset_id = self.load_asset(path);
+        let texture = texture::TextureData::from_asset(asset_id, is_data)?;
+        Ok(self.add_texture(texture))
     }
-    fn texture_from_bytes(&mut self, bytes: &[u8], is_data: bool) -> Id<TextureData> {
+    fn texture_from_bytes(
+        &mut self,
+        bytes: &[u8],
+        width: u32,
+        height: u32,
+        is_data: bool,
+    ) -> Result<Id<TextureData>, GraphicsError> {
+        Ok(self.add_texture(texture::TextureData::from_raw(
+            bytes, width, height, is_data,
+        )?))
         // TODO error handling
-        self.add_texture(texture::TextureData::from_file_bytes(None, bytes).unwrap())
+        // self.add_texture(texture::TextureData::from_file_bytes(None,
+        // bytes).unwrap())
     }
     fn add_texture(&mut self, texture: texture::TextureData) -> Id<TextureData> {
         self.textures.insert(texture)
@@ -340,7 +379,7 @@ impl WgpuAssets {
 
         let material_params = MaterialParams {
             atlas: Some(atlas),
-            diffuse_texture: Some(self.texture_from_path(path)),
+            textures: vec![self.texture_from_path(path, false)?],
             shader: params.shader,
             filtering: params.filtering,
             ..Default::default()
@@ -396,7 +435,6 @@ impl WgpuAssets {
 
         let mut material_params = MaterialParams {
             atlas: Some(glyphs.atlas_params),
-            diffuse_texture: None,
             shader: font.shader,
             filtering: font.filtering,
             ..Default::default()
@@ -406,10 +444,11 @@ impl WgpuAssets {
             &glyphs.texture_data,
             glyphs.texture_size.0,
             glyphs.texture_size.1,
+            false,
         )?;
         let texture_id = self.add_texture(texture);
 
-        material_params.diffuse_texture = Some(texture_id);
+        material_params.textures.push(texture_id);
 
         let material_id = self.create_material(&format!("{name}_{size}"), material_params)?;
 

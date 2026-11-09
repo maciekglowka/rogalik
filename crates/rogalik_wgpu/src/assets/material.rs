@@ -1,4 +1,5 @@
 use rogalik_arena::{Arena, Id};
+use wgpu::util::DeviceExt;
 
 use super::{
     atlas::{AtlasParams, SpriteAtlas},
@@ -6,9 +7,10 @@ use super::{
     texture::{TextureData, TextureFiltering, TextureRepeat},
 };
 use crate::{
+    assets::bind_groups::BindGroupLayoutKind,
     renderer2d::uniforms::ShaderUniform,
     utils::{get_wgpu_address_mode, get_wgpu_filter_mode},
-    GraphicsError,
+    GraphicsError, ShaderKind,
 };
 
 #[derive(Clone, Default)]
@@ -26,71 +28,75 @@ pub struct Material {
     address_mode: wgpu::AddressMode,
     pub(crate) atlas: Option<SpriteAtlas>,
     atlas_params: Option<AtlasParams>,
+    pub(crate) bind_group_layout_kind: BindGroupLayoutKind,
     pub(crate) bind_group: Option<wgpu::BindGroup>,
     pub(crate) textures: Vec<Id<TextureData>>,
     filter_mode: wgpu::FilterMode,
     pub(crate) shader_id: Id<Shader>,
+    uniform: Option<ShaderUniform>,
 }
 impl Material {
     pub(crate) fn new(params: MaterialParams) -> Self {
         let address_mode = get_wgpu_address_mode(params.repeat);
         let filter_mode = get_wgpu_filter_mode(params.filtering);
+
+        let bind_group_layout_kind = BindGroupLayoutKind::Shader {
+            kind: ShaderKind::Sprite,
+            uniform: params.uniform.is_some(),
+            textures: params.textures.len(),
+        };
+
         Self {
             atlas: None,
             atlas_params: params.atlas,
+            bind_group_layout_kind,
             bind_group: None,
             textures: params.textures,
             shader_id: params.shader.unwrap(),
             address_mode,
             filter_mode,
+            uniform: params.uniform,
         }
     }
     pub(crate) fn create_wgpu_data(
         &mut self,
         textures: &Arena<TextureData>,
         device: &wgpu::Device,
-        queue: &wgpu::Queue,
         bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Result<(), GraphicsError> {
-        let diffuse_texture = textures.get(&self.diffuse_texture_id).ok_or_else(|| {
-            GraphicsError::ResourceNotFound(format!(
-                "diffuse texture: {:?}",
-                self.diffuse_texture_id
-            ))
-        })?;
-        let normal_texture = textures.get(&self.normal_texture_id).ok_or_else(|| {
-            GraphicsError::ResourceNotFound(format!("normal texture: {:?}", self.normal_texture_id))
-        })?;
+        // TODO avoid vec by using iterator.
+        let material_textures = self
+            .textures
+            .iter()
+            .map(|t| textures.get(t))
+            .collect::<Option<Vec<&TextureData>>>()
+            .ok_or(GraphicsError::InternalError)?;
 
         self.bind_group = Some(get_material_bind_group(
-            diffuse_texture,
-            normal_texture,
+            &material_textures,
+            &self.uniform,
             device,
-            queue,
             bind_group_layout,
             self.address_mode,
             self.filter_mode,
-        ));
+        )?);
 
-        match &self.atlas_params {
-            None => {
+        match (material_textures.get(0), &self.atlas_params) {
+            (None, _) => (),
+            (Some(t), None) => {
                 // Create 1x1 atlas for compatibility.
-                self.atlas = Some(SpriteAtlas::from_grid(diffuse_texture.dim, 1, 1, None));
+                self.atlas = Some(SpriteAtlas::from_grid(t.dim, 1, 1, None));
             }
-            Some(AtlasParams::Grid {
-                cols,
-                rows,
-                padding,
-            }) => {
-                self.atlas = Some(SpriteAtlas::from_grid(
-                    diffuse_texture.dim,
-                    *rows,
-                    *cols,
-                    *padding,
-                ))
-            }
-            Some(AtlasParams::Free(entries)) => {
-                self.atlas = Some(SpriteAtlas::from_entries(entries, diffuse_texture.dim));
+            (
+                Some(t),
+                Some(AtlasParams::Grid {
+                    cols,
+                    rows,
+                    padding,
+                }),
+            ) => self.atlas = Some(SpriteAtlas::from_grid(t.dim, *rows, *cols, *padding)),
+            (Some(t), Some(AtlasParams::Free(entries))) => {
+                self.atlas = Some(SpriteAtlas::from_entries(entries, t.dim));
             }
         }
 
@@ -99,58 +105,62 @@ impl Material {
 }
 
 fn get_material_bind_group(
-    diffuse_data: &TextureData,
-    normal_data: &TextureData,
+    textures: &[&TextureData],
+    uniform_data: &Option<ShaderUniform>,
     device: &wgpu::Device,
-    queue: &wgpu::Queue,
     bind_group_layout: &wgpu::BindGroupLayout,
     address_mode: wgpu::AddressMode,
     filter_mode: wgpu::FilterMode,
-) -> wgpu::BindGroup {
-    let diffuse_texture = diffuse_data.to_wgpu_texture(device, queue, false);
-    let diff_tex_view = diffuse_texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let diff_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        address_mode_u: address_mode,
-        address_mode_v: address_mode,
-        address_mode_w: address_mode,
-        mag_filter: filter_mode,
-        min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
-        ..Default::default()
+) -> Result<wgpu::BindGroup, GraphicsError> {
+    let mut entries = vec![];
+
+    // TODO reuse samplers between materials.
+    let sampler = match textures.len() {
+        0 => None,
+        _ => Some(device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: address_mode,
+            address_mode_v: address_mode,
+            address_mode_w: address_mode,
+            mag_filter: filter_mode,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        })),
+    };
+
+    // The order here has to match bind group layout for sprites.
+    if let Some(sampler) = &sampler {
+        entries.push(wgpu::BindGroupEntry {
+            binding: 0,
+            resource: wgpu::BindingResource::Sampler(sampler),
+        });
+        for i in 0..textures.len() {
+            let view = textures[i].view.as_ref().ok_or(GraphicsError::NotReady)?;
+            entries.push(wgpu::BindGroupEntry {
+                binding: i as u32 + 1,
+                resource: wgpu::BindingResource::TextureView(view),
+            });
+        }
+    }
+
+    let uniform_buffer = uniform_data.as_ref().map(|u| {
+        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Material Uniform Buffer"),
+            contents: u.data(),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        })
     });
 
-    let normal_texture = normal_data.to_wgpu_texture(device, queue, true);
-    let normal_tex_view = normal_texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let normal_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        address_mode_u: address_mode,
-        address_mode_v: address_mode,
-        address_mode_w: address_mode,
-        mag_filter: filter_mode,
-        min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
-        ..Default::default()
-    });
+    if let Some(buffer) = &uniform_buffer {
+        entries.push(wgpu::BindGroupEntry {
+            binding: entries.len() as u32,
+            resource: buffer.as_entire_binding(),
+        })
+    }
 
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
+    Ok(device.create_bind_group(&wgpu::BindGroupDescriptor {
         layout: bind_group_layout,
-        entries: &[
-            wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::TextureView(&diff_tex_view),
-            },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: wgpu::BindingResource::Sampler(&diff_sampler),
-            },
-            wgpu::BindGroupEntry {
-                binding: 2,
-                resource: wgpu::BindingResource::TextureView(&normal_tex_view),
-            },
-            wgpu::BindGroupEntry {
-                binding: 3,
-                resource: wgpu::BindingResource::Sampler(&normal_sampler),
-            },
-        ],
+        entries: &entries,
         label: Some("Sprite Diffuse Bind Group"),
-    })
+    }))
 }
