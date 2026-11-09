@@ -17,8 +17,8 @@ use crate::{
     Game, Scene,
 };
 
-use rogalik_audio::AudioSetup;
-use rogalik_wgpu::{GraphicsDevTools, GraphicsSetup};
+use rogalik_audio::AudioInternal;
+use rogalik_wgpu::{GraphicsDevTools, GraphicsInternal};
 
 pub struct App<T> {
     pub context: Context,
@@ -68,6 +68,9 @@ impl<T: Game> App<T> {
 
 impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
     fn suspended(&mut self, _event_loop: &ActiveEventLoop) {
+        self.context.graphics.drop_context();
+        self.context.audio.drop_context();
+
         self.paused = true;
     }
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {

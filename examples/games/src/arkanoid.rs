@@ -34,7 +34,7 @@ struct GameState {
     blocks: [[bool; BLOCKS_VERTICAL]; BLOCKS_HORIZONTAL],
 }
 impl Game for GameState {
-    fn setup(&mut self, context: &mut Context) {
+    fn setup(&mut self, context: &mut SetupContext) {
         // Load sprite texture
         let sprite_texture = Some(
             context

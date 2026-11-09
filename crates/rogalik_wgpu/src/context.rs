@@ -9,7 +9,7 @@ use rogalik_math::vectors::Vector2f;
 
 use crate::{
     AtlasParams, BuiltInShader, Camera2d, Color, FontParams, GraphicsDevTools, GraphicsError,
-    GraphicsSetup, MaterialParams, PostProcessParams, Shader, ShaderKind, SpriteParams,
+    GraphicsInternal, MaterialParams, PostProcessParams, Shader, ShaderKind, SpriteParams,
     TextureData,
 };
 
@@ -75,49 +75,6 @@ impl WgpuContext {
             }
         }
         self.resize_cameras();
-    }
-    /// Loads a texture from the given file path and returns its `Id`.
-    pub fn load_texture(&mut self, path: &str) -> Id<TextureData> {
-        self.assets.texture_from_path(path)
-    }
-    /// Loads a material with the given name and parameters.
-    /// Materials define how objects are rendered, including their textures and
-    /// shaders.
-    pub fn create_material(
-        &mut self,
-        name: &str,
-        params: MaterialParams,
-    ) -> Result<(), GraphicsError> {
-        self.assets.create_material(name, params).map(|_| ())
-        // TODO if self.surface_state build bind_group
-    }
-    /// Loads a shader from the given file path and returns its `Id`.
-    pub fn load_shader(&mut self, kind: ShaderKind, path: &str) -> Id<Shader> {
-        // TODO if self.surface_state build pipeline
-        self.assets.create_shader(kind, path)
-    }
-    /// Loads a font from a TTF file.
-    pub fn load_font(
-        &mut self,
-        name: &str,
-        path: &str,
-        params: FontParams,
-    ) -> Result<(), GraphicsError> {
-        self.assets.load_font(name, path, params)
-    }
-    /// Loads a font from a texture atlas, allowing text rendering.
-    pub fn load_font_atlas(
-        &mut self,
-        name: &str,
-        path: &str,
-        atlas: AtlasParams,
-        params: FontParams,
-    ) -> Result<(), GraphicsError> {
-        self.assets.load_font_atlas(name, path, atlas, params)
-    }
-    /// Adds a post-processing effect to be applied after scene rendering.
-    pub fn add_post_process(&mut self, name: &str, params: PostProcessParams) {
-        self.assets.create_post_process(name, params);
     }
     /// Queues a standard sprite for drawing in the next render pass.
     pub fn draw_sprite(
@@ -308,19 +265,6 @@ impl WgpuContext {
             .get_text_dimensions(&mut self.assets, font, text, size, Some(max_width))
             .unwrap_or(Vector2f::ZERO)
     }
-    /// Creates a new 2D camera with a specified scale and target position.
-    pub fn create_camera(&mut self, scale: f32, target: Vector2f) -> Id<Camera2d> {
-        let (vw, vh, rw, rh) = self.get_current_resolutions();
-        let id = self
-            .assets
-            .create_camera(vw as f32, vh as f32, rw as f32, rh as f32, scale, target);
-
-        if self.current_camera_id.is_none() {
-            self.current_camera_id = Some(id)
-        }
-
-        id
-    }
     /// Sets the currently active camera by its `Id`.
     /// All subsequent draw calls will use this camera's view.
     pub fn set_camera(&mut self, id: &Id<Camera2d>) {
@@ -467,7 +411,7 @@ impl WgpuContext {
 }
 
 // Public setup methods, hidden by a trait.
-impl GraphicsSetup for WgpuContext {
+impl GraphicsInternal for WgpuContext {
     fn has_context(&self) -> bool {
         match self.surface_state.lock() {
             Ok(s) => s.is_some(),
@@ -534,6 +478,95 @@ impl GraphicsSetup for WgpuContext {
                 );
             }
         }
+    }
+    fn drop_context(&mut self) {
+        if let Some(state) = self.surface_state.lock().ok().and_then(|mut s| s.take()) {
+            state.device.destroy();
+        }
+    }
+    fn as_setup<'a>(&'a mut self) -> GraphicsSetup<'a> {
+        GraphicsSetup(self)
+    }
+}
+
+/// Public graphics context API available in engine's `setup` phase.
+pub struct GraphicsSetup<'a>(&'a mut WgpuContext);
+impl<'a> GraphicsSetup<'a> {
+    /// Loads a texture from the given file path and returns its `Id`.
+    pub fn load_texture(&mut self, path: &str) -> Id<TextureData> {
+        self.0.assets.texture_from_path(path)
+    }
+    /// Loads a material with the given name and parameters.
+    /// Materials define how objects are rendered, including their textures and
+    /// shaders.
+    pub fn create_material(
+        &mut self,
+        name: &str,
+        params: MaterialParams,
+    ) -> Result<(), GraphicsError> {
+        self.0.assets.create_material(name, params).map(|_| ())
+        // TODO if self.surface_state build bind_group
+    }
+    /// Loads a shader from the given file path and returns its `Id`.
+    pub fn load_shader(&mut self, kind: ShaderKind, path: &str) -> Id<Shader> {
+        // TODO if self.surface_state build pipeline
+        self.0.assets.create_shader(kind, path)
+    }
+    /// Loads a font from a TTF file.
+    pub fn load_font(
+        &mut self,
+        name: &str,
+        path: &str,
+        params: FontParams,
+    ) -> Result<(), GraphicsError> {
+        self.0.assets.load_font(name, path, params)
+    }
+    /// Loads a font from a texture atlas, allowing text rendering.
+    pub fn load_font_atlas(
+        &mut self,
+        name: &str,
+        path: &str,
+        atlas: AtlasParams,
+        params: FontParams,
+    ) -> Result<(), GraphicsError> {
+        self.0.assets.load_font_atlas(name, path, atlas, params)
+    }
+    /// Adds a post-processing effect to be applied after scene rendering.
+    pub fn add_post_process(&mut self, name: &str, params: PostProcessParams) {
+        self.0.assets.create_post_process(name, params);
+    }
+    /// Creates a new 2D camera with a specified scale and target position.
+    pub fn create_camera(&mut self, scale: f32, target: Vector2f) -> Id<Camera2d> {
+        let (vw, vh, rw, rh) = self.0.get_current_resolutions();
+        let id = self
+            .0
+            .assets
+            .create_camera(vw as f32, vh as f32, rw as f32, rh as f32, scale, target);
+
+        if self.0.current_camera_id.is_none() {
+            self.0.current_camera_id = Some(id)
+        }
+
+        id
+    }
+    /// Sets the color used to clear the rendering target before each frame.
+    pub fn set_clear_color(&mut self, color: Color) {
+        self.0.set_clear_color(color);
+    }
+    /// Sets a custom rendering resolution, enabling pixel-perfect rendering and
+    /// upscaling. If not set, the rendering resolution defaults to the
+    /// viewport size.
+    pub fn set_rendering_resolution(&mut self, w: u32, h: u32) {
+        self.0.set_rendering_resolution(w, h);
+    }
+    /// Sets the global ambient light color for the scene.
+    pub fn set_ambient(&mut self, color: Color) {
+        self.0.set_ambient(color);
+    }
+    /// Sets the currently active camera by its `Id`.
+    /// All subsequent draw calls will use this camera's view.
+    pub fn set_camera(&mut self, id: &Id<Camera2d>) {
+        self.0.set_camera(id);
     }
 }
 

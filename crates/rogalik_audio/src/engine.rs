@@ -18,10 +18,6 @@ impl AudioEngine {
     pub fn set_master_volume(&mut self, volume: f32) {
         self.state.lock().unwrap().volume = volume;
     }
-    /// Loads an audio source from a given path and associates it with a `name`.
-    pub fn load_source(&mut self, name: &str, path: &str) -> Result<(), AudioError> {
-        self.state.lock().unwrap().assets.load_source(name, path)
-    }
     /// Starts playing the audio source identified by `name`.
     /// If `looped` is true, the audio will loop indifinitely.
     pub fn play(&mut self, name: &str, looped: bool) -> Result<(), AudioError> {
@@ -87,7 +83,7 @@ impl AudioEngine {
 }
 
 /// Setup methods, hidden behind a trait.
-impl crate::AudioSetup for AudioEngine {
+impl crate::AudioInternal for AudioEngine {
     fn create_context(&mut self) {
         if self.params.is_none() {
             return;
@@ -138,6 +134,37 @@ impl crate::AudioSetup for AudioEngine {
     }
     fn update_assets(&mut self) {
         self.state.lock().unwrap().assets.update_assets();
+    }
+    fn drop_context(&mut self) {
+        if let Some(mut device) = self.device.take() {
+            device.close();
+        }
+    }
+    fn as_setup<'a>(&'a mut self) -> AudioSetup<'a> {
+        AudioSetup(self)
+    }
+}
+
+/// Public audio context API available in engine's `setup` phase.
+pub struct AudioSetup<'a>(&'a mut AudioEngine);
+impl<'a> AudioSetup<'a> {
+    /// Loads an audio source from a given path and associates it with a `name`.
+    pub fn load_source(&mut self, name: &str, path: &str) -> Result<(), AudioError> {
+        self.0.state.lock().unwrap().assets.load_source(name, path)
+    }
+    /// Sets the global master volume for all audio playback.
+    pub fn set_master_volume(&mut self, volume: f32) {
+        self.0.set_master_volume(volume);
+    }
+    /// Sets the individual volume for the audio source identified by `name`.
+    /// `volume`: A value between 0.0 and 1.0.
+    pub fn set_volume(&mut self, name: &str, volume: f32) -> Result<(), AudioError> {
+        self.0.set_volume(name, volume)
+    }
+    /// Sets the pan (left-right balance) for the audio source identified by
+    /// `name`. `pan` should be between -1.0 (full left) and 1.0 (full right).
+    pub fn set_pan(&mut self, name: &str, pan: f32) -> Result<(), AudioError> {
+        self.0.set_pan(name, pan)
     }
 }
 

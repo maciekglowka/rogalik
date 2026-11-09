@@ -7,7 +7,7 @@ const BOARD_DIM: i32 = 4;
 // Main game object.
 struct GameState;
 impl Game for GameState {
-    fn setup(&mut self, context: &mut Context) {
+    fn setup(&mut self, context: &mut SetupContext) {
         // Load diffuse texture
         let diffuse_texture = Some(
             context
@@ -30,9 +30,10 @@ impl Game for GameState {
                 MaterialParams {
                     diffuse_texture,
                     normal_texture,
-                    shader: context
-                        .graphics
-                        .get_builtin_shader(BuiltInShader::SpriteLit),
+                    // FIXME
+                    // shader: context
+                    //     .graphics
+                    //     .get_builtin_shader(BuiltInShader::SpriteLit),
                     ..Default::default()
                 },
             )

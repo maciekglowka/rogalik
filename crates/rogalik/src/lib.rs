@@ -27,7 +27,7 @@ pub use rogalik_persist as persist;
 pub use rogalik_wgpu as wgpu;
 
 pub mod prelude {
-    pub use crate::engine::{Context, EngineBuilder};
+    pub use crate::engine::{Context, EngineBuilder, SetupContext};
     pub use crate::scenes::SceneController;
     pub use crate::time::Timer;
     pub use crate::traits::{Game, Scene};

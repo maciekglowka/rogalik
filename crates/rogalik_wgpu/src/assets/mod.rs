@@ -26,7 +26,7 @@ use postprocess::{PostProcessParams, PostProcessPass};
 use shader::{BuiltInShader, Shader, ShaderKind};
 use texture::TextureData;
 
-pub struct WgpuAssets {
+pub(crate) struct WgpuAssets {
     pub(crate) asset_store: Arc<Mutex<AssetStore>>,
     pub(crate) bind_group_layouts: HashMap<bind_groups::BindGroupLayoutKind, wgpu::BindGroupLayout>,
     pub(crate) builtin_shaders: HashMap<BuiltInShader, Id<Shader>>,
@@ -44,7 +44,7 @@ pub struct WgpuAssets {
     pub(crate) textures: Arena<TextureData>,
 }
 impl WgpuAssets {
-    pub fn new(asset_store: Arc<Mutex<AssetStore>>) -> Self {
+    pub(crate) fn new(asset_store: Arc<Mutex<AssetStore>>) -> Self {
         let mut assets = Self {
             // perhaps this clone could be avoided?
             asset_store: asset_store.clone(),
@@ -95,7 +95,7 @@ impl WgpuAssets {
         // default_normal.png")));
         self.default_diffuse = Some(self.texture_from_bytes(include_bytes!("include/white.png")));
     }
-    pub fn create_wgpu_data(
+    pub(crate) fn create_wgpu_data(
         &mut self,
         w: u32,
         h: u32,
@@ -138,7 +138,7 @@ impl WgpuAssets {
 
         Ok(())
     }
-    pub fn update_postprocess_wgpu_data(
+    pub(crate) fn update_postprocess_wgpu_data(
         &mut self,
         w: u32,
         h: u32,
@@ -164,7 +164,7 @@ impl WgpuAssets {
         }
         Ok(())
     }
-    pub fn update_assets(
+    pub(crate) fn update_assets(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -230,12 +230,12 @@ impl WgpuAssets {
         self.pipeline_layouts = shader::get_pipeline_layouts(&self.bind_group_layouts, device)?;
         Ok(())
     }
-    pub fn create_shader(&mut self, kind: ShaderKind, path: &str) -> Id<Shader> {
+    pub(crate) fn create_shader(&mut self, kind: ShaderKind, path: &str) -> Id<Shader> {
         let asset_id = self.load_asset(path);
         let shader = shader::Shader::new(kind, asset_id);
         self.shaders.insert(shader)
     }
-    pub fn create_material(
+    pub(crate) fn create_material(
         &mut self,
         name: &str,
         mut params: MaterialParams,
@@ -268,7 +268,7 @@ impl WgpuAssets {
         self.material_names.insert(name.to_string(), material_id);
         Ok(material_id)
     }
-    pub fn create_post_process(&mut self, name: &str, params: PostProcessParams) {
+    pub(crate) fn create_post_process(&mut self, name: &str, params: PostProcessParams) {
         let texture_id = params.texture.unwrap_or(self.default_diffuse.unwrap());
         let pass = postprocess::PostProcessPass::new(texture_id, params);
         let postprocess_id = self.postprocess.insert(pass);
@@ -300,7 +300,7 @@ impl WgpuAssets {
     fn add_texture(&mut self, texture: texture::TextureData) -> Id<TextureData> {
         self.textures.insert(texture)
     }
-    pub fn create_camera(
+    pub(crate) fn create_camera(
         &mut self,
         vw: f32,
         vh: f32,
@@ -312,7 +312,7 @@ impl WgpuAssets {
         let camera = camera::Camera2d::new(vw, vh, rw, rh, scale, target);
         self.cameras.insert(camera)
     }
-    pub fn load_font(
+    pub(crate) fn load_font(
         &mut self,
         name: &str,
         path: &str,
@@ -327,7 +327,7 @@ impl WgpuAssets {
         self.fonts.insert(name.to_string(), font);
         Ok(())
     }
-    pub fn load_font_atlas(
+    pub(crate) fn load_font_atlas(
         &mut self,
         name: &str,
         path: &str,
@@ -436,28 +436,28 @@ impl WgpuAssets {
 
         Ok(())
     }
-    pub fn get_material_id(&self, name: &str) -> Option<&Id<Material>> {
+    pub(crate) fn get_material_id(&self, name: &str) -> Option<&Id<Material>> {
         self.material_names.get(name)
     }
-    pub fn get_material(&self, id: &Id<Material>) -> Option<&material::Material> {
+    pub(crate) fn get_material(&self, id: &Id<Material>) -> Option<&material::Material> {
         self.materials.get(id)
     }
-    pub fn get_font(&self, name: &str) -> Option<&Font> {
+    pub(crate) fn get_font(&self, name: &str) -> Option<&Font> {
         self.fonts.get(name)
     }
-    pub fn get_shader(&self, id: &Id<Shader>) -> Option<&shader::Shader> {
+    pub(crate) fn get_shader(&self, id: &Id<Shader>) -> Option<&shader::Shader> {
         self.shaders.get(id)
     }
-    pub fn get_camera(&self, id: &Id<Camera2d>) -> Option<&camera::Camera2d> {
+    pub(crate) fn get_camera(&self, id: &Id<Camera2d>) -> Option<&camera::Camera2d> {
         self.cameras.get(id)
     }
-    pub fn get_camera_mut(&mut self, id: &Id<Camera2d>) -> Option<&mut camera::Camera2d> {
+    pub(crate) fn get_camera_mut(&mut self, id: &Id<Camera2d>) -> Option<&mut camera::Camera2d> {
         self.cameras.get_mut(id)
     }
-    pub fn get_postprocess_id(&self, name: &str) -> Option<&Id<PostProcessPass>> {
+    pub(crate) fn get_postprocess_id(&self, name: &str) -> Option<&Id<PostProcessPass>> {
         self.postprocess_names.get(name)
     }
-    pub fn get_postprocess_mut(
+    pub(crate) fn get_postprocess_mut(
         &mut self,
         id: &Id<PostProcessPass>,
     ) -> Option<&mut postprocess::PostProcessPass> {
