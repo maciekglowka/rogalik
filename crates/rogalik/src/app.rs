@@ -17,8 +17,8 @@ use crate::{
     Game, Scene,
 };
 
-use rogalik_audio::AudioSetup;
-use rogalik_wgpu::{GraphicsDevTools, GraphicsSetup};
+use rogalik_audio::AudioInternal;
+use rogalik_wgpu::{GraphicsDevTools, GraphicsInternal};
 
 pub struct App<T> {
     pub context: Context,

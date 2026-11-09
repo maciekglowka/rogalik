@@ -3,7 +3,7 @@ use rogalik::prelude::*;
 // Main game object.
 struct GameState;
 impl Game for GameState {
-    fn setup(&mut self, context: &mut Context) {
+    fn setup(&mut self, context: &mut SetupContext) {
         // Load a default font
         context
             .graphics

@@ -8,7 +8,7 @@ const PIXEL_SCALE: u32 = 4;
 // Main game object.
 struct GameState;
 impl Game for GameState {
-    fn setup(&mut self, context: &mut Context) {
+    fn setup(&mut self, context: &mut SetupContext) {
         // Load texture
         let diffuse_texture = Some(
             context

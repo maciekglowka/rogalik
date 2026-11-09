@@ -18,10 +18,10 @@ pub use assets::material::{Material, MaterialParams};
 pub use assets::postprocess::PostProcessParams;
 pub use assets::shader::{BuiltInShader, Shader, ShaderKind};
 pub use assets::texture::{TextureData, TextureFiltering, TextureRepeat};
-pub use context::WgpuContext;
+pub use context::{GraphicsSetup, WgpuContext};
 pub use structs::Color;
 
-pub trait GraphicsSetup {
+pub trait GraphicsInternal {
     /// Creates and initializes the graphics context and surface.
     /// This method should be called once the application window is available.
     /// (called by the engine internally)
@@ -50,6 +50,8 @@ pub trait GraphicsSetup {
     fn render(&mut self);
     /// Closes graphics device and releases resources.
     fn drop_context(&mut self);
+    /// Returns `setup` wrapper.
+    fn as_setup<'a>(&'a mut self) -> GraphicsSetup<'a>;
 }
 
 pub trait GraphicsDevTools {

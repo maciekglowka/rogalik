@@ -4,7 +4,7 @@ mod assets;
 mod engine;
 mod source;
 
-pub use engine::AudioEngine;
+pub use engine::{AudioEngine, AudioSetup};
 
 #[derive(Clone, Copy)]
 pub struct AudioDeviceParams {
@@ -20,7 +20,7 @@ impl Default for AudioDeviceParams {
     }
 }
 
-pub trait AudioSetup {
+pub trait AudioInternal {
     /// Creates and initializes the audio context and device.
     fn create_context(&mut self);
     /// Checks if the audio context has been successfully created.
@@ -29,6 +29,8 @@ pub trait AudioSetup {
     fn update_assets(&mut self);
     /// Closes audio device and releases resources.
     fn drop_context(&mut self);
+    /// Returns `setup` wrapper.
+    fn as_setup<'a>(&'a mut self) -> AudioSetup<'a>;
 }
 
 #[derive(Debug)]

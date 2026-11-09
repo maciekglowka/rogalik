@@ -10,8 +10,8 @@ use winit::{
 };
 
 use rogalik_assets::AssetStore;
-use rogalik_audio::{AudioDeviceParams, AudioEngine};
-use rogalik_wgpu::WgpuContext;
+use rogalik_audio::{AudioDeviceParams, AudioEngine, AudioInternal, AudioSetup};
+use rogalik_wgpu::{GraphicsInternal, GraphicsSetup, WgpuContext};
 
 use crate::{
     app::{get_event_loop, App, ExternalEvent},
@@ -42,6 +42,19 @@ impl Context {
         let size: LogicalSize<f32> = self.inner_size.to_logical(self.scale_factor);
         rogalik_math::vectors::vector2::Vector2f::new(size.width, size.height)
     }
+    pub(crate) fn as_setup<'a>(&'a mut self) -> SetupContext<'a> {
+        SetupContext {
+            assets: self.assets.as_ref(),
+            audio: self.audio.as_setup(),
+            graphics: self.graphics.as_setup(),
+        }
+    }
+}
+
+pub struct SetupContext<'a> {
+    pub assets: &'a Mutex<rogalik_assets::AssetStore>,
+    pub audio: AudioSetup<'a>,
+    pub graphics: GraphicsSetup<'a>,
 }
 
 #[derive(Default)]
@@ -237,6 +250,6 @@ where
         app.remote_handle = Some(handle);
     }
 
-    app.game.setup(&mut app.context);
+    app.game.setup(&mut app.context.as_setup());
     let _ = event_loop.run_app(&mut app);
 }

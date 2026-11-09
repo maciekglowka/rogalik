@@ -1,7 +1,10 @@
-use crate::{engine::Context, scenes::SceneController};
+use crate::{
+    engine::{Context, SetupContext},
+    scenes::SceneController,
+};
 
 pub trait Game {
-    fn setup(&mut self, context: &mut Context);
+    fn setup(&mut self, context: &mut SetupContext);
     fn resize(&mut self, _context: &mut Context) {}
     fn resume(&mut self, _context: &mut Context) {}
     fn reload_assets(&mut self, _context: &mut Context) {}
