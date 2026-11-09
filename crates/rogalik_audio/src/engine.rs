@@ -139,6 +139,11 @@ impl crate::AudioSetup for AudioEngine {
     fn update_assets(&mut self) {
         self.state.lock().unwrap().assets.update_assets();
     }
+    fn drop_context(&mut self) {
+        if let Some(mut device) = self.device.take() {
+            device.close();
+        }
+    }
 }
 
 struct AudioState {

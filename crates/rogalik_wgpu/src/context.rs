@@ -533,6 +533,11 @@ impl GraphicsSetup for WgpuContext {
             }
         }
     }
+    fn drop_context(&mut self) {
+        if let Some(state) = self.surface_state.lock().ok().and_then(|mut s| s.take()) {
+            state.device.destroy();
+        }
+    }
 }
 
 async fn create_surface_state(

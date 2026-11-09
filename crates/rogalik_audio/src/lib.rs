@@ -27,6 +27,8 @@ pub trait AudioSetup {
     fn has_context(&self) -> bool;
     /// Updates audio assets, checking for any changes or reloads.
     fn update_assets(&mut self);
+    /// Closes audio device and releases resources.
+    fn drop_context(&mut self);
 }
 
 #[derive(Debug)]

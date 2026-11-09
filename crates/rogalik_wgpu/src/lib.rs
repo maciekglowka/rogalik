@@ -48,6 +48,8 @@ pub trait GraphicsSetup {
     /// post-processing effects.
     /// (called by the engine internally)
     fn render(&mut self);
+    /// Closes graphics device and releases resources.
+    fn drop_context(&mut self);
 }
 
 pub trait GraphicsDevTools {
