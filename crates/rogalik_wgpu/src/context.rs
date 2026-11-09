@@ -493,8 +493,8 @@ impl GraphicsInternal for WgpuContext {
 pub struct GraphicsSetup<'a>(&'a mut WgpuContext);
 impl<'a> GraphicsSetup<'a> {
     /// Loads a texture from the given file path and returns its `Id`.
-    pub fn load_texture(&mut self, path: &str) -> Id<TextureData> {
-        self.0.assets.texture_from_path(path)
+    pub fn load_texture(&mut self, path: &str, is_data: bool) -> Id<TextureData> {
+        self.0.assets.texture_from_path(path, is_data)
     }
     /// Loads a material with the given name and parameters.
     /// Materials define how objects are rendered, including their textures and

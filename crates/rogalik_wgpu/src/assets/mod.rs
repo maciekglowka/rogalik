@@ -275,7 +275,7 @@ impl WgpuAssets {
         self.postprocess_names
             .insert(name.to_string(), postprocess_id);
     }
-    pub(crate) fn texture_from_path(&mut self, path: &str) -> Id<TextureData> {
+    pub(crate) fn texture_from_path(&mut self, path: &str, is_data: bool) -> Id<TextureData> {
         let texture = {
             let asset_id = self.load_asset(path);
             let store = self
@@ -293,7 +293,7 @@ impl WgpuAssets {
         };
         self.add_texture(texture)
     }
-    fn texture_from_bytes(&mut self, bytes: &[u8]) -> Id<TextureData> {
+    fn texture_from_bytes(&mut self, bytes: &[u8], is_data: bool) -> Id<TextureData> {
         // TODO error handling
         self.add_texture(texture::TextureData::from_file_bytes(None, bytes).unwrap())
     }

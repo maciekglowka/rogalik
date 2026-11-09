@@ -6,6 +6,7 @@ use super::{
     texture::{TextureData, TextureFiltering, TextureRepeat},
 };
 use crate::{
+    renderer2d::uniforms::ShaderUniform,
     utils::{get_wgpu_address_mode, get_wgpu_filter_mode},
     GraphicsError,
 };
@@ -17,6 +18,7 @@ pub struct MaterialParams {
     pub shader: Option<Id<Shader>>,
     pub repeat: TextureRepeat,
     pub filtering: TextureFiltering,
+    pub uniform: Option<ShaderUniform>,
 }
 
 #[derive(Debug)]

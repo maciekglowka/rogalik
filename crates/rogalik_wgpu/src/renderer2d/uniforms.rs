@@ -11,6 +11,43 @@ pub enum UniformKind {
     Lights,
 }
 
+#[derive(Clone)]
+pub struct ShaderUniform {
+    data: Vec<u8>,
+    /// Type Id used for runtime validation of uniform data updates.
+    type_id: std::any::TypeId,
+    /// Type name used only for error reporting.
+    type_name: &'static str,
+}
+impl ShaderUniform {
+    pub fn init<T>(data: T) -> Self
+    where
+        T: bytemuck::NoUninit,
+    {
+        Self {
+            data: bytemuck::cast_slice(&[data]).to_vec(),
+            type_id: std::any::TypeId::of::<T>(),
+            type_name: std::any::type_name::<T>(),
+        }
+    }
+    pub(crate) fn update<T>(&mut self, data: T) -> Result<(), GraphicsError>
+    where
+        T: bytemuck::NoUninit,
+    {
+        if std::any::TypeId::of::<T>() != self.type_id {
+            return Err(GraphicsError::ShaderError(format!(
+                "invalid uniform type expected: {}, got: {}",
+                self.type_name,
+                std::any::type_name::<T>()
+            )));
+        }
+
+        self.data = bytemuck::cast_slice(&[data]).to_vec();
+
+        Ok(())
+    }
+}
+
 #[derive(Default)]
 pub struct Uniforms {
     pub globals: GlobalsUniform,
