@@ -13,8 +13,7 @@ use crate::{
 #[derive(Clone, Default)]
 pub struct MaterialParams {
     pub atlas: Option<AtlasParams>,
-    pub diffuse_texture: Option<Id<TextureData>>,
-    pub normal_texture: Option<Id<TextureData>>,
+    pub textures: Vec<Id<TextureData>>,
     pub shader: Option<Id<Shader>>,
     pub repeat: TextureRepeat,
     pub filtering: TextureFiltering,
@@ -23,35 +22,28 @@ pub struct MaterialParams {
 #[derive(Debug)]
 pub struct Material {
     address_mode: wgpu::AddressMode,
-    pub atlas: Option<SpriteAtlas>,
+    pub(crate) atlas: Option<SpriteAtlas>,
     atlas_params: Option<AtlasParams>,
-    pub bind_group: Option<wgpu::BindGroup>,
-    pub diffuse_texture_id: Id<TextureData>,
-    pub normal_texture_id: Id<TextureData>,
+    pub(crate) bind_group: Option<wgpu::BindGroup>,
+    pub(crate) textures: Vec<Id<TextureData>>,
     filter_mode: wgpu::FilterMode,
-    pub shader_id: Id<Shader>,
+    pub(crate) shader_id: Id<Shader>,
 }
 impl Material {
-    pub fn new(
-        diffuse_texture_id: Id<TextureData>,
-        normal_texture_id: Id<TextureData>,
-        shader_id: Id<Shader>,
-        material_params: MaterialParams,
-    ) -> Self {
-        let address_mode = get_wgpu_address_mode(material_params.repeat);
-        let filter_mode = get_wgpu_filter_mode(material_params.filtering);
+    pub(crate) fn new(params: MaterialParams) -> Self {
+        let address_mode = get_wgpu_address_mode(params.repeat);
+        let filter_mode = get_wgpu_filter_mode(params.filtering);
         Self {
             atlas: None,
-            atlas_params: material_params.atlas,
+            atlas_params: params.atlas,
             bind_group: None,
-            diffuse_texture_id,
-            normal_texture_id,
-            shader_id,
+            textures: params.textures,
+            shader_id: params.shader.unwrap(),
             address_mode,
             filter_mode,
         }
     }
-    pub fn create_wgpu_data(
+    pub(crate) fn create_wgpu_data(
         &mut self,
         textures: &Arena<TextureData>,
         device: &wgpu::Device,

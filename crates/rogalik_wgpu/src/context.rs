@@ -169,12 +169,14 @@ impl WgpuContext {
         indices: &[u16],
         z_index: i32,
     ) -> Result<(), GraphicsError> {
+        // TODO create MeshParams to allow color passing.
         let vs = vertices
             .iter()
             .zip(uvs)
             .map(|(v, uv)| crate::structs::Vertex {
                 position: [v.x, v.y, 0.],
                 color: [1., 1., 1., 1.],
+                secondary_color: [1., 1., 1., 1.],
                 tex_coords: [uv.x, uv.y],
             })
             // TODO allocation can be avoided here

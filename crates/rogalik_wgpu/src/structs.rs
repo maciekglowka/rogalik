@@ -42,13 +42,15 @@ pub(crate) type Quad = ([Vertex; 4], [u16; 6]);
 pub(crate) struct Vertex {
     pub position: [f32; 3],
     pub color: [f32; 4],
+    pub secondary_color: [f32; 4],
     pub tex_coords: [f32; 2],
 }
 impl Vertex {
-    const ATTRS: [wgpu::VertexAttribute; 3] = wgpu::vertex_attr_array![
+    const ATTRS: [wgpu::VertexAttribute; 4] = wgpu::vertex_attr_array![
         0 => Float32x3,
         1 => Float32x4,
-        2 => Float32x2,
+        2 => Float32x4,
+        3 => Float32x2,
     ];
     pub(crate) fn layout() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {

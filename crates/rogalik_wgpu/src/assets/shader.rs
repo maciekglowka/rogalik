@@ -13,11 +13,9 @@ pub enum ShaderKind {
 }
 
 #[derive(Hash, Eq, PartialEq, Debug)]
-pub enum BuiltInShader {
+pub(crate) enum BuiltInShader {
     SpriteUnlit,
-    SpriteLit,
     Upscale,
-    Lut,
 }
 
 pub fn get_pipeline_layouts(

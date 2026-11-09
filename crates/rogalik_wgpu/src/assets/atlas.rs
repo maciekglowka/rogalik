@@ -5,6 +5,7 @@ use crate::structs::{Color, Quad, Vertex};
 #[derive(Clone, Copy, Default)]
 pub struct SpriteParams {
     pub color: Color,
+    pub secondary_color: Color,
     pub flip_x: bool,
     pub flip_y: bool,
     pub rotate: f32,
@@ -127,6 +128,8 @@ impl SpriteAtlas {
         let entry = &self.entries[index];
 
         let color = params.color.as_srgb();
+        let secondary_color = params.secondary_color.as_srgb();
+
         let l = entry.u;
         let r = entry.u + entry.u_size;
         let b = entry.v + entry.v_size;
@@ -157,21 +160,25 @@ impl SpriteAtlas {
             Vertex {
                 position: [position.x, position.y, 0.0],
                 color,
+                secondary_color,
                 tex_coords: uvs[0],
             },
             Vertex {
                 position: [position.x + size.x, position.y, 0.0],
                 color,
+                secondary_color,
                 tex_coords: uvs[1],
             },
             Vertex {
                 position: [position.x + size.x, position.y + size.y, 0.0],
                 color,
+                secondary_color,
                 tex_coords: uvs[2],
             },
             Vertex {
                 position: [position.x, position.y + size.y, 0.0],
                 color,
+                secondary_color,
                 tex_coords: uvs[3],
             },
         ];
@@ -196,6 +203,7 @@ impl SpriteAtlas {
         let entry = &self.entries[index];
 
         let color = params.color.as_srgb();
+        let secondary_color = params.secondary_color.as_srgb();
 
         let slice_dim = params.slice.unwrap();
 
@@ -248,6 +256,7 @@ impl SpriteAtlas {
                 vertices[idx] = Vertex {
                     position: [*x, *y, 0.0],
                     color,
+                    secondary_color,
                     tex_coords: [u, v],
                 };
                 idx += 1;

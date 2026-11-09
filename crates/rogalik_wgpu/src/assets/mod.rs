@@ -32,7 +32,7 @@ pub struct WgpuAssets {
     pub(crate) builtin_shaders: HashMap<BuiltInShader, Id<Shader>>,
     pub(crate) cameras: Arena<camera::Camera2d>,
     pub(crate) default_shader: Option<Id<Shader>>,
-    pub(crate) default_normal: Option<Id<TextureData>>,
+    // pub(crate) default_normal: Option<Id<TextureData>>,
     pub(crate) default_diffuse: Option<Id<TextureData>>,
     pub(crate) fonts: HashMap<String, Font>,
     pub(crate) pipeline_layouts: HashMap<ShaderKind, wgpu::PipelineLayout>,
@@ -52,7 +52,7 @@ impl WgpuAssets {
             builtin_shaders: HashMap::new(),
             cameras: Arena::new(),
             default_shader: None,
-            default_normal: None,
+            // default_normal: None,
             default_diffuse: None,
             fonts: HashMap::new(),
             material_names: HashMap::new(),
@@ -73,25 +73,26 @@ impl WgpuAssets {
             ShaderKind::Sprite,
             BuiltInShader::SpriteUnlit,
         );
-        self.load_builtin_shader(
-            include_bytes!("include/sprite_lit.wgsl"),
-            ShaderKind::Sprite,
-            BuiltInShader::SpriteLit,
-        );
+        // self.load_builtin_shader(
+        //     include_bytes!("include/sprite_lit.wgsl"),
+        //     ShaderKind::Sprite,
+        //     BuiltInShader::SpriteLit,
+        // );
         self.load_builtin_shader(
             include_bytes!("include/sprite_pass_upscale.wgsl"),
             ShaderKind::PostProcess,
             BuiltInShader::Upscale,
         );
-        self.load_builtin_shader(
-            include_bytes!("include/lut.wgsl"),
-            ShaderKind::PostProcess,
-            BuiltInShader::Lut,
-        );
+        // self.load_builtin_shader(
+        //     include_bytes!("include/lut.wgsl"),
+        //     ShaderKind::PostProcess,
+        //     BuiltInShader::Lut,
+        // );
 
         self.default_shader = Some(unlit_id);
-        self.default_normal =
-            Some(self.texture_from_bytes(include_bytes!("include/default_normal.png")));
+        // self.default_normal =
+        //     Some(self.texture_from_bytes(include_bytes!("include/
+        // default_normal.png")));
         self.default_diffuse = Some(self.texture_from_bytes(include_bytes!("include/white.png")));
     }
     pub fn create_wgpu_data(
@@ -237,20 +238,30 @@ impl WgpuAssets {
     pub fn create_material(
         &mut self,
         name: &str,
-        params: MaterialParams,
+        mut params: MaterialParams,
     ) -> Result<Id<Material>, GraphicsError> {
         if self.material_names.contains_key(name) {
             return Err(GraphicsError::MaterialError(format!(
                 "name conflict: {name}"
             )));
         }
-        let diffuse_id = params
-            .diffuse_texture
-            .unwrap_or(self.default_diffuse.unwrap());
-        let normal_id = params
-            .normal_texture
-            .unwrap_or(self.default_normal.unwrap());
-        let shader_id = params.shader.unwrap_or(self.default_shader.unwrap());
+
+        // Handle default shader.
+        if params.shader.is_none() {
+            params.shader = self.default_shader;
+            if params.textures.is_empty() {
+                params.textures.push(self.default_diffuse);
+            }
+        }
+
+        // let diffuse_id = params
+        //     .diffuse_texture
+        //     .unwrap_or(self.default_diffuse.unwrap());
+        // let normal_id = params
+        //     .normal_texture
+        //     .unwrap_or(self.default_normal.unwrap());
+        // let shader_id =
+        // params.shader.unwrap_or(self.default_shader.unwrap());
 
         let material = material::Material::new(diffuse_id, normal_id, shader_id, params);
         let material_id = self.materials.insert(material);
