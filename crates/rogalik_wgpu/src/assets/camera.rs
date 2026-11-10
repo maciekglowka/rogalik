@@ -73,12 +73,16 @@ impl Camera2d {
             buffer: None,
         }
     }
-    pub fn create_wgpu_data(&mut self, device: &wgpu::Device, layout: &wgpu::BindGroupLayout) {
+    pub(crate) fn create_wgpu_data(
+        &mut self,
+        device: &wgpu::Device,
+        layout: &wgpu::BindGroupLayout,
+    ) {
         let (bind_group, buffer) = Camera2d::create_bind_group(device, layout, self.get_matrix());
         self.bind_group = Some(bind_group);
         self.buffer = Some(buffer);
     }
-    pub fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), GraphicsError> {
+    pub(crate) fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), GraphicsError> {
         queue.write_buffer(
             self.buffer.as_ref().ok_or(GraphicsError::NotReady)?,
             0,
@@ -86,10 +90,10 @@ impl Camera2d {
         );
         Ok(())
     }
-    pub fn get_bind_group(&self) -> Option<&wgpu::BindGroup> {
+    pub(crate) fn get_bind_group(&self) -> Option<&wgpu::BindGroup> {
         self.bind_group.as_ref()
     }
-    pub fn resize_viewport(&mut self, vw: f32, vh: f32, rw: f32, rh: f32) {
+    pub(crate) fn resize_viewport(&mut self, vw: f32, vh: f32, rw: f32, rh: f32) {
         self.vw = vw;
         self.vh = vh;
         self.rw = rw;

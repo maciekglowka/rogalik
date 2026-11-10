@@ -16,7 +16,7 @@ pub use assets::camera::Camera2d;
 pub use assets::font::FontParams;
 pub use assets::material::{Material, MaterialParams};
 pub use assets::postprocess::PostProcessParams;
-pub use assets::shader::{BuiltInShader, Shader, ShaderKind};
+pub use assets::shader::{Shader, ShaderKind};
 pub use assets::texture::{TextureData, TextureFiltering, TextureRepeat};
 pub use context::{GraphicsSetup, WgpuContext};
 pub use renderer2d::uniforms::ShaderUniform;

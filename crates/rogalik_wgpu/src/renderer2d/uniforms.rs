@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
 use rogalik_math::vectors::Vector2f;
@@ -53,38 +52,65 @@ impl ShaderUniform {
 
 #[derive(Default)]
 pub struct Uniforms {
-    pub globals: GlobalsUniform,
-    pub lights: LightsUniform,
-    pub bind_groups: HashMap<UniformKind, wgpu::BindGroup>,
-    buffers: HashMap<UniformKind, wgpu::Buffer>,
+    pub(crate) globals: GlobalsUniform,
+    pub(crate) lights: LightsUniform,
+    pub(crate) bind_group: Option<wgpu::BindGroup>,
+    pub(crate) globals_buffer: Option<wgpu::Buffer>,
+    pub(crate) lights_buffer: Option<wgpu::Buffer>,
 }
 impl Uniforms {
     pub fn create_wgpu_data(&mut self, layout: &wgpu::BindGroupLayout, device: &wgpu::Device) {
-        let (globals_bind_group, globals_buffer) = self.globals.get_bind_group(device, layout);
-        self.bind_groups
-            .insert(UniformKind::Globals, globals_bind_group);
-        self.buffers.insert(UniformKind::Globals, globals_buffer);
-        let (lights_bind_group, lights_buffer) = self.lights.get_bind_group(device, layout);
-        self.bind_groups
-            .insert(UniformKind::Lights, lights_bind_group);
-        self.buffers.insert(UniformKind::Lights, lights_buffer);
+        self.create_bind_group_and_buffers(device, layout);
     }
     pub fn write_buffers(&self, queue: &wgpu::Queue) -> Result<(), GraphicsError> {
         queue.write_buffer(
-            self.buffers
-                .get(&UniformKind::Globals)
+            self.globals_buffer
+                .as_ref()
                 .ok_or(GraphicsError::NotReady)?,
             0,
             bytemuck::cast_slice(&[self.globals]),
         );
         queue.write_buffer(
-            self.buffers
-                .get(&UniformKind::Lights)
-                .ok_or(GraphicsError::NotReady)?,
+            self.lights_buffer.as_ref().ok_or(GraphicsError::NotReady)?,
             0,
             bytemuck::cast_slice(&[self.lights]),
         );
         Ok(())
+    }
+
+    fn create_bind_group_and_buffers(
+        &mut self,
+        device: &wgpu::Device,
+        layout: &wgpu::BindGroupLayout,
+    ) {
+        self.globals_buffer = Some(
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Global Buffer"),
+                contents: bytemuck::cast_slice(&[self.globals]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            }),
+        );
+        self.lights_buffer = Some(
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Light Buffer"),
+                contents: bytemuck::cast_slice(&[self.lights]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            }),
+        );
+        self.bind_group = Some(device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout,
+            label: Some("Global Bind Group"),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.globals_buffer.as_ref().unwrap().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.lights_buffer.as_ref().unwrap().as_entire_binding(),
+                },
+            ],
+        }));
     }
 }
 

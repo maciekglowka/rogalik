@@ -33,7 +33,8 @@ pub struct Material {
     pub(crate) textures: Vec<Id<TextureData>>,
     filter_mode: wgpu::FilterMode,
     pub(crate) shader_id: Id<Shader>,
-    uniform: Option<ShaderUniform>,
+    uniform_data: Option<ShaderUniform>,
+    uniform_buffer: Option<wgpu::Buffer>,
 }
 impl Material {
     pub(crate) fn new(params: MaterialParams) -> Self {
@@ -55,7 +56,8 @@ impl Material {
             shader_id: params.shader.unwrap(),
             address_mode,
             filter_mode,
-            uniform: params.uniform,
+            uniform_data: params.uniform,
+            uniform_buffer: None,
         }
     }
     pub(crate) fn create_wgpu_data(
@@ -72,14 +74,16 @@ impl Material {
             .collect::<Option<Vec<&TextureData>>>()
             .ok_or(GraphicsError::InternalError)?;
 
-        self.bind_group = Some(get_material_bind_group(
+        let (bind_group, uniform_buffer) = get_material_bind_group(
             &material_textures,
-            &self.uniform,
+            &self.uniform_data,
             device,
             bind_group_layout,
             self.address_mode,
             self.filter_mode,
-        )?);
+        )?;
+        self.bind_group = Some(bind_group);
+        self.uniform_buffer = uniform_buffer;
 
         match (material_textures.get(0), &self.atlas_params) {
             (None, _) => (),
@@ -102,6 +106,29 @@ impl Material {
 
         Ok(())
     }
+    pub(crate) fn update_uniform<T>(
+        &mut self,
+        data: T,
+        queue: &wgpu::Queue,
+    ) -> Result<(), GraphicsError>
+    where
+        T: bytemuck::NoUninit,
+    {
+        let Some(uniform) = self.uniform_data.as_mut() else {
+            return Err(GraphicsError::MaterialError(
+                "material does not support uniform buffers".to_string(),
+            ));
+        };
+
+        uniform.update(data)?;
+
+        // Update buffer if it has already been created.
+        if let Some(buffer) = self.uniform_buffer.as_ref() {
+            queue.write_buffer(buffer, 0, uniform.data());
+        }
+
+        Ok(())
+    }
 }
 
 fn get_material_bind_group(
@@ -111,7 +138,7 @@ fn get_material_bind_group(
     bind_group_layout: &wgpu::BindGroupLayout,
     address_mode: wgpu::AddressMode,
     filter_mode: wgpu::FilterMode,
-) -> Result<wgpu::BindGroup, GraphicsError> {
+) -> Result<(wgpu::BindGroup, Option<wgpu::Buffer>), GraphicsError> {
     let mut entries = vec![];
 
     // TODO reuse samplers between materials.
@@ -158,9 +185,12 @@ fn get_material_bind_group(
         })
     }
 
-    Ok(device.create_bind_group(&wgpu::BindGroupDescriptor {
-        layout: bind_group_layout,
-        entries: &entries,
-        label: Some("Sprite Diffuse Bind Group"),
-    }))
+    Ok((
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: bind_group_layout,
+            entries: &entries,
+            label: Some("Sprite Diffuse Bind Group"),
+        }),
+        uniform_buffer,
+    ))
 }

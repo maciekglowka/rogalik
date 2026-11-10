@@ -17,21 +17,21 @@ fn vs_main(
     return out;
 }
 
-@group(0)
+@group(1)
 @binding(0)
-var input_image: texture_2d<f32>;
-
-@group(0)
-@binding(1)
 var input_sampler: sampler;
 
-@group(0)
-@binding(2)
-var lut_image: texture_2d<f32>;
+@group(1)
+@binding(1)
+var input_image: texture_2d<f32>;
 
-@group(0)
-@binding(3)
+@group(1)
+@binding(2)
 var lut_sampler: sampler;
+
+@group(1)
+@binding(3)
+var lut_image: texture_2d<f32>;
 
 const LUT_SIZE: f32 = 32.0;
 

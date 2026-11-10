@@ -8,7 +8,9 @@ pub(crate) enum BindGroupLayoutKind {
         uniform: bool,
         textures: usize,
     },
-    Uniform,
+    // Uniform,
+    Globals,
+    Camera,
 }
 
 pub(crate) fn get_bind_group_layout(
@@ -16,7 +18,8 @@ pub(crate) fn get_bind_group_layout(
     kind: BindGroupLayoutKind,
 ) -> wgpu::BindGroupLayout {
     match kind {
-        BindGroupLayoutKind::Uniform => get_uniform_bind_group_layout(device),
+        BindGroupLayoutKind::Globals => get_globals_bind_group_layout(device),
+        BindGroupLayoutKind::Camera => get_camera_bind_group_layout(device),
         BindGroupLayoutKind::Shader {
             kind: ShaderKind::Sprite,
             uniform,
@@ -30,9 +33,39 @@ pub(crate) fn get_bind_group_layout(
     }
 }
 
-fn get_uniform_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+fn get_globals_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("Uniform bind group layout"),
+        label: Some("Globals bind group layout"),
+        entries: &[
+            // Globals
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+            // Lights
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+        ],
+    })
+}
+
+fn get_camera_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("Camera bind group layout"),
         entries: &[wgpu::BindGroupLayoutEntry {
             binding: 0,
             visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,

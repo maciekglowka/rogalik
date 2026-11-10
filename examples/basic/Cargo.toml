@@ -20,5 +20,15 @@ path = "src/lighting.rs"
 name = "sprite-atlas"
 path = "src/sprite_atlas.rs"
 
+[[bin]]
+name = "sprite-shader"
+path = "src/sprite_shader.rs"
+
+[[bin]]
+name = "postprocess-lut"
+path = "src/postprocess_lut.rs"
+
 [dependencies]
 rogalik = { path = "../../crates/rogalik" }
+
+bytemuck = { workspace = true }

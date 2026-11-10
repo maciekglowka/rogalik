@@ -12,7 +12,7 @@ struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
 }
 
-@group(1) @binding(0)
+@group(0) @binding(0)
 var<uniform> globals: GlobalsUniform;
 
 @vertex
@@ -40,13 +40,14 @@ fn vs_main(
     return out;
 }
 
-@group(0)
+@group(1)
 @binding(0)
+var post_sampler: sampler;
+
+@group(1)
+@binding(1)
 var post_image: texture_2d<f32>;
 
-@group(0)
-@binding(1)
-var post_sampler: sampler;
 
 @fragment
 fn fs_main(vs: VertexOutput) -> @location(0) vec4<f32> {

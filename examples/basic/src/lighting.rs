@@ -9,18 +9,20 @@ struct GameState;
 impl Game for GameState {
     fn setup(&mut self, context: &mut SetupContext) {
         // Load diffuse texture
-        let diffuse_texture = Some(
-            context
-                .graphics
-                .load_texture("examples/lighting/diffuse.png"),
-        );
+        let diffuse_texture = context
+            .graphics
+            .load_texture("examples/lighting/diffuse.png", false)
+            .unwrap();
 
         // Load normal texture
-        let normal_texture = Some(
-            context
-                .graphics
-                .load_texture("examples/lighting/normal.png"),
-        );
+        let normal_texture = context
+            .graphics
+            .load_texture("examples/lighting/normal.png", true)
+            .unwrap();
+
+        let shader = context
+            .graphics
+            .load_shader(ShaderKind::Sprite, "examples/lighting/sprite_lit.wgsl");
 
         // Create sprite material
         context
@@ -28,12 +30,8 @@ impl Game for GameState {
             .create_material(
                 "sprites",
                 MaterialParams {
-                    diffuse_texture,
-                    normal_texture,
-                    // FIXME
-                    // shader: context
-                    //     .graphics
-                    //     .get_builtin_shader(BuiltInShader::SpriteLit),
+                    textures: vec![diffuse_texture, normal_texture],
+                    shader: Some(shader),
                     ..Default::default()
                 },
             )

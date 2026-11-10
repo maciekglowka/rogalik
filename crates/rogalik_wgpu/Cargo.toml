@@ -21,7 +21,7 @@ rogalik_arena = { path = "../rogalik_arena", version = "0.3.0" }
 rogalik_assets = { path = "../rogalik_assets", version = "0.3.0" }
 rogalik_math = { path = "../rogalik_math", version = "0.3.0" }
 
-bytemuck = { version = "1.12", features = ["derive"] }
+bytemuck = { workspace = true }
 fontdue = "0.9"
 log = { workspace = true }
 pollster = "0.3"

@@ -49,8 +49,6 @@ impl TextureData {
         height: u32,
         is_data: bool,
     ) -> Result<Self, GraphicsError> {
-        // let (rgba, dim) = TextureData::get_buffer_from_raw(bytes, width,
-        // height)?;
         Ok(Self {
             source: TextureSource::Raw(bytes.to_vec()),
             dim: (width, height),
@@ -75,7 +73,7 @@ impl TextureData {
                 self.dim = dim;
                 buffer
             }
-            TextureSource::Raw(bytes) => Self::get_buffer_from_raw(&bytes, self.dim.0, self.dim.1)?,
+            TextureSource::Raw(bytes) => Self::get_buffer_from_raw(bytes, self.dim.0, self.dim.1)?,
         };
 
         let size = wgpu::Extent3d {

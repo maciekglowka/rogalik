@@ -1,24 +1,7 @@
-const MAX_LIGHTS: u32 = 16;
-
+// Vertex shader
 struct CameraUniform {
     view_proj: mat4x4<f32>
 };
-struct PointLight {
-    position: vec3<f32>,
-    radius: f32,
-    color: vec3<f32>,
-    falloff: f32,
-}
-struct LightsUniform {
-    light_count: u32,
-    _padding_0: f32,
-    _padding_1: f32,
-    _padding_2: f32,
-    ambient: vec4<f32>,
-    lights: array<PointLight, MAX_LIGHTS>,
-}
-
-// Vertex shader
 @group(1) @binding(0)
 var<uniform> camera: CameraUniform;
 
@@ -26,7 +9,7 @@ struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) color: vec4<f32>,
     @location(2) secondary_color: vec4<f32>,
-    @location(2) tex_coords: vec2<f32>,
+    @location(3) tex_coords: vec2<f32>,
 }
 
 struct VertexOutput {
@@ -49,21 +32,37 @@ fn vs_main(
 }
 
 // Fragment shader
-@group(0) @binding(0)
-var t_diffuse: texture_2d<f32>;
+const MAX_LIGHTS: u32 = 16;
+
+struct PointLight {
+    position: vec3<f32>,
+    radius: f32,
+    color: vec3<f32>,
+    falloff: f32,
+}
+struct LightsUniform {
+    light_count: u32,
+    _padding_0: f32,
+    _padding_1: f32,
+    _padding_2: f32,
+    ambient: vec4<f32>,
+    lights: array<PointLight, MAX_LIGHTS>,
+}
+
 @group(0) @binding(1)
-var s_diffuse: sampler;
-@group(0) @binding(2)
-var t_normal: texture_2d<f32>;
-@group(0) @binding(3)
-var s_normal: sampler;
-@group(3) @binding(0)
 var<uniform> lights_uniform: LightsUniform;
+
+@group(2) @binding(0)
+var s_diffuse: sampler;
+@group(2) @binding(1)
+var t_diffuse: texture_2d<f32>;
+@group(2) @binding(2)
+var t_normal: texture_2d<f32>;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     var color = in.color * textureSample(t_diffuse, s_diffuse, in.tex_coords);
-    var normal = normalize(textureSample(t_normal, s_normal, in.tex_coords).xyz * 2.0 - 1.0);
+    var normal = normalize(textureSample(t_normal, s_diffuse, in.tex_coords).xyz * 2.0 - 1.0);
 
     // Keep sprite's alpha
     let alpha = color[3];

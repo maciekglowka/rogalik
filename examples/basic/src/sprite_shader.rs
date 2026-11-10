@@ -2,19 +2,33 @@ use std::f32;
 
 use rogalik::prelude::*;
 
-const SPRITE_SIZE: f32 = 8.;
+const SPRITE_SIZE: f32 = 32.;
 const PIXEL_SCALE: u32 = 4;
 
 // Main game object.
-struct GameState;
+#[derive(Default)]
+struct GameState {
+    blend: f32,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Default, bytemuck::NoUninit, bytemuck::Zeroable)]
+struct BlendUniform {
+    blend: f32,
+    _padding: [f32; 3], // for WASM
+}
+
 impl Game for GameState {
-    fn setup(&mut self, context: &mut Context) {
+    fn setup(&mut self, context: &mut SetupContext) {
         // Load texture
-        let diffuse_texture = Some(
-            context
-                .graphics
-                .load_texture("examples/colored_tilemap.png"),
-        );
+        let diffuse_texture = context
+            .graphics
+            .load_texture("examples/colored_tilemap.png", false)
+            .unwrap();
+
+        let shader = context
+            .graphics
+            .load_shader(ShaderKind::Sprite, "examples/sprite_blend.wgsl");
 
         // Create sprite material
         context
@@ -27,7 +41,9 @@ impl Game for GameState {
                         rows: 10,
                         padding: Some((1, 1)),
                     }),
-                    diffuse_texture,
+                    textures: vec![diffuse_texture],
+                    shader: Some(shader),
+                    uniform: Some(ShaderUniform::init(BlendUniform::default())),
                     ..Default::default()
                 },
             )
@@ -53,10 +69,24 @@ impl Scene for MainScene {
 
     fn update(
         &mut self,
-        _game: &mut Self::Game,
+        game: &mut Self::Game,
         context: &mut Context,
         _scenes: &mut SceneController<Self::Game>,
     ) {
+        if context.input.is_key_pressed(rogalik::input::KeyCode::Space) {
+            game.blend = (game.blend + 0.1) % 1.0;
+            context
+                .graphics
+                .update_material_uniform(
+                    "sprites",
+                    BlendUniform {
+                        blend: game.blend,
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+        }
+
         // Simple
         let _ = context.graphics.draw_atlas_sprite(
             "sprites",
@@ -64,29 +94,9 @@ impl Scene for MainScene {
             Vector2f::ZERO,
             0,
             Vector2f::splat(SPRITE_SIZE),
-            SpriteParams::default(),
-        );
-        // 9-slice.
-        let _ = context.graphics.draw_atlas_sprite(
-            "sprites",
-            103,
-            Vector2f::new(2. * SPRITE_SIZE, 0.),
-            0,
-            Vector2f::splat(2. * SPRITE_SIZE),
             SpriteParams {
-                slice: Some(2),
-                ..Default::default()
-            },
-        );
-        // Rotation (sprite is rotated around it's center).
-        let _ = context.graphics.draw_atlas_sprite(
-            "sprites",
-            4,
-            Vector2f::new(0., 2. * SPRITE_SIZE),
-            0,
-            Vector2f::splat(SPRITE_SIZE),
-            SpriteParams {
-                rotate: 0.5 * f32::consts::PI,
+                color: Color(255, 0, 0, 255),
+                secondary_color: Color(0, 0, 255, 255),
                 ..Default::default()
             },
         );
@@ -96,6 +106,6 @@ impl Scene for MainScene {
 fn main() {
     let engine = EngineBuilder::new()
         .with_title("RGLK".to_string())
-        .build(GameState, Box::new(MainScene));
+        .build(GameState::default(), Box::new(MainScene));
     engine.run();
 }

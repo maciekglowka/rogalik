@@ -1,10 +1,6 @@
-use std::collections::HashMap;
-
 use crate::assets::WgpuAssets;
 use crate::structs::{BindParams, Triangle, Vertex};
 use crate::GraphicsError;
-
-use super::uniforms::UniformKind;
 
 struct DynamicBuffer {
     buffer: Option<wgpu::Buffer>,
@@ -92,7 +88,7 @@ impl SpritePass {
         encoder: &mut wgpu::CommandEncoder,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        uniform_bind_groups: &HashMap<UniformKind, wgpu::BindGroup>,
+        uniform_bind_group: &wgpu::BindGroup,
         view: &wgpu::TextureView,
     ) -> Result<(), GraphicsError> {
         if self.triangle_queue.is_empty() {
@@ -160,13 +156,7 @@ impl SpritePass {
                 .ok_or(GraphicsError::NotReady)?;
             pass.set_pipeline(pipeline);
 
-            let bind_group = assets
-                .get_material(&current_params.material_id)
-                .ok_or(GraphicsError::InternalError)?
-                .bind_group
-                .as_ref()
-                .ok_or(GraphicsError::NotReady)?;
-            pass.set_bind_group(0, bind_group, &[]);
+            pass.set_bind_group(0, uniform_bind_group, &[]);
 
             pass.set_bind_group(
                 1,
@@ -183,8 +173,14 @@ impl SpritePass {
                     .ok_or(GraphicsError::NotReady)?,
                 &[],
             );
-            pass.set_bind_group(2, uniform_bind_groups.get(&UniformKind::Globals), &[]);
-            pass.set_bind_group(3, uniform_bind_groups.get(&UniformKind::Lights), &[]);
+
+            let material_bind_group = assets
+                .get_material(&current_params.material_id)
+                .ok_or(GraphicsError::InternalError)?
+                .bind_group
+                .as_ref()
+                .ok_or(GraphicsError::NotReady)?;
+            pass.set_bind_group(2, material_bind_group, &[]);
 
             pass.set_vertex_buffer(0, self.vertex_buffer.unchecked().slice(..));
             pass.set_index_buffer(

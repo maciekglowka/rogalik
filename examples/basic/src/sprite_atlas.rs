@@ -10,11 +10,10 @@ struct GameState;
 impl Game for GameState {
     fn setup(&mut self, context: &mut SetupContext) {
         // Load texture
-        let diffuse_texture = Some(
-            context
-                .graphics
-                .load_texture("examples/colored_tilemap.png"),
-        );
+        let diffuse_texture = context
+            .graphics
+            .load_texture("examples/colored_tilemap.png", false)
+            .unwrap();
 
         // Create sprite material
         context
@@ -27,7 +26,7 @@ impl Game for GameState {
                         rows: 10,
                         padding: Some((1, 1)),
                     }),
-                    diffuse_texture,
+                    textures: vec![diffuse_texture],
                     ..Default::default()
                 },
             )
