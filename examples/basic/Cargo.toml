@@ -28,6 +28,10 @@ path = "src/sprite_shader.rs"
 name = "postprocess-lut"
 path = "src/postprocess_lut.rs"
 
+[[bin]]
+name = "postprocess-pixel-blur"
+path = "src/postprocess_pixel_blur.rs"
+
 [dependencies]
 rogalik = { path = "../../crates/rogalik" }
 

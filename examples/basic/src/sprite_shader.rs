@@ -87,7 +87,6 @@ impl Scene for MainScene {
                 .unwrap();
         }
 
-        // Simple
         let _ = context.graphics.draw_atlas_sprite(
             "sprites",
             20,

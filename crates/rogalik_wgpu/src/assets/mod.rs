@@ -7,7 +7,10 @@ use rogalik_arena::{Arena, Id};
 use rogalik_assets::{Asset, AssetContext, AssetState, AssetStore};
 use rogalik_math::vectors::Vector2f;
 
-use crate::{assets::bind_groups::BindGroupLayoutKind, GraphicsError};
+use crate::{
+    assets::{bind_groups::BindGroupLayoutKind, postprocess::PostProcessStage},
+    GraphicsError,
+};
 
 pub(crate) mod atlas;
 pub(crate) mod bind_groups;
@@ -105,8 +108,8 @@ impl WgpuAssets {
     }
     pub(crate) fn create_wgpu_data(
         &mut self,
-        w: u32,
-        h: u32,
+        viewport_dim: (u32, u32),
+        render_dim: Option<(u32, u32)>,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         texture_format: &wgpu::TextureFormat,
@@ -145,6 +148,12 @@ impl WgpuAssets {
                     pass.bind_group_layout_kind,
                 ));
 
+            let dim = match pass.stage {
+                PostProcessStage::Upscaled => Some(viewport_dim),
+                PostProcessStage::Downscaled => render_dim,
+            };
+            let Some((w, h)) = dim else { continue };
+
             pass.create_wgpu_data(
                 &self.textures,
                 postprocess_layout,
@@ -175,14 +184,19 @@ impl WgpuAssets {
 
         Ok(())
     }
+    /// Updates post process passes after resolution change.
     pub(crate) fn update_postprocess_wgpu_data(
         &mut self,
+        stage: PostProcessStage,
         w: u32,
         h: u32,
         device: &wgpu::Device,
         texture_format: &wgpu::TextureFormat,
     ) -> Result<(), GraphicsError> {
         for pass in self.postprocess.values_mut() {
+            if pass.stage != stage {
+                continue;
+            }
             let postprocess_layout = self
                 .bind_group_layouts
                 .get(&pass.bind_group_layout_kind)
@@ -341,7 +355,8 @@ impl WgpuAssets {
 
         let material = material::Material::new(params);
 
-        // Update shader bind group layout kind if missing, otherwise check if they match.
+        // Update shader bind group layout kind if missing, otherwise check if
+        // they match.
         match shader.bind_group_layout_kind {
             None => shader.bind_group_layout_kind = Some(material.bind_group_layout_kind),
             Some(kind) => {
@@ -360,18 +375,20 @@ impl WgpuAssets {
     pub(crate) fn create_post_process(
         &mut self,
         name: &str,
+        shader_id: Id<Shader>,
         params: PostProcessParams,
     ) -> Result<(), GraphicsError> {
-        let shader =
-            self.shaders
-                .get_mut(&params.shader)
-                .ok_or(GraphicsError::ResourceNotFound(
-                    "postprocess shader not found".to_string(),
-                ))?;
+        let shader = self
+            .shaders
+            .get_mut(&shader_id)
+            .ok_or(GraphicsError::ResourceNotFound(
+                "postprocess shader not found".to_string(),
+            ))?;
 
-        let pass = postprocess::PostProcessEffect::new(params);
+        let pass = postprocess::PostProcessEffect::new(shader_id, params);
 
-        // Update shader bind group layout kind if missing, otherwise check if they match.
+        // Update shader bind group layout kind if missing, otherwise check if
+        // they match.
         match shader.bind_group_layout_kind {
             None => shader.bind_group_layout_kind = Some(pass.bind_group_layout_kind),
             Some(kind) => {

@@ -15,7 +15,7 @@ pub use assets::atlas::{AtlasParams, AtlasPosition, SpriteParams};
 pub use assets::camera::Camera2d;
 pub use assets::font::FontParams;
 pub use assets::material::{Material, MaterialParams};
-pub use assets::postprocess::PostProcessParams;
+pub use assets::postprocess::{PostProcessParams, PostProcessStage};
 pub use assets::shader::{Shader, ShaderKind};
 pub use assets::texture::{TextureData, TextureFiltering, TextureRepeat};
 pub use context::{GraphicsSetup, WgpuContext};

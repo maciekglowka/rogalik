@@ -6,7 +6,7 @@ use crate::assets::{
     camera::Camera2d,
     font::get_text_sprites,
     material::Material,
-    postprocess::{PostProcessEffect, PostProcessParams},
+    postprocess::{PostProcessEffect, PostProcessParams, PostProcessStage},
     texture::{TextureFiltering, TextureRepeat},
     WgpuAssets,
 };
@@ -57,22 +57,28 @@ impl Renderer2d {
         h: u32,
     ) -> Result<(), GraphicsError> {
         self.rendering_resolution = Some((w, h));
+
         let shader_id = assets
             .builtin_shaders
             .get(&crate::assets::shader::BuiltInShader::Upscale)
             .ok_or(GraphicsError::InternalError)?;
-        self.upscale_pass = Some(PostProcessEffect::new(PostProcessParams {
-            enabled: true,
-            shader: *shader_id,
-            filtering: TextureFiltering::Nearest,
-            repeat: TextureRepeat::default(),
-            texture: None,
-            uniform: None,
-        }));
+
+        self.upscale_pass = Some(PostProcessEffect::new(
+            *shader_id,
+            PostProcessParams {
+                enabled: true,
+                stage: PostProcessStage::default(),
+                filtering: TextureFiltering::Nearest,
+                repeat: TextureRepeat::default(),
+                texture: None,
+                uniform: None,
+            },
+        ));
+
         self.uniforms.globals.render_size = [w as f32, h as f32];
         Ok(())
     }
-    pub fn create_upscale_pass(
+    pub fn create_downscale_wgpu_data(
         &mut self,
         assets: &WgpuAssets,
         device: &wgpu::Device,
@@ -91,14 +97,14 @@ impl Renderer2d {
                 .get(&pass.bind_group_layout_kind)
                 .ok_or(GraphicsError::InternalError)?;
 
-            return pass.create_wgpu_data(
+            pass.create_wgpu_data(
                 &assets.textures,
                 postprocess_layout,
                 w,
                 h,
                 device,
                 texture_format,
-            );
+            )?;
         }
         Ok(())
     }
@@ -125,7 +131,7 @@ impl Renderer2d {
         texture_format: &wgpu::TextureFormat,
     ) -> Result<(), GraphicsError> {
         log::debug!("Creating Renderer2d data with w:{}, h:{}", width, height);
-        self.create_upscale_pass(assets, device, texture_format)?;
+        self.create_downscale_wgpu_data(assets, device, texture_format)?;
         self.uniforms.create_wgpu_data(
             assets
                 .bind_group_layouts
@@ -276,9 +282,20 @@ impl Renderer2d {
         // TODO avoid allocation here?
         let mut post_process_queue = Vec::new();
         if let Some(pass) = &self.upscale_pass {
+            post_process_queue.extend(
+                assets
+                    .postprocess
+                    .values()
+                    .filter(|p| p.enabled && p.stage == PostProcessStage::Downscaled),
+            );
             post_process_queue.push(pass);
         }
-        post_process_queue.extend(assets.postprocess.values().filter(|p| p.enabled));
+        post_process_queue.extend(
+            assets
+                .postprocess
+                .values()
+                .filter(|p| p.enabled && p.stage == PostProcessStage::Upscaled),
+        );
 
         let mut current_view = if let Some(pass) = post_process_queue.first() {
             pass.get_view().ok_or(GraphicsError::NotReady)?

@@ -14,27 +14,39 @@ use crate::{
 };
 use crate::{ShaderKind, ShaderUniform};
 
-// #[derive(Clone, Copy, Default)]
-// pub enum PostProcessStage {
-//     PreUpscaling,
-//     #[default]
-//     PostUpscaling,
-// }
+#[derive(Clone, Copy, Default, Debug, PartialEq)]
+pub enum PostProcessStage {
+    Downscaled,
+    #[default]
+    Upscaled,
+}
 
 #[derive(Clone)]
 pub struct PostProcessParams {
-    // pub stage: PostProcessStage,
+    pub stage: PostProcessStage,
     pub enabled: bool,
     pub texture: Option<Id<TextureData>>,
-    pub shader: Id<Shader>,
     pub uniform: Option<ShaderUniform>,
     pub repeat: TextureRepeat,
     pub filtering: TextureFiltering,
+}
+impl Default for PostProcessParams {
+    fn default() -> Self {
+        Self {
+            stage: PostProcessStage::default(),
+            enabled: true,
+            texture: None,
+            uniform: None,
+            repeat: TextureRepeat::Clamp,
+            filtering: TextureFiltering::Nearest,
+        }
+    }
 }
 
 #[derive(Debug)]
 pub(crate) struct PostProcessEffect {
     pub(crate) enabled: bool,
+    pub(crate) stage: PostProcessStage,
     pub(crate) shader_id: Id<Shader>,
     pub(crate) bind_group_layout_kind: BindGroupLayoutKind,
     bind_group: Option<wgpu::BindGroup>,
@@ -49,7 +61,7 @@ pub(crate) struct PostProcessEffect {
     address_mode: wgpu::AddressMode,
 }
 impl PostProcessEffect {
-    pub fn new(params: PostProcessParams) -> Self {
+    pub fn new(shader_id: Id<Shader>, params: PostProcessParams) -> Self {
         let address_mode = get_wgpu_address_mode(params.repeat);
         let filter_mode = get_wgpu_filter_mode(params.filtering);
 
@@ -61,7 +73,8 @@ impl PostProcessEffect {
 
         Self {
             enabled: params.enabled,
-            shader_id: params.shader,
+            shader_id,
+            stage: params.stage,
             bind_group: None,
             bind_group_layout_kind,
             texture: params.texture,
@@ -83,8 +96,8 @@ impl PostProcessEffect {
     // pub fn get_strength(&self) -> f32 {
     //     self.uniform_data.strength
     // }
-    // pub fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), GraphicsError> {
-    //     queue.write_buffer(
+    // pub fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(),
+    // GraphicsError> {     queue.write_buffer(
     //         self.uniform_buffer
     //             .as_ref()
     //             .ok_or(GraphicsError::NotReady)?,
@@ -272,8 +285,8 @@ fn get_view_sampler(filter_mode: wgpu::FilterMode, device: &wgpu::Device) -> wgp
 }
 
 // #[repr(C)]
-// #[derive(Copy, Clone, Debug, Default, bytemuck::NoUninit, bytemuck::Zeroable)]
-// struct PostProcessUniform {
+// #[derive(Copy, Clone, Debug, Default, bytemuck::NoUninit,
+// bytemuck::Zeroable)] struct PostProcessUniform {
 //     pub strength: f32,
 //     _padding: [f32; 3], // for WASM
 // }

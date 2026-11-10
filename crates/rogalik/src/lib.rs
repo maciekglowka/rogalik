@@ -38,7 +38,7 @@ pub mod prelude {
     pub use rogalik_math::vectors::{Vector2f, Vector2i};
     pub use rogalik_wgpu::{
         AtlasParams, AtlasPosition, Camera2d, Color, FontParams, GraphicsError, Material,
-        MaterialParams, PostProcessParams, Shader, ShaderKind, ShaderUniform, SpriteParams,
-        TextureData, TextureFiltering, TextureRepeat,
+        MaterialParams, PostProcessParams, PostProcessStage, Shader, ShaderKind, ShaderUniform,
+        SpriteParams, TextureData, TextureFiltering, TextureRepeat,
     };
 }

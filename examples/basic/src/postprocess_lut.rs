@@ -41,13 +41,10 @@ impl Game for GameState {
             .graphics
             .add_post_process(
                 "lut",
+                shader,
                 PostProcessParams {
-                    enabled: true,
                     texture: Some(lut_texture),
-                    shader,
-                    repeat: TextureRepeat::default(),
-                    filtering: TextureFiltering::Nearest,
-                    uniform: None,
+                    ..Default::default()
                 },
             )
             .unwrap();

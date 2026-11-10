@@ -8,9 +8,9 @@ use rogalik_arena::Id;
 use rogalik_math::vectors::Vector2f;
 
 use crate::{
-    AtlasParams, Camera2d, Color, FontParams, GraphicsDevTools, GraphicsError,
-    GraphicsInternal, MaterialParams, PostProcessParams, Shader, ShaderKind, SpriteParams,
-    TextureData,
+    assets::postprocess::PostProcessStage, AtlasParams, Camera2d, Color, FontParams,
+    GraphicsDevTools, GraphicsError, GraphicsInternal, MaterialParams, PostProcessParams, Shader,
+    ShaderKind, SpriteParams, TextureData,
 };
 
 const MAX_TIME: f32 = 3600.;
@@ -65,8 +65,15 @@ impl WgpuContext {
         {
             if let Ok(state) = self.surface_state.lock() {
                 if let Some(state) = state.as_ref() {
-                    let _ = self.renderer2d.create_upscale_pass(
+                    let _ = self.renderer2d.create_downscale_wgpu_data(
                         &self.assets,
+                        &state.device,
+                        &state.config.format,
+                    );
+                    let _ = self.assets.update_postprocess_wgpu_data(
+                        PostProcessStage::Downscaled,
+                        w,
+                        h,
                         &state.device,
                         &state.config.format,
                     );
@@ -213,9 +220,10 @@ impl WgpuContext {
     ) -> Result<(), GraphicsError> {
         self.renderer2d.add_light(position, radius, color, falloff)
     }
-    pub fn update_material_uniform<T>(&mut self, name: &str, data: T) -> Result<(), GraphicsError> 
+    pub fn update_material_uniform<T>(&mut self, name: &str, data: T) -> Result<(), GraphicsError>
     where
-        T: bytemuck::NoUninit {
+        T: bytemuck::NoUninit,
+    {
         let id = *self
             .assets
             .get_material_id(name)
@@ -311,9 +319,9 @@ impl WgpuContext {
     }
     // Retrieves the `Id` of a built-in shader.
     // Returns `None` if the shader is not found.
-    // pub fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<Id<Shader>> {
-    //     self.assets.builtin_shaders.get(&shader).copied()
-    // }
+    // pub fn get_builtin_shader(&self, shader: BuiltInShader) ->
+    // Option<Id<Shader>> {     self.assets.builtin_shaders.get(&shader).
+    // copied() }
 }
 
 /// DevTools hidden by a trait.
@@ -386,13 +394,16 @@ impl WgpuContext {
                 let h = state.config.height;
                 log::debug!("State config dim: {}, {}", w, h);
 
-                self.assets.create_wgpu_data(
-                    w,
-                    h,
-                    &state.device,
-                    &state.queue,
-                    &state.config.format,
-                ).inspect_err(|e| log::error!("wgpu data init failed: {e}")).expect("wgpu data initialization");
+                self.assets
+                    .create_wgpu_data(
+                        (w, h),
+                        self.rendering_resolution,
+                        &state.device,
+                        &state.queue,
+                        &state.config.format,
+                    )
+                    .inspect_err(|e| log::error!("wgpu data init failed: {e}"))
+                    .expect("wgpu data initialization");
                 log::debug!("Asset data created");
                 let _ = self.renderer2d.create_wgpu_data(
                     &self.assets,
@@ -420,8 +431,7 @@ impl WgpuContext {
                 let state = self.surface_state.lock().unwrap();
                 let state = state.as_ref().ok_or(GraphicsError::NotReady)?;
 
-                self.assets
-                    .create_font_size(font, size, &state.device)
+                self.assets.create_font_size(font, size, &state.device)
             }
             Err(e) => Err(e),
         }
@@ -470,6 +480,7 @@ impl GraphicsInternal for WgpuContext {
                         &state.config.format,
                     );
                     let _ = self.assets.update_postprocess_wgpu_data(
+                        PostProcessStage::Upscaled,
                         width,
                         height,
                         &state.device,
@@ -485,13 +496,16 @@ impl GraphicsInternal for WgpuContext {
         self.handle_surface_refresh();
         if let Ok(state) = self.surface_state.lock() {
             if let Some(state) = state.as_ref() {
-                let _ = self.renderer2d.render(
-                    &self.assets,
-                    self.time,
-                    &state.surface,
-                    &state.device,
-                    &state.queue,
-                ).inspect_err(|e| log::error!("2d renderer failed: {e}"));
+                let _ = self
+                    .renderer2d
+                    .render(
+                        &self.assets,
+                        self.time,
+                        &state.surface,
+                        &state.device,
+                        &state.queue,
+                    )
+                    .inspect_err(|e| log::error!("2d renderer failed: {e}"));
             }
         }
     }
@@ -552,8 +566,13 @@ impl<'a> GraphicsSetup<'a> {
         self.0.assets.load_font_atlas(name, path, atlas, params)
     }
     /// Adds a post-processing effect to be applied after scene rendering.
-    pub fn add_post_process(&mut self, name: &str, params: PostProcessParams) -> Result<(), GraphicsError> {
-        self.0.assets.create_post_process(name, params)
+    pub fn add_post_process(
+        &mut self,
+        name: &str,
+        shader: Id<Shader>,
+        params: PostProcessParams,
+    ) -> Result<(), GraphicsError> {
+        self.0.assets.create_post_process(name, shader, params)
     }
     /// Creates a new 2D camera with a specified scale and target position.
     pub fn create_camera(&mut self, scale: f32, target: Vector2f) -> Id<Camera2d> {
