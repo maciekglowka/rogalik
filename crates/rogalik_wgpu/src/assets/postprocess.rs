@@ -14,42 +14,45 @@ use crate::{
 };
 use crate::{ShaderKind, ShaderUniform};
 
-#[derive(Clone, Copy, Default)]
-pub enum PostProcessStage {
-    PreUpscaling,
-    #[default]
-    PostUpscaling,
-}
+// #[derive(Clone, Copy, Default)]
+// pub enum PostProcessStage {
+//     PreUpscaling,
+//     #[default]
+//     PostUpscaling,
+// }
 
 #[derive(Clone)]
-pub struct PostProcessPassParams {
+pub struct PostProcessParams {
+    // pub stage: PostProcessStage,
     pub enabled: bool,
     pub texture: Option<Id<TextureData>>,
     pub shader: Id<Shader>,
     pub uniform: Option<ShaderUniform>,
-}
-
-#[derive(Clone, Default)]
-pub struct PostProcessParams {
-    pub stage: PostProcessStage,
-    pub enabled: bool,
-    pub passes: Vec<PostProcessPassParams>,
     pub repeat: TextureRepeat,
     pub filtering: TextureFiltering,
 }
 
 #[derive(Debug)]
-pub(crate) struct PostProcessPass {
+pub(crate) struct PostProcessEffect {
+    pub(crate) enabled: bool,
     pub(crate) shader_id: Id<Shader>,
     pub(crate) bind_group_layout_kind: BindGroupLayoutKind,
     bind_group: Option<wgpu::BindGroup>,
     uniform_data: Option<ShaderUniform>,
     uniform_buffer: Option<wgpu::Buffer>,
     texture: Option<Id<TextureData>>,
+    // It is a bit wasteful not to share texture views between
+    // postprocess passes in case of many effects,
+    // but makes implementation much simpler.
     view: Option<wgpu::TextureView>,
+    filter_mode: wgpu::FilterMode,
+    address_mode: wgpu::AddressMode,
 }
-impl PostProcessPass {
-    fn new(params: PostProcessPassParams) -> Self {
+impl PostProcessEffect {
+    pub fn new(params: PostProcessParams) -> Self {
+        let address_mode = get_wgpu_address_mode(params.repeat);
+        let filter_mode = get_wgpu_filter_mode(params.filtering);
+
         let bind_group_layout_kind = BindGroupLayoutKind::Shader {
             kind: ShaderKind::PostProcess,
             uniform: params.uniform.is_some(),
@@ -57,6 +60,7 @@ impl PostProcessPass {
         };
 
         Self {
+            enabled: params.enabled,
             shader_id: params.shader,
             bind_group: None,
             bind_group_layout_kind,
@@ -64,7 +68,67 @@ impl PostProcessPass {
             uniform_data: params.uniform,
             uniform_buffer: None,
             view: None,
+            filter_mode,
+            address_mode,
         }
+    }
+    /// Returns view of the first pass.
+    pub fn get_view(&self) -> Option<&wgpu::TextureView> {
+        self.view.as_ref()
+    }
+    // FIXME
+    // pub fn set_strength(&mut self, value: f32) {
+    //     self.uniform_data.strength = value;
+    // }
+    // pub fn get_strength(&self) -> f32 {
+    //     self.uniform_data.strength
+    // }
+    // pub fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), GraphicsError> {
+    //     queue.write_buffer(
+    //         self.uniform_buffer
+    //             .as_ref()
+    //             .ok_or(GraphicsError::NotReady)?,
+    //         0,
+    //         bytemuck::cast_slice(&[self.uniform_data]),
+    //     );
+    //     Ok(())
+    // }
+    pub fn render(
+        &self,
+        assets: &WgpuAssets,
+        encoder: &mut wgpu::CommandEncoder,
+        output: &wgpu::TextureView,
+        uniform_bind_group: &wgpu::BindGroup,
+    ) -> Result<(), GraphicsError> {
+        let shader = assets.get_shader(&self.shader_id).ok_or_else(|| {
+            GraphicsError::ResourceNotFound(format!("shader: {:?}", self.shader_id))
+        })?;
+
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("PostProcess Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: output,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            ..Default::default()
+        });
+
+        render_pass.set_pipeline(shader.pipeline.as_ref().ok_or(GraphicsError::NotReady)?);
+
+        render_pass.set_bind_group(0, uniform_bind_group, &[]);
+        render_pass.set_bind_group(
+            1,
+            self.bind_group.as_ref().ok_or(GraphicsError::NotReady)?,
+            &[],
+        );
+        render_pass.draw(0..3, 0..1);
+
+        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -95,7 +159,6 @@ impl PostProcessPass {
         self.view = Some(view);
         Ok(())
     }
-
     #[allow(clippy::too_many_arguments)]
     fn get_bind_group(
         bind_group_layout: &wgpu::BindGroupLayout,
@@ -170,118 +233,6 @@ impl PostProcessPass {
             }),
             uniform_buffer,
         ))
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct PostProcessEffect {
-    pub(crate) enabled: bool,
-    passes: Vec<PostProcessPass>,
-    filter_mode: wgpu::FilterMode,
-    address_mode: wgpu::AddressMode,
-}
-impl PostProcessEffect {
-    pub fn new(params: PostProcessParams) -> Self {
-        let address_mode = get_wgpu_address_mode(params.repeat);
-        let filter_mode = get_wgpu_filter_mode(params.filtering);
-
-        let passes = params
-            .passes
-            .into_iter()
-            .map(|p| PostProcessPass::new(p))
-            .collect();
-
-        Self {
-            enabled: params.enabled,
-            passes,
-            filter_mode,
-            address_mode,
-        }
-    }
-    /// Returns view of the first pass.
-    pub fn get_view(&self) -> Option<&wgpu::TextureView> {
-        self.view.as_ref()
-    }
-    // FIXME
-    // pub fn set_strength(&mut self, value: f32) {
-    //     self.uniform_data.strength = value;
-    // }
-    // pub fn get_strength(&self) -> f32 {
-    //     self.uniform_data.strength
-    // }
-    // pub fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), GraphicsError> {
-    //     queue.write_buffer(
-    //         self.uniform_buffer
-    //             .as_ref()
-    //             .ok_or(GraphicsError::NotReady)?,
-    //         0,
-    //         bytemuck::cast_slice(&[self.uniform_data]),
-    //     );
-    //     Ok(())
-    // }
-    pub fn render(
-        &self,
-        assets: &WgpuAssets,
-        encoder: &mut wgpu::CommandEncoder,
-        output: &wgpu::TextureView,
-        uniform_bind_group: &wgpu::BindGroup,
-    ) -> Result<(), GraphicsError> {
-        let shader = assets.get_shader(&self.shader_id).ok_or_else(|| {
-            GraphicsError::ResourceNotFound(format!("shader: {:?}", self.shader_id))
-        })?;
-
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("PostProcess"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: output,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            ..Default::default()
-        });
-
-        pass.set_pipeline(shader.pipeline.as_ref().ok_or(GraphicsError::NotReady)?);
-
-        pass.set_bind_group(0, uniform_bind_group, &[]);
-        pass.set_bind_group(
-            1,
-            self.bind_group.as_ref().ok_or(GraphicsError::NotReady)?,
-            &[],
-        );
-        pass.draw(0..3, 0..1);
-        Ok(())
-    }
-    #[allow(clippy::too_many_arguments)]
-    pub fn create_wgpu_data(
-        &mut self,
-        textures: &Arena<TextureData>,
-        bind_group_layout: &wgpu::BindGroupLayout,
-        w: u32,
-        h: u32,
-        device: &wgpu::Device,
-        texture_format: &wgpu::TextureFormat,
-    ) -> Result<(), GraphicsError> {
-        let view = Self::get_texture_view(w, h, device, texture_format);
-
-        let texture = self.texture.as_ref().and_then(|t| textures.get(t));
-
-        let (bind_group, uniform_buffer) = Self::get_bind_group(
-            bind_group_layout,
-            &view,
-            self.filter_mode,
-            self.address_mode,
-            &texture,
-            &self.uniform_data,
-            device,
-        )?;
-        self.bind_group = Some(bind_group);
-        self.uniform_buffer = uniform_buffer;
-        self.view = Some(view);
-        Ok(())
     }
 }
 
