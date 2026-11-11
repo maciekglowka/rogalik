@@ -142,11 +142,8 @@ impl WgpuAssets {
         for pass in self.postprocess.values_mut() {
             let postprocess_layout = self
                 .bind_group_layouts
-                .entry(pass.bind_group_layout_kind)
-                .or_insert(bind_groups::get_bind_group_layout(
-                    device,
-                    pass.bind_group_layout_kind,
-                ));
+                .get(&BindGroupLayoutKind::PostProcessPass)
+                .ok_or(GraphicsError::InternalError)?;
 
             let dim = match pass.stage {
                 PostProcessStage::Upscaled => Some(viewport_dim),
@@ -156,6 +153,7 @@ impl WgpuAssets {
 
             pass.create_wgpu_data(
                 &self.textures,
+                self.default_diffuse.ok_or(GraphicsError::InternalError)?,
                 postprocess_layout,
                 w,
                 h,
@@ -199,11 +197,12 @@ impl WgpuAssets {
             }
             let postprocess_layout = self
                 .bind_group_layouts
-                .get(&pass.bind_group_layout_kind)
+                .get(&BindGroupLayoutKind::PostProcessPass)
                 .ok_or(GraphicsError::NotReady)?;
 
             pass.create_wgpu_data(
                 &self.textures,
+                self.default_diffuse.ok_or(GraphicsError::NotReady)?,
                 postprocess_layout,
                 w,
                 h,
@@ -282,8 +281,7 @@ impl WgpuAssets {
         Ok(())
     }
     fn init_bind_group_layouts(&mut self, device: &wgpu::Device) {
-        let builtin_sprite_kind = BindGroupLayoutKind::Shader {
-            kind: ShaderKind::Sprite,
+        let builtin_sprite_kind = BindGroupLayoutKind::Sprite {
             uniform: false,
             textures: 1,
         };
@@ -296,16 +294,6 @@ impl WgpuAssets {
             .unwrap()
             .bind_group_layout_kind = Some(builtin_sprite_kind);
 
-        let upscale_pass_kind = BindGroupLayoutKind::Shader {
-            kind: ShaderKind::PostProcess,
-            uniform: false,
-            textures: 0,
-        };
-        self.shaders
-            .get_mut(self.builtin_shaders.get(&BuiltInShader::Upscale).unwrap())
-            .unwrap()
-            .bind_group_layout_kind = Some(upscale_pass_kind);
-
         self.bind_group_layouts = HashMap::from_iter([
             (
                 BindGroupLayoutKind::Camera,
@@ -316,12 +304,16 @@ impl WgpuAssets {
                 bind_groups::get_bind_group_layout(device, BindGroupLayoutKind::Globals),
             ),
             (
-                builtin_sprite_kind,
-                bind_groups::get_bind_group_layout(device, builtin_sprite_kind),
+                BindGroupLayoutKind::PostProcessInput,
+                bind_groups::get_bind_group_layout(device, BindGroupLayoutKind::PostProcessInput),
             ),
             (
-                upscale_pass_kind,
-                bind_groups::get_bind_group_layout(device, upscale_pass_kind),
+                BindGroupLayoutKind::PostProcessPass,
+                bind_groups::get_bind_group_layout(device, BindGroupLayoutKind::PostProcessPass),
+            ),
+            (
+                builtin_sprite_kind,
+                bind_groups::get_bind_group_layout(device, builtin_sprite_kind),
             ),
         ]);
     }
@@ -375,32 +367,11 @@ impl WgpuAssets {
     pub(crate) fn create_post_process(
         &mut self,
         name: &str,
-        shader_id: Id<Shader>,
         params: PostProcessParams,
     ) -> Result<(), GraphicsError> {
-        let shader = self
-            .shaders
-            .get_mut(&shader_id)
-            .ok_or(GraphicsError::ResourceNotFound(
-                "postprocess shader not found".to_string(),
-            ))?;
+        let effect = postprocess::PostProcessEffect::new(params);
 
-        let pass = postprocess::PostProcessEffect::new(shader_id, params);
-
-        // Update shader bind group layout kind if missing, otherwise check if
-        // they match.
-        match shader.bind_group_layout_kind {
-            None => shader.bind_group_layout_kind = Some(pass.bind_group_layout_kind),
-            Some(kind) => {
-                if kind != pass.bind_group_layout_kind {
-                    return Err(GraphicsError::MaterialError(
-                        "post process layout is not valid for selected shader".to_string(),
-                    ));
-                }
-            }
-        }
-
-        let postprocess_id = self.postprocess.insert(pass);
+        let postprocess_id = self.postprocess.insert(effect);
         self.postprocess_names
             .insert(name.to_string(), postprocess_id);
 

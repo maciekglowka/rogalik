@@ -24,29 +24,21 @@ pub fn get_pipeline_layouts(
 ) -> Result<HashMap<BindGroupLayoutKind, wgpu::PipelineLayout>, GraphicsError> {
     let mut output = HashMap::new();
 
-    for kind in bind_group_layouts.keys() {
-        match kind {
-            BindGroupLayoutKind::Shader {
-                kind: ShaderKind::Sprite,
-                ..
-            } => {
-                output.insert(
-                    *kind,
-                    get_sprite_shader_pipeline_layout(bind_group_layouts, kind, device)?,
-                );
-            }
-            BindGroupLayoutKind::Shader {
-                kind: ShaderKind::PostProcess,
-                ..
-            } => {
-                output.insert(
-                    *kind,
-                    get_post_process_pipeline_layout(bind_group_layouts, kind, device)?,
-                );
-            }
-            _ => (),
-        }
+    for kind in bind_group_layouts
+        .keys()
+        .filter(|k| matches!(k, BindGroupLayoutKind::Sprite { .. }))
+    {
+        output.insert(
+            *kind,
+            get_sprite_shader_pipeline_layout(bind_group_layouts, kind, device)?,
+        );
     }
+
+    output.insert(
+        BindGroupLayoutKind::PostProcessPass,
+        get_post_process_pipeline_layout(bind_group_layouts, device)?,
+    );
+
     Ok(output)
 }
 
@@ -55,7 +47,8 @@ pub struct Shader {
     pub(crate) asset_id: Id<Asset>,
     pub(crate) kind: ShaderKind,
     pub(crate) pipeline: Option<wgpu::RenderPipeline>,
-    /// This field should be set by the first material that uses the shader.
+    /// For sprites this field should be set by the first material that uses the
+    /// shader.
     pub(crate) bind_group_layout_kind: Option<BindGroupLayoutKind>,
 }
 impl Shader {
@@ -64,7 +57,10 @@ impl Shader {
             asset_id,
             kind,
             pipeline: None,
-            bind_group_layout_kind: None,
+            bind_group_layout_kind: match kind {
+                ShaderKind::Sprite => None,
+                ShaderKind::PostProcess => Some(BindGroupLayoutKind::PostProcessPass),
+            },
         }
     }
     pub(crate) fn create_wgpu_data(
@@ -232,7 +228,6 @@ fn get_sprite_shader_pipeline_layout(
 
 fn get_post_process_pipeline_layout(
     bind_group_layouts: &HashMap<BindGroupLayoutKind, wgpu::BindGroupLayout>,
-    pass_layout_kind: &BindGroupLayoutKind,
     device: &wgpu::Device,
 ) -> Result<wgpu::PipelineLayout, GraphicsError> {
     Ok(
@@ -243,7 +238,10 @@ fn get_post_process_pipeline_layout(
                     .get(&BindGroupLayoutKind::Globals)
                     .ok_or(GraphicsError::InternalError)?,
                 bind_group_layouts
-                    .get(pass_layout_kind)
+                    .get(&BindGroupLayoutKind::PostProcessInput)
+                    .ok_or(GraphicsError::InternalError)?,
+                bind_group_layouts
+                    .get(&BindGroupLayoutKind::PostProcessPass)
                     .ok_or(GraphicsError::InternalError)?,
             ],
             push_constant_ranges: &[],

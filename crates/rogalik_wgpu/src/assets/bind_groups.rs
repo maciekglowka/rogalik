@@ -2,13 +2,13 @@ use crate::ShaderKind;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum BindGroupLayoutKind {
-    Shader {
-        kind: ShaderKind,
+    Sprite {
         // Has custom uniform
         uniform: bool,
         textures: usize,
     },
-    // Uniform,
+    PostProcessInput,
+    PostProcessPass,
     Globals,
     Camera,
 }
@@ -20,16 +20,11 @@ pub(crate) fn get_bind_group_layout(
     match kind {
         BindGroupLayoutKind::Globals => get_globals_bind_group_layout(device),
         BindGroupLayoutKind::Camera => get_camera_bind_group_layout(device),
-        BindGroupLayoutKind::Shader {
-            kind: ShaderKind::Sprite,
-            uniform,
-            textures,
-        } => get_sprite_bind_group_layout(device, uniform, textures),
-        BindGroupLayoutKind::Shader {
-            kind: ShaderKind::PostProcess,
-            uniform,
-            textures,
-        } => get_post_process_bind_group_layout(device, uniform, textures > 0),
+        BindGroupLayoutKind::Sprite { uniform, textures } => {
+            get_sprite_bind_group_layout(device, uniform, textures)
+        }
+        BindGroupLayoutKind::PostProcessInput => get_post_process_input_bind_group_layout(device),
+        BindGroupLayoutKind::PostProcessPass => get_post_process_pass_bind_group_layout(device),
     }
 }
 
@@ -126,41 +121,60 @@ fn get_sprite_bind_group_layout(
     })
 }
 
-fn get_post_process_bind_group_layout(
-    device: &wgpu::Device,
-    uniform: bool,
-    texture: bool,
-) -> wgpu::BindGroupLayout {
-    let mut entries = vec![
-        wgpu::BindGroupLayoutEntry {
-            binding: 0,
-            visibility: wgpu::ShaderStages::FRAGMENT,
-            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-            count: None,
-        },
-        // input view
-        wgpu::BindGroupLayoutEntry {
-            binding: 1,
-            visibility: wgpu::ShaderStages::FRAGMENT,
-            ty: wgpu::BindingType::Texture {
-                sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                view_dimension: wgpu::TextureViewDimension::D2,
-                multisampled: false,
+fn get_post_process_input_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
             },
-            count: None,
-        },
-    ];
+            // input view
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+        ],
+        label: Some("PostProcess Bind Group Layout"),
+    })
+}
 
-    if texture {
-        // TODO reuse sampler?
-        entries.push(wgpu::BindGroupLayoutEntry {
-            binding: 2,
-            visibility: wgpu::ShaderStages::FRAGMENT,
-            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-            count: None,
-        });
-        entries.push(
-            // texture
+fn get_post_process_pass_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        entries: &[
+            // Prev pass sampler
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+            // Prev pass texture
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                },
+                count: None,
+            },
+            // Custom texture sampler
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+            // Custom texture
             wgpu::BindGroupLayoutEntry {
                 binding: 3,
                 visibility: wgpu::ShaderStages::FRAGMENT,
@@ -171,24 +185,18 @@ fn get_post_process_bind_group_layout(
                 },
                 count: None,
             },
-        );
-    }
-
-    if uniform {
-        entries.push(wgpu::BindGroupLayoutEntry {
-            binding: entries.len() as u32,
-            visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-            ty: wgpu::BindingType::Buffer {
-                ty: wgpu::BufferBindingType::Uniform,
-                has_dynamic_offset: false,
-                min_binding_size: None,
+            // Uniform
+            wgpu::BindGroupLayoutEntry {
+                binding: 4,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
             },
-            count: None,
-        });
-    }
-
-    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        entries: &entries,
+        ],
         label: Some("PostProcess Bind Group Layout"),
     })
 }

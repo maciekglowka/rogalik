@@ -569,10 +569,9 @@ impl<'a> GraphicsSetup<'a> {
     pub fn add_post_process(
         &mut self,
         name: &str,
-        shader: Id<Shader>,
         params: PostProcessParams,
     ) -> Result<(), GraphicsError> {
-        self.0.assets.create_post_process(name, shader, params)
+        self.0.assets.create_post_process(name, params)
     }
     /// Creates a new 2D camera with a specified scale and target position.
     pub fn create_camera(&mut self, scale: f32, target: Vector2f) -> Id<Camera2d> {

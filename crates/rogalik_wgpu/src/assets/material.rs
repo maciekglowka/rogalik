@@ -41,8 +41,7 @@ impl Material {
         let address_mode = get_wgpu_address_mode(params.repeat);
         let filter_mode = get_wgpu_filter_mode(params.filtering);
 
-        let bind_group_layout_kind = BindGroupLayoutKind::Shader {
-            kind: ShaderKind::Sprite,
+        let bind_group_layout_kind = BindGroupLayoutKind::Sprite {
             uniform: params.uniform.is_some(),
             textures: params.textures.len(),
         };

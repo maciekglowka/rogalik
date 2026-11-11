@@ -32,6 +32,10 @@ path = "src/postprocess_lut.rs"
 name = "postprocess-pixel-blur"
 path = "src/postprocess_pixel_blur.rs"
 
+[[bin]]
+name = "postprocess-multipass"
+path = "src/postprocess_multipass.rs"
+
 [dependencies]
 rogalik = { path = "../../crates/rogalik" }
 
