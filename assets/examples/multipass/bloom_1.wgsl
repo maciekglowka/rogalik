@@ -28,6 +28,13 @@ struct GlobalsUniform {
     viewport_size: vec2<f32>,
 }
 
+struct BloomUniform {
+    strength: f32,
+    _padding_0: f32,
+    _padding_1: f32,
+    _padding_2: f32,
+}
+
 @group(0) @binding(0)
 var<uniform> globals: GlobalsUniform;
 
@@ -40,6 +47,10 @@ var t_scene: texture_2d<f32>;
 var s_prev: sampler;
 @group(2) @binding(1)
 var t_prev: texture_2d<f32>;
+
+@group(2) @binding(4)
+var<uniform> bloom_uniform: BloomUniform;
+
 
 @fragment
 fn fs_main(vs: VertexOutput) -> @location(0) vec4<f32> {
@@ -55,5 +66,5 @@ fn fs_main(vs: VertexOutput) -> @location(0) vec4<f32> {
 
     let col = textureSample(t_scene, s_scene, vs.uv);
 
-    return col + blur;
+    return mix(col, col + blur, bloom_uniform.strength);
 }

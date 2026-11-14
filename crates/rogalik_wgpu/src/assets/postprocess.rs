@@ -171,6 +171,25 @@ impl PostProcessPass {
             uniform_data.as_ref().map(|_| uniform_buffer),
         ))
     }
+    fn update_uniform<T>(&mut self, data: T, queue: &wgpu::Queue) -> Result<(), GraphicsError>
+    where
+        T: bytemuck::NoUninit,
+    {
+        let Some(uniform) = self.uniform_data.as_mut() else {
+            return Err(GraphicsError::PostProcessError(
+                "pass does not support uniform buffers".to_string(),
+            ));
+        };
+
+        uniform.update(data)?;
+
+        // Update buffer if it has already been created.
+        if let Some(buffer) = self.uniform_buffer.as_ref() {
+            queue.write_buffer(buffer, 0, uniform.data());
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -207,27 +226,22 @@ impl PostProcessEffect {
             address_mode,
         }
     }
-    /// Returns view of the first pass.
-    // pub fn get_view(&self) -> Option<&wgpu::TextureView> {
-    //     self.view.as_ref()
-    // }
-    // FIXME
-    // pub fn set_strength(&mut self, value: f32) {
-    //     self.uniform_data.strength = value;
-    // }
-    // pub fn get_strength(&self) -> f32 {
-    //     self.uniform_data.strength
-    // }
-    // pub fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(),
-    // GraphicsError> {     queue.write_buffer(
-    //         self.uniform_buffer
-    //             .as_ref()
-    //             .ok_or(GraphicsError::NotReady)?,
-    //         0,
-    //         bytemuck::cast_slice(&[self.uniform_data]),
-    //     );
-    //     Ok(())
-    // }
+    pub(crate) fn update_uniform<T>(
+        &mut self,
+        pass: usize,
+        data: T,
+        queue: &wgpu::Queue,
+    ) -> Result<(), GraphicsError>
+    where
+        T: bytemuck::NoUninit,
+    {
+        self.passes
+            .get_mut(pass)
+            .ok_or(GraphicsError::PostProcessError(format!(
+                "invalid pass: {pass}"
+            )))?
+            .update_uniform(data, queue)
+    }
     pub(crate) fn render(
         &self,
         assets: &WgpuAssets,

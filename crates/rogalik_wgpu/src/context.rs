@@ -15,10 +15,6 @@ use crate::{
 
 const MAX_TIME: f32 = 3600.;
 
-// because of WASM
-// static SURFACE_STATE: Arc<Mutex<Option<SurfaceState>>> =
-// Arc::new(Mutex::new(None)); static mut SURFACE_STATE:
-// Option<Arc<Mutex<SurfaceState>>> = None;
 static SURFACE_REFRESH: AtomicBool = AtomicBool::new(false);
 
 struct SurfaceState {
@@ -241,28 +237,30 @@ impl WgpuContext {
         }
         Ok(())
     }
-    pub fn set_postprocess_strength(
+    pub fn update_postprocess_uniform<T>(
         &mut self,
         name: &str,
-        value: f32,
-    ) -> Result<(), GraphicsError> {
+        pass: usize,
+        data: T,
+    ) -> Result<(), GraphicsError>
+    where
+        T: bytemuck::NoUninit,
+    {
         let id = *self
             .assets
             .get_postprocess_id(name)
             .ok_or_else(|| GraphicsError::ResourceNotFound(format!("post process {name}")))?;
-        let pass = self
+        let effect = self
             .assets
             .get_postprocess_mut(&id)
             .ok_or_else(|| GraphicsError::ResourceNotFound(format!("post process {name}")))?;
 
-        // FIXME
-        // pass.set_strength(value);
+        if let Ok(state) = self.surface_state.lock() {
+            if let Some(state) = state.as_ref() {
+                effect.update_uniform(pass, data, &state.queue)?;
+            };
+        }
 
-        // if let Ok(state) = self.surface_state.lock() {
-        //     if let Some(state) = state.as_ref() {
-        //         pass.write_buffer(&state.queue)?;
-        //     };
-        // }
         Ok(())
     }
     /// Calculates the dimensions (width and height) a singleline text would

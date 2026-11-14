@@ -2,11 +2,21 @@ use std::f32;
 
 use rogalik::prelude::*;
 
-const SPRITE_SIZE: f32 = 256.;
+const SPRITE_SIZE: f32 = 8.;
 const PIXEL_SCALE: u32 = 16;
 
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Default, bytemuck::NoUninit, bytemuck::Zeroable)]
+struct BloomUniform {
+    strength: f32,
+    _padding: [f32; 3], // for WASM
+}
+
 // Main game object.
-struct GameState;
+#[derive(Default)]
+struct GameState {
+    t: f32,
+}
 impl Game for GameState {
     fn setup(&mut self, context: &mut SetupContext) {
         // Load texture
@@ -55,7 +65,7 @@ impl Game for GameState {
                         PassParams {
                             shader: shader_1,
                             texture: None,
-                            uniform: None,
+                            uniform: Some(ShaderUniform::init(BloomUniform::default())),
                         },
                     ],
                     ..Default::default()
@@ -68,11 +78,11 @@ impl Game for GameState {
     }
     fn resize(&mut self, context: &mut Context) {
         // Set pixel perfect rendering
-        // let viewport = context.get_physical_size();
-        // context.graphics.set_rendering_resolution(
-        //     viewport.x as u32 / PIXEL_SCALE,
-        //     viewport.y as u32 / PIXEL_SCALE,
-        // );
+        let viewport = context.get_physical_size();
+        context.graphics.set_rendering_resolution(
+            viewport.x as u32 / PIXEL_SCALE,
+            viewport.y as u32 / PIXEL_SCALE,
+        );
     }
 }
 
@@ -83,24 +93,41 @@ impl Scene for MainScene {
 
     fn update(
         &mut self,
-        _game: &mut Self::Game,
+        game: &mut Self::Game,
         context: &mut Context,
         _scenes: &mut SceneController<Self::Game>,
     ) {
-        let _ = context.graphics.draw_atlas_sprite(
-            "sprites",
-            20,
-            Vector2f::splat(-0.5 * SPRITE_SIZE),
-            0,
-            Vector2f::splat(SPRITE_SIZE),
-            SpriteParams::default(),
-        );
+        context
+            .graphics
+            .draw_atlas_sprite(
+                "sprites",
+                20,
+                Vector2f::splat(-0.5 * SPRITE_SIZE),
+                0,
+                Vector2f::splat(SPRITE_SIZE),
+                SpriteParams::default(),
+            )
+            .unwrap();
+
+        game.t += context.time.get_delta();
+
+        context
+            .graphics
+            .update_postprocess_uniform(
+                "bloom",
+                1,
+                BloomUniform {
+                    strength: 0.5 * (1. + (5. * game.t).sin()),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
     }
 }
 
 fn main() {
     let engine = EngineBuilder::new()
         .with_title("RGLK".to_string())
-        .build(GameState, Box::new(MainScene));
+        .build(GameState::default(), Box::new(MainScene));
     engine.run();
 }

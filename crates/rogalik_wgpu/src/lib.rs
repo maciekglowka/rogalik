@@ -68,6 +68,7 @@ pub enum GraphicsError {
     InternalError,
     NotReady(&'static str),
     MaterialError(String),
+    PostProcessError(String),
     ResourceNotFound(String),
     ShaderError(String),
     TextureError(String),
@@ -86,6 +87,9 @@ impl std::fmt::Display for GraphicsError {
             }
             Self::MaterialError(inner) => {
                 write!(f, "material error: {inner}")
+            }
+            Self::PostProcessError(inner) => {
+                write!(f, "post process error: {inner}")
             }
             Self::NotReady(inner) => {
                 write!(f, "graphics not ready: {inner}")
