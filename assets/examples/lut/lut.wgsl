@@ -19,31 +19,31 @@ fn vs_main(
 
 @group(1)
 @binding(0)
-var input_sampler: sampler;
+var s_scene: sampler;
 
 @group(1)
 @binding(1)
-var input_image: texture_2d<f32>;
+var t_scene: texture_2d<f32>;
 
-@group(1)
+@group(2)
 @binding(2)
-var lut_sampler: sampler;
+var s_lut: sampler;
 
-@group(1)
+@group(2)
 @binding(3)
-var lut_image: texture_2d<f32>;
+var t_lut: texture_2d<f32>;
 
 const LUT_SIZE: f32 = 32.0;
 
 @fragment
 fn fs_main(vs: VertexOutput) -> @location(0) vec4<f32> {
-    let col = textureSample(input_image, input_sampler, vs.uv);
+    let col = textureSample(t_scene, s_scene, vs.uv);
 
     var u = floor((LUT_SIZE - 1.) * col.b) / LUT_SIZE;
     u += floor((LUT_SIZE - 1.) * col.r) / (LUT_SIZE * LUT_SIZE);
     var v = floor((LUT_SIZE - 1.) * col.g) / LUT_SIZE;
 
-    let lut_col = textureSample(lut_image, lut_sampler, vec2(u, v));
+    let lut_col = textureSample(t_lut, s_lut, vec2(u, v));
     return lut_col;
 }
 

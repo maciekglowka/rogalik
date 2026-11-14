@@ -41,10 +41,14 @@ impl Game for GameState {
         context
             .graphics
             .add_post_process(
-                "lut",
-                shader,
+                "blur",
                 PostProcessParams {
                     stage: PostProcessStage::Downscaled,
+                    passes: vec![PassParams {
+                        shader,
+                        texture: None,
+                        uniform: None,
+                    }],
                     ..Default::default()
                 },
             )

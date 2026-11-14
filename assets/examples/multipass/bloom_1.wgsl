@@ -41,8 +41,6 @@ var s_prev: sampler;
 @group(2) @binding(1)
 var t_prev: texture_2d<f32>;
 
-const LUMA = vec4(.299, .587, .114, 0.);
-
 @fragment
 fn fs_main(vs: VertexOutput) -> @location(0) vec4<f32> {
     let step_y = 1. / globals.viewport_size.y;
@@ -51,8 +49,6 @@ fn fs_main(vs: VertexOutput) -> @location(0) vec4<f32> {
 
     for (var y=-5; y<=5; y++) {
         blur += textureSample(t_prev, s_prev, vs.uv + vec2(0., f32(y) * step_y));
-        // let luma = dot(pixel, LUMA);
-        // blur += step(0.5, luma) * pixel;
     }
 
     blur /= 11.0;
@@ -61,4 +57,3 @@ fn fs_main(vs: VertexOutput) -> @location(0) vec4<f32> {
 
     return col + blur;
 }
-

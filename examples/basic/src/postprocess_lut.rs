@@ -41,9 +41,14 @@ impl Game for GameState {
             .graphics
             .add_post_process(
                 "lut",
-                shader,
                 PostProcessParams {
-                    texture: Some(lut_texture),
+                    // Applying LUT before pixel perfect upscaling.
+                    stage: PostProcessStage::Downscaled,
+                    passes: vec![PassParams {
+                        shader,
+                        texture: Some(lut_texture),
+                        uniform: None,
+                    }],
                     ..Default::default()
                 },
             )
