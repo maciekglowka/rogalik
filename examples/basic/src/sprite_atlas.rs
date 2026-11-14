@@ -9,24 +9,43 @@ const PIXEL_SCALE: u32 = 4;
 struct GameState;
 impl Game for GameState {
     fn setup(&mut self, context: &mut SetupContext) {
-        // Load texture
-        let diffuse_texture = context
+        // Load textures
+        let color_texture = context
             .graphics
             .load_texture("examples/colored_tilemap.png", false)
             .unwrap();
+        let mono_texture = context
+            .graphics
+            .load_texture("examples/monochrome_tilemap.png", false)
+            .unwrap();
 
-        // Create sprite material
+        // Create sprite materials
         context
             .graphics
             .create_material(
-                "sprites",
+                "color",
                 MaterialParams {
                     atlas: Some(AtlasParams::Grid {
                         cols: 16,
                         rows: 10,
                         padding: Some((1, 1)),
                     }),
-                    textures: vec![diffuse_texture],
+                    textures: vec![color_texture],
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        context
+            .graphics
+            .create_material(
+                "mono",
+                MaterialParams {
+                    atlas: Some(AtlasParams::Grid {
+                        cols: 16,
+                        rows: 10,
+                        padding: Some((1, 1)),
+                    }),
+                    textures: vec![mono_texture],
                     ..Default::default()
                 },
             )
@@ -58,7 +77,7 @@ impl Scene for MainScene {
     ) {
         // Simple
         let _ = context.graphics.draw_atlas_sprite(
-            "sprites",
+            "color",
             20,
             Vector2f::ZERO,
             0,
@@ -67,7 +86,7 @@ impl Scene for MainScene {
         );
         // 9-slice.
         let _ = context.graphics.draw_atlas_sprite(
-            "sprites",
+            "color",
             103,
             Vector2f::new(2. * SPRITE_SIZE, 0.),
             0,
@@ -79,7 +98,7 @@ impl Scene for MainScene {
         );
         // Rotation (sprite is rotated around it's center).
         let _ = context.graphics.draw_atlas_sprite(
-            "sprites",
+            "mono",
             4,
             Vector2f::new(0., 2. * SPRITE_SIZE),
             0,

@@ -10,7 +10,7 @@ use crate::{
     assets::bind_groups::BindGroupLayoutKind,
     renderer2d::uniforms::ShaderUniform,
     utils::{get_wgpu_address_mode, get_wgpu_filter_mode},
-    GraphicsError, ShaderKind,
+    GraphicsError,
 };
 
 #[derive(Clone, Default)]
@@ -84,7 +84,7 @@ impl Material {
         self.bind_group = Some(bind_group);
         self.uniform_buffer = uniform_buffer;
 
-        match (material_textures.get(0), &self.atlas_params) {
+        match (material_textures.first(), &self.atlas_params) {
             (None, _) => (),
             (Some(t), None) => {
                 // Create 1x1 atlas for compatibility.
@@ -161,7 +161,10 @@ fn get_material_bind_group(
             resource: wgpu::BindingResource::Sampler(sampler),
         });
         for i in 0..textures.len() {
-            let view = textures[i].view.as_ref().ok_or(GraphicsError::NotReady)?;
+            let view = textures[i]
+                .view
+                .as_ref()
+                .ok_or(GraphicsError::NotReady("material texture view"))?;
             entries.push(wgpu::BindGroupEntry {
                 binding: i as u32 + 1,
                 resource: wgpu::BindingResource::TextureView(view),

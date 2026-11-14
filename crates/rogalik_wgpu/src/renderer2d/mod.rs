@@ -46,12 +46,7 @@ impl Renderer2d {
             self.uniforms.globals.render_size = [w as f32, h as f32];
         }
     }
-    pub fn set_rendering_resolution(
-        &mut self,
-        assets: &mut WgpuAssets,
-        w: u32,
-        h: u32,
-    ) -> Result<(), GraphicsError> {
+    pub fn set_rendering_resolution(&mut self, w: u32, h: u32) -> Result<(), GraphicsError> {
         self.rendering_resolution = Some((w, h));
         self.uniforms.globals.render_size = [w as f32, h as f32];
         Ok(())
@@ -245,7 +240,7 @@ impl Renderer2d {
 
         let output = surface
             .get_current_texture()
-            .map_err(|_| GraphicsError::NotReady)?;
+            .map_err(|_| GraphicsError::NotReady("surface texture"))?;
 
         let view = output
             .texture
@@ -272,21 +267,23 @@ impl Renderer2d {
                 self.uniforms
                     .bind_group
                     .as_ref()
-                    .ok_or(GraphicsError::NotReady)?,
+                    .ok_or(GraphicsError::NotReady("uniforms bind group"))?,
                 target,
             )
             .inspect_err(|e| log::error!("sprite pass rendering failed: {e}"))?;
 
-        self.postprocess_renderer.render(
-            assets,
-            &mut encoder,
-            &post_process_queue,
-            &view,
-            self.uniforms
-                .bind_group
-                .as_ref()
-                .ok_or(GraphicsError::NotReady)?,
-        )?;
+        if !post_process_queue.is_empty() {
+            self.postprocess_renderer.render(
+                assets,
+                &mut encoder,
+                &post_process_queue,
+                &view,
+                self.uniforms
+                    .bind_group
+                    .as_ref()
+                    .ok_or(GraphicsError::NotReady("uniforms bind group"))?,
+            )?
+        };
 
         queue.submit(std::iter::once(encoder.finish()));
 

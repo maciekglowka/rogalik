@@ -84,7 +84,9 @@ impl Camera2d {
     }
     pub(crate) fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), GraphicsError> {
         queue.write_buffer(
-            self.buffer.as_ref().ok_or(GraphicsError::NotReady)?,
+            self.buffer
+                .as_ref()
+                .ok_or(GraphicsError::NotReady("camera buffer"))?,
             0,
             bytemuck::cast_slice(&[self.get_matrix()]),
         );

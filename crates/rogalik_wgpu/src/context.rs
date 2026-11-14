@@ -58,11 +58,7 @@ impl WgpuContext {
         self.handle_surface_refresh();
 
         self.rendering_resolution = Some((w, h));
-        if self
-            .renderer2d
-            .set_rendering_resolution(&mut self.assets, w, h)
-            .is_ok()
-        {
+        if self.renderer2d.set_rendering_resolution(w, h).is_ok() {
             if let Ok(state) = self.surface_state.lock() {
                 if let Some(state) = state.as_ref() {
                     let _ = self.renderer2d.create_downscale_wgpu_data(
@@ -95,7 +91,8 @@ impl WgpuContext {
             &self.assets,
             0,
             material,
-            self.current_camera_id.ok_or(GraphicsError::NotReady)?,
+            self.current_camera_id
+                .ok_or(GraphicsError::NotReady("current camera id"))?,
             position,
             z_index,
             size,
@@ -116,7 +113,8 @@ impl WgpuContext {
             &self.assets,
             index,
             atlas,
-            self.current_camera_id.ok_or(GraphicsError::NotReady)?,
+            self.current_camera_id
+                .ok_or(GraphicsError::NotReady("current camera id"))?,
             position,
             z_index,
             size,
@@ -147,7 +145,8 @@ impl WgpuContext {
         self.renderer2d.draw_mesh(
             &self.assets,
             material,
-            self.current_camera_id.ok_or(GraphicsError::NotReady)?,
+            self.current_camera_id
+                .ok_or(GraphicsError::NotReady("current camera id"))?,
             &vs,
             indices,
             z_index,
@@ -170,7 +169,8 @@ impl WgpuContext {
             &mut self.assets,
             font,
             text,
-            self.current_camera_id.ok_or(GraphicsError::NotReady)?,
+            self.current_camera_id
+                .ok_or(GraphicsError::NotReady("current camera id"))?,
             position,
             z_index,
             size,
@@ -197,7 +197,8 @@ impl WgpuContext {
             &mut self.assets,
             font,
             text,
-            self.current_camera_id.ok_or(GraphicsError::NotReady)?,
+            self.current_camera_id
+                .ok_or(GraphicsError::NotReady("current camera id"))?,
             position,
             z_index,
             size,
@@ -429,9 +430,12 @@ impl WgpuContext {
             Ok(true) => Ok(()),
             Ok(false) => {
                 let state = self.surface_state.lock().unwrap();
-                let state = state.as_ref().ok_or(GraphicsError::NotReady)?;
+                let state = state
+                    .as_ref()
+                    .ok_or(GraphicsError::NotReady("surface state"))?;
 
-                self.assets.create_font_size(font, size, &state.device)
+                self.assets
+                    .create_font_size(font, size, &state.device, &state.queue)
             }
             Err(e) => Err(e),
         }

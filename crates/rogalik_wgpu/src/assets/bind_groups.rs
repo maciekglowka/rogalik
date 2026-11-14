@@ -1,5 +1,3 @@
-use crate::ShaderKind;
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum BindGroupLayoutKind {
     Sprite {
@@ -142,7 +140,7 @@ fn get_post_process_input_bind_group_layout(device: &wgpu::Device) -> wgpu::Bind
                 count: None,
             },
         ],
-        label: Some("PostProcess Bind Group Layout"),
+        label: Some("PostProcess Input Bind Group Layout"),
     })
 }
 
@@ -197,6 +195,6 @@ fn get_post_process_pass_bind_group_layout(device: &wgpu::Device) -> wgpu::BindG
                 count: None,
             },
         ],
-        label: Some("PostProcess Bind Group Layout"),
+        label: Some("PostProcess Pass Bind Group Layout"),
     })
 }

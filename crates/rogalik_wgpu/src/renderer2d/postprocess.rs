@@ -52,7 +52,7 @@ impl PostProcessRenderer {
             Some(_) => &self.downscaled_views,
         }
         .as_ref()
-        .ok_or(GraphicsError::NotReady)
+        .ok_or(GraphicsError::NotReady("postprocess renderer views"))
         .map(|v| &v[0])
     }
 
@@ -81,14 +81,14 @@ impl PostProcessRenderer {
                 }) => &self
                     .downscaled_views
                     .as_ref()
-                    .ok_or(GraphicsError::NotReady)?[output_idx],
+                    .ok_or(GraphicsError::NotReady("postprocess renderer views"))?[output_idx],
                 Some(PostProcessEffect {
                     stage: PostProcessStage::Upscaled,
                     ..
                 }) => &self
                     .upscaled_views
                     .as_ref()
-                    .ok_or(GraphicsError::NotReady)?[output_idx],
+                    .ok_or(GraphicsError::NotReady("postprocess renderer views"))?[output_idx],
             };
 
             let source = &match effect.stage {
@@ -96,7 +96,7 @@ impl PostProcessRenderer {
                 PostProcessStage::Upscaled => &self.upscaled_bind_groups,
             }
             .as_ref()
-            .ok_or(GraphicsError::NotReady)?[input_idx];
+            .ok_or(GraphicsError::NotReady("postprocess renderer bind groups"))?[input_idx];
 
             effect.render(assets, encoder, source, target, uniform_bind_group)?;
 

@@ -66,12 +66,14 @@ impl Uniforms {
         queue.write_buffer(
             self.globals_buffer
                 .as_ref()
-                .ok_or(GraphicsError::NotReady)?,
+                .ok_or(GraphicsError::NotReady("globals uniform buffer"))?,
             0,
             bytemuck::cast_slice(&[self.globals]),
         );
         queue.write_buffer(
-            self.lights_buffer.as_ref().ok_or(GraphicsError::NotReady)?,
+            self.lights_buffer
+                .as_ref()
+                .ok_or(GraphicsError::NotReady("lights uniform buffer"))?,
             0,
             bytemuck::cast_slice(&[self.lights]),
         );

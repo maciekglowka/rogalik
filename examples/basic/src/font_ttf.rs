@@ -90,7 +90,7 @@ impl Scene for MainScene {
 
 fn main() {
     let engine = EngineBuilder::new()
-        .with_title("RGLK Bitmap Font".to_string())
+        .with_title("RGLK TTF".to_string())
         .resizable(true)
         .build(GameState, Box::new(MainScene));
     engine.run();

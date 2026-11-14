@@ -76,7 +76,7 @@ impl PostProcessPass {
             .ok_or(GraphicsError::InternalError)?
             .view
             .as_ref()
-            .ok_or(GraphicsError::NotReady)?;
+            .ok_or(GraphicsError::NotReady("default texture"))?;
 
         let prev_pass_view = if has_prev_pass {
             Some(get_texture_view(w, h, device, texture_format))
@@ -129,7 +129,7 @@ impl PostProcessPass {
         let default_uniform = DefaultUniform::default();
         let default_buffer = bytemuck::bytes_of(&default_uniform);
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("PostProcess Uniform Buffer"),
+            label: Some("PostProcess Pass Uniform Buffer"),
             contents: match uniform_data {
                 Some(u) => u.data(),
                 None => default_buffer,
@@ -139,7 +139,7 @@ impl PostProcessPass {
 
         Ok((
             device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("PostProcess Bind Group"),
+                label: Some("PostProcess Pass Bind Group"),
                 layout: bind_group_layout,
                 entries: &[
                     // Prev pass
@@ -241,7 +241,10 @@ impl PostProcessEffect {
         while let Some(pass) = passes.next() {
             let target = match passes.peek() {
                 None => output,
-                Some(p) => p.prev_pass_view.as_ref().ok_or(GraphicsError::NotReady)?,
+                Some(p) => p
+                    .prev_pass_view
+                    .as_ref()
+                    .ok_or(GraphicsError::NotReady("previous postprocess pass view"))?,
             };
 
             let shader = assets.get_shader(&pass.shader_id).ok_or_else(|| {
@@ -262,13 +265,20 @@ impl PostProcessEffect {
                 ..Default::default()
             });
 
-            render_pass.set_pipeline(shader.pipeline.as_ref().ok_or(GraphicsError::NotReady)?);
+            render_pass.set_pipeline(
+                shader
+                    .pipeline
+                    .as_ref()
+                    .ok_or(GraphicsError::NotReady("postprocess shader pipeline"))?,
+            );
 
             render_pass.set_bind_group(0, uniform_bind_group, &[]);
             render_pass.set_bind_group(1, input, &[]);
             render_pass.set_bind_group(
                 2,
-                pass.bind_group.as_ref().ok_or(GraphicsError::NotReady)?,
+                pass.bind_group
+                    .as_ref()
+                    .ok_or(GraphicsError::NotReady("postprocess pass bind group"))?,
                 &[],
             );
             render_pass.draw(0..3, 0..1);

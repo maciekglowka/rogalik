@@ -199,7 +199,11 @@ where
     let material = assets
         .get_material(&material_id)
         .ok_or_else(|| GraphicsError::ResourceNotFound(format!("material {material_id:?}")))?;
-    let atlas = material.atlas.as_ref().ok_or(GraphicsError::NotReady)?;
+
+    let atlas = material
+        .atlas
+        .as_ref()
+        .ok_or(GraphicsError::NotReady("font atlas"))?;
 
     // Text is anchored top-left (unlike regular sprites).
     let mut offset = Vector2f::new(0., -(size));
@@ -308,7 +312,10 @@ pub(crate) fn get_text_sprites(
     let material = assets.get_material(&layout.material_id).ok_or_else(|| {
         GraphicsError::ResourceNotFound(format!("material: {:?}", layout.material_id))
     })?;
-    let atlas = material.atlas.as_ref().ok_or(GraphicsError::NotReady)?;
+    let atlas = material
+        .atlas
+        .as_ref()
+        .ok_or(GraphicsError::NotReady("font atlas"))?;
 
     Ok(layout
         .chars

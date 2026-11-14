@@ -66,7 +66,7 @@ pub enum GraphicsError {
     AssetError(String),
     FontError(String),
     InternalError,
-    NotReady,
+    NotReady(&'static str),
     MaterialError(String),
     ResourceNotFound(String),
     ShaderError(String),
@@ -87,8 +87,8 @@ impl std::fmt::Display for GraphicsError {
             Self::MaterialError(inner) => {
                 write!(f, "material error: {inner}")
             }
-            Self::NotReady => {
-                write!(f, "graphics not ready")
+            Self::NotReady(inner) => {
+                write!(f, "graphics not ready: {inner}")
             }
             Self::ResourceNotFound(inner) => {
                 write!(f, "resource not found: {inner}")

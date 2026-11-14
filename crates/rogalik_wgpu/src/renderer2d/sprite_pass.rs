@@ -153,7 +153,7 @@ impl SpritePass {
                 .ok_or(GraphicsError::InternalError)?
                 .pipeline
                 .as_ref()
-                .ok_or(GraphicsError::NotReady)?;
+                .ok_or(GraphicsError::NotReady("sprite shader pipeline"))?;
             pass.set_pipeline(pipeline);
 
             pass.set_bind_group(0, uniform_bind_group, &[]);
@@ -170,7 +170,7 @@ impl SpritePass {
                         ))
                     })?
                     .get_bind_group()
-                    .ok_or(GraphicsError::NotReady)?,
+                    .ok_or(GraphicsError::NotReady("camera bind broup"))?,
                 &[],
             );
 
@@ -179,7 +179,7 @@ impl SpritePass {
                 .ok_or(GraphicsError::InternalError)?
                 .bind_group
                 .as_ref()
-                .ok_or(GraphicsError::NotReady)?;
+                .ok_or(GraphicsError::NotReady("sprite material bind group"))?;
             pass.set_bind_group(2, material_bind_group, &[]);
 
             pass.set_vertex_buffer(0, self.vertex_buffer.unchecked().slice(..));
@@ -201,7 +201,7 @@ impl SpritePass {
                             .ok_or(GraphicsError::InternalError)?
                             .pipeline
                             .as_ref()
-                            .ok_or(GraphicsError::NotReady)?;
+                            .ok_or(GraphicsError::NotReady("sprite shader pipeline"))?;
                         pass.set_pipeline(pipeline);
                     }
                     if current_params.material_id != tri.params.material_id {
@@ -210,8 +210,8 @@ impl SpritePass {
                             .ok_or(GraphicsError::InternalError)?
                             .bind_group
                             .as_ref()
-                            .ok_or(GraphicsError::NotReady)?;
-                        pass.set_bind_group(0, bind_group, &[]);
+                            .ok_or(GraphicsError::NotReady("sprite material bind group"))?;
+                        pass.set_bind_group(2, bind_group, &[]);
                     }
                     if current_params.camera_id != tri.params.camera_id {
                         pass.set_bind_group(
@@ -226,7 +226,7 @@ impl SpritePass {
                                     ))
                                 })?
                                 .get_bind_group()
-                                .ok_or(GraphicsError::NotReady)?,
+                                .ok_or(GraphicsError::NotReady("camera bind group"))?,
                             &[],
                         );
                     }

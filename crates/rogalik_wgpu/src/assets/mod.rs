@@ -198,11 +198,14 @@ impl WgpuAssets {
             let postprocess_layout = self
                 .bind_group_layouts
                 .get(&BindGroupLayoutKind::PostProcessPass)
-                .ok_or(GraphicsError::NotReady)?;
+                .ok_or(GraphicsError::NotReady(
+                    "postprocess pass bind group layout",
+                ))?;
 
             pass.create_wgpu_data(
                 &self.textures,
-                self.default_diffuse.ok_or(GraphicsError::NotReady)?,
+                self.default_diffuse
+                    .ok_or(GraphicsError::NotReady("default diffuse texture"))?,
                 postprocess_layout,
                 w,
                 h,
@@ -466,6 +469,7 @@ impl WgpuAssets {
         name: &str,
         size: f32,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
     ) -> Result<(), GraphicsError> {
         let font = self
             .fonts
@@ -480,12 +484,12 @@ impl WgpuAssets {
             ));
         };
 
-        let glyphs = {
-            let store = self
-                .asset_store
-                .lock()
-                .expect("Can't acquire the asset store!");
+        let mut store = self
+            .asset_store
+            .lock()
+            .expect("Can't acquire the asset store!");
 
+        let glyphs = {
             let asset = store
                 .get(asset_id)
                 .ok_or_else(|| GraphicsError::ResourceNotFound(format!("font {asset_id:?}")))?;
@@ -500,12 +504,15 @@ impl WgpuAssets {
             ..Default::default()
         };
 
-        let texture = texture::TextureData::from_raw(
+        let mut texture = texture::TextureData::from_raw(
             &glyphs.texture_data,
             glyphs.texture_size.0,
             glyphs.texture_size.1,
             false,
         )?;
+        texture.create_wgpu_data(&mut store, device, queue)?;
+
+        drop(store);
         let texture_id = self.add_texture(texture);
 
         material_params.textures.push(texture_id);
