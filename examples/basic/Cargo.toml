@@ -5,6 +5,10 @@ edition = "2024"
 publish = false
 
 [[bin]]
+name = "camera"
+path = "src/camera.rs"
+
+[[bin]]
 name = "font-bitmap"
 path = "src/font_bitmap.rs"
 

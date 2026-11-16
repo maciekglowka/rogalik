@@ -263,6 +263,24 @@ impl WgpuContext {
 
         Ok(())
     }
+    pub fn set_postprocess_enabled(
+        &mut self,
+        name: &str,
+        value: bool,
+    ) -> Result<(), GraphicsError> {
+        let id = *self
+            .assets
+            .get_postprocess_id(name)
+            .ok_or_else(|| GraphicsError::ResourceNotFound(format!("post process {name}")))?;
+        let effect = self
+            .assets
+            .get_postprocess_mut(&id)
+            .ok_or_else(|| GraphicsError::ResourceNotFound(format!("post process {name}")))?;
+
+        effect.enabled = value;
+
+        Ok(())
+    }
     /// Calculates the dimensions (width and height) a singleline text would
     /// occupy when rendered with a specific font and size.
     pub fn text_dimensions(&mut self, font: &str, text: &str, size: f32) -> Vector2f {

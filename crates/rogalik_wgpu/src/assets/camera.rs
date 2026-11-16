@@ -102,14 +102,15 @@ impl Camera2d {
         self.rh = rh;
     }
     fn get_matrix(&self) -> [[f32; 4]; 4] {
-        let zoom = 1. / self.scale;
         let n = -Z_RANGE;
         let f = Z_RANGE;
 
-        let l = (self.target.x - zoom * self.rw / 2.).floor();
-        let r = l + self.rw;
-        let t = (self.target.y - zoom * self.rh / 2.).floor();
-        let b = t + self.rh;
+        let mut l = (self.target.x * self.scale - 0.5 * self.rw).floor();
+        let mut t = (self.target.y * self.scale - 0.5 * self.rh).floor();
+        let r = (l + self.rw) / self.scale;
+        let b = (t + self.rh) / self.scale;
+        l /= self.scale;
+        t /= self.scale;
 
         [
             [2. / (r - l), 0., 0., 0.],
