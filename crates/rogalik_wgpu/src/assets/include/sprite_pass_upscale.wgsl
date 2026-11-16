@@ -5,6 +5,7 @@ struct GlobalsUniform {
     _padding_2: u32,
     render_size: vec2<f32>,
     viewport_size: vec2<f32>,
+    clear_color: vec4<f32>,
 }
 
 struct VertexOutput {
@@ -12,7 +13,7 @@ struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
 }
 
-@group(1) @binding(0)
+@group(0) @binding(0)
 var<uniform> globals: GlobalsUniform;
 
 @vertex
@@ -20,36 +21,41 @@ fn vs_main(
     @builtin(vertex_index) vi: u32
 ) -> VertexOutput {
     var out: VertexOutput;
-    out.uv = vec2<f32>(
+    let pos = vec2<f32>(
         f32((vi << 1u) & 2u),
         f32(vi & 2u),
     );
-    out.clip_position = vec4<f32>(out.uv * 2.0 - 1.0, 0.0, 1.0);
-    out.uv.y = 1.0 - out.uv.y;
+    out.clip_position = vec4<f32>(pos * 2.0 - 1.0, 0.0, 1.0);
+    let screen_uv = vec2<f32>(pos.x, 1.0 - pos.y);
 
-    var scale_u = round(globals.viewport_size.x / globals.render_size.x);
-    var scaled_rw = scale_u * globals.render_size.x;
-    var ru = (scaled_rw - globals.viewport_size.x) / scaled_rw;
-    out.uv.x -= out.uv.x * ru;
+    // Round is used instead of floor as OSes tend to e.g. 1px from the requested inner_size
+    // and it seems better to crop slightly in such a situation.
+    //
+    // An option to pass custom upscale shader should be considered in the future.
+    let scale = min(
+        round(globals.viewport_size.x / globals.render_size.x),
+        round(globals.viewport_size.y / globals.render_size.y),
+    );
+    let scaled_size = scale * globals.render_size;
 
-    var scale_v = round(globals.viewport_size.y / globals.render_size.y);
-    var scaled_rh = scale_v * globals.render_size.y;
-    var rv = (scaled_rh - globals.viewport_size.y) / scaled_rh;
-    out.uv.y -= out.uv.y * rv;
+    let origin = floor((globals.viewport_size - scaled_size) * 0.5);
+    out.uv = (screen_uv * globals.viewport_size - origin) / scaled_size;
     
     return out;
 }
 
-@group(0)
+@group(1)
 @binding(0)
-var post_image: texture_2d<f32>;
-
-@group(0)
-@binding(1)
 var post_sampler: sampler;
+
+@group(1)
+@binding(1)
+var post_image: texture_2d<f32>;
 
 @fragment
 fn fs_main(vs: VertexOutput) -> @location(0) vec4<f32> {
-    return textureSample(post_image, post_sampler, vs.uv);
+    let col = textureSample(post_image, post_sampler, vs.uv);
+    let in_bounds = all(vs.uv >= vec2<f32>(0.0)) && all(vs.uv <= vec2<f32>(1.0));
+    return select(globals.clear_color, col, in_bounds);
 }
 

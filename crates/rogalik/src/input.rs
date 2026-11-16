@@ -19,6 +19,12 @@ pub struct Touch {
     pub phase: TouchPhase,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum Scroll {
+    Pixel(f32, f32),
+    Line(f32, f32),
+}
+
 pub struct InputContext {
     keys_down: HashSet<KeyCode>,
     keys_pressed: HashSet<KeyCode>,
@@ -27,6 +33,7 @@ pub struct InputContext {
     mouse_buttons_pressed: HashSet<MouseButton>,
     mouse_buttons_released: HashSet<MouseButton>,
     mouse_physical_position: Vector2f,
+    mouse_scroll: Option<Scroll>,
     // mouse_logical_position: Vector2f,
     touches: HashMap<u64, Touch>,
     touch_click: bool,
@@ -34,7 +41,7 @@ pub struct InputContext {
     touch_click_id: Option<u64>,
 }
 impl InputContext {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             keys_down: HashSet::new(),
             keys_pressed: HashSet::new(),
@@ -43,6 +50,7 @@ impl InputContext {
             mouse_buttons_pressed: HashSet::new(),
             mouse_buttons_released: HashSet::new(),
             mouse_physical_position: Vector2f::ZERO,
+            mouse_scroll: None,
             touches: HashMap::new(),
             touch_click: true,
             touch_click_id: None,
@@ -56,6 +64,7 @@ impl InputContext {
         // self.touches.retain(|_, t| t.phase != TouchPhase::Ended && t.phase !=
         // TouchPhase::Cancelled);
         self.touches.clear();
+        self.mouse_scroll = None;
     }
     fn calculate_position(
         &self,
@@ -67,14 +76,14 @@ impl InputContext {
             window_size.height as f32 - position.y as f32,
         )
     }
-    pub fn handle_mouse_move(
+    pub(crate) fn handle_mouse_move(
         &mut self,
         position: PhysicalPosition<f64>,
         window_size: &PhysicalSize<u32>,
     ) {
         self.mouse_physical_position = self.calculate_position(position, window_size);
     }
-    pub fn handle_keyboard(&mut self, event: &KeyEvent) {
+    pub(crate) fn handle_keyboard(&mut self, event: &KeyEvent) {
         if let PhysicalKey::Code(code) = event.physical_key {
             match event.state {
                 ElementState::Pressed => {
@@ -90,7 +99,7 @@ impl InputContext {
             };
         }
     }
-    pub fn handle_mouse_button(&mut self, button: &MouseButton, state: &ElementState) {
+    pub(crate) fn handle_mouse_button(&mut self, button: &MouseButton, state: &ElementState) {
         match state {
             ElementState::Pressed => {
                 if !self.mouse_buttons_down.contains_key(button) {
@@ -104,7 +113,17 @@ impl InputContext {
             }
         };
     }
-    pub fn handle_touch(
+    pub(crate) fn handle_mouse_wheel(&mut self, scroll: winit::event::MouseScrollDelta) {
+        match scroll {
+            winit::event::MouseScrollDelta::LineDelta(x, y) => {
+                self.mouse_scroll = Some(Scroll::Line(x, y))
+            }
+            winit::event::MouseScrollDelta::PixelDelta(PhysicalPosition { x, y }) => {
+                self.mouse_scroll = Some(Scroll::Pixel(x as f32, y as f32))
+            }
+        }
+    }
+    pub(crate) fn handle_touch(
         &mut self,
         id: u64,
         phase: TouchPhase,
@@ -144,6 +163,9 @@ impl InputContext {
     // pub fn get_mouse_logical_position(&self) -> Vector2f {
     //     self.mouse_logical_position
     // }
+    pub fn get_mouse_scroll(&self) -> Option<Scroll> {
+        self.mouse_scroll
+    }
     pub fn is_key_down(&self, code: KeyCode) -> bool {
         self.keys_down.contains(&code)
     }

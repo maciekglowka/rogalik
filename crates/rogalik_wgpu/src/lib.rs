@@ -15,10 +15,11 @@ pub use assets::atlas::{AtlasParams, AtlasPosition, SpriteParams};
 pub use assets::camera::Camera2d;
 pub use assets::font::FontParams;
 pub use assets::material::{Material, MaterialParams};
-pub use assets::postprocess::PostProcessParams;
-pub use assets::shader::{BuiltInShader, Shader, ShaderKind};
+pub use assets::postprocess::{PassParams, PostProcessParams, PostProcessStage};
+pub use assets::shader::{Shader, ShaderKind};
 pub use assets::texture::{TextureData, TextureFiltering, TextureRepeat};
 pub use context::{GraphicsSetup, WgpuContext};
+pub use renderer2d::uniforms::ShaderUniform;
 pub use structs::Color;
 
 pub trait GraphicsInternal {
@@ -65,8 +66,9 @@ pub enum GraphicsError {
     AssetError(String),
     FontError(String),
     InternalError,
-    NotReady,
+    NotReady(&'static str),
     MaterialError(String),
+    PostProcessError(String),
     ResourceNotFound(String),
     ShaderError(String),
     TextureError(String),
@@ -86,8 +88,11 @@ impl std::fmt::Display for GraphicsError {
             Self::MaterialError(inner) => {
                 write!(f, "material error: {inner}")
             }
-            Self::NotReady => {
-                write!(f, "graphics not ready")
+            Self::PostProcessError(inner) => {
+                write!(f, "post process error: {inner}")
+            }
+            Self::NotReady(inner) => {
+                write!(f, "graphics not ready: {inner}")
             }
             Self::ResourceNotFound(inner) => {
                 write!(f, "resource not found: {inner}")

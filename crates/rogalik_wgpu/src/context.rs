@@ -8,17 +8,13 @@ use rogalik_arena::Id;
 use rogalik_math::vectors::Vector2f;
 
 use crate::{
-    AtlasParams, BuiltInShader, Camera2d, Color, FontParams, GraphicsDevTools, GraphicsError,
-    GraphicsInternal, MaterialParams, PostProcessParams, Shader, ShaderKind, SpriteParams,
-    TextureData,
+    assets::postprocess::PostProcessStage, AtlasParams, Camera2d, Color, FontParams,
+    GraphicsDevTools, GraphicsError, GraphicsInternal, MaterialParams, PostProcessParams, Shader,
+    ShaderKind, SpriteParams, TextureData,
 };
 
 const MAX_TIME: f32 = 3600.;
 
-// because of WASM
-// static SURFACE_STATE: Arc<Mutex<Option<SurfaceState>>> =
-// Arc::new(Mutex::new(None)); static mut SURFACE_STATE:
-// Option<Arc<Mutex<SurfaceState>>> = None;
 static SURFACE_REFRESH: AtomicBool = AtomicBool::new(false);
 
 struct SurfaceState {
@@ -58,17 +54,19 @@ impl WgpuContext {
         self.handle_surface_refresh();
 
         self.rendering_resolution = Some((w, h));
-        if self
-            .renderer2d
-            .set_rendering_resolution(&mut self.assets, w, h)
-            .is_ok()
-        {
+        if self.renderer2d.set_rendering_resolution(w, h).is_ok() {
             if let Ok(state) = self.surface_state.lock() {
                 if let Some(state) = state.as_ref() {
-                    let _ = self.renderer2d.create_upscale_pass(
+                    let _ = self.renderer2d.create_downscale_wgpu_data(
                         &self.assets,
                         &state.device,
-                        &state.queue,
+                        &state.config.format,
+                    );
+                    let _ = self.assets.update_postprocess_wgpu_data(
+                        PostProcessStage::Downscaled,
+                        w,
+                        h,
+                        &state.device,
                         &state.config.format,
                     );
                 }
@@ -89,7 +87,8 @@ impl WgpuContext {
             &self.assets,
             0,
             material,
-            self.current_camera_id.ok_or(GraphicsError::NotReady)?,
+            self.current_camera_id
+                .ok_or(GraphicsError::NotReady("current camera id"))?,
             position,
             z_index,
             size,
@@ -110,7 +109,8 @@ impl WgpuContext {
             &self.assets,
             index,
             atlas,
-            self.current_camera_id.ok_or(GraphicsError::NotReady)?,
+            self.current_camera_id
+                .ok_or(GraphicsError::NotReady("current camera id"))?,
             position,
             z_index,
             size,
@@ -126,12 +126,14 @@ impl WgpuContext {
         indices: &[u16],
         z_index: i32,
     ) -> Result<(), GraphicsError> {
+        // TODO create MeshParams to allow color passing.
         let vs = vertices
             .iter()
             .zip(uvs)
             .map(|(v, uv)| crate::structs::Vertex {
                 position: [v.x, v.y, 0.],
                 color: [1., 1., 1., 1.],
+                secondary_color: [1., 1., 1., 1.],
                 tex_coords: [uv.x, uv.y],
             })
             // TODO allocation can be avoided here
@@ -139,7 +141,8 @@ impl WgpuContext {
         self.renderer2d.draw_mesh(
             &self.assets,
             material,
-            self.current_camera_id.ok_or(GraphicsError::NotReady)?,
+            self.current_camera_id
+                .ok_or(GraphicsError::NotReady("current camera id"))?,
             &vs,
             indices,
             z_index,
@@ -162,7 +165,8 @@ impl WgpuContext {
             &mut self.assets,
             font,
             text,
-            self.current_camera_id.ok_or(GraphicsError::NotReady)?,
+            self.current_camera_id
+                .ok_or(GraphicsError::NotReady("current camera id"))?,
             position,
             z_index,
             size,
@@ -189,7 +193,8 @@ impl WgpuContext {
             &mut self.assets,
             font,
             text,
-            self.current_camera_id.ok_or(GraphicsError::NotReady)?,
+            self.current_camera_id
+                .ok_or(GraphicsError::NotReady("current camera id"))?,
             position,
             z_index,
             size,
@@ -212,27 +217,68 @@ impl WgpuContext {
     ) -> Result<(), GraphicsError> {
         self.renderer2d.add_light(position, radius, color, falloff)
     }
-    pub fn set_postprocess_strength(
+    pub fn update_material_uniform<T>(&mut self, name: &str, data: T) -> Result<(), GraphicsError>
+    where
+        T: bytemuck::NoUninit,
+    {
+        let id = *self
+            .assets
+            .get_material_id(name)
+            .ok_or_else(|| GraphicsError::ResourceNotFound(format!("material {name}")))?;
+        let material = self
+            .assets
+            .get_material_mut(&id)
+            .ok_or_else(|| GraphicsError::ResourceNotFound(format!("material {name}")))?;
+
+        if let Ok(state) = self.surface_state.lock() {
+            if let Some(state) = state.as_ref() {
+                material.update_uniform(data, &state.queue)?;
+            };
+        }
+        Ok(())
+    }
+    pub fn update_postprocess_uniform<T>(
         &mut self,
         name: &str,
-        value: f32,
+        pass: usize,
+        data: T,
+    ) -> Result<(), GraphicsError>
+    where
+        T: bytemuck::NoUninit,
+    {
+        let id = *self
+            .assets
+            .get_postprocess_id(name)
+            .ok_or_else(|| GraphicsError::ResourceNotFound(format!("post process {name}")))?;
+        let effect = self
+            .assets
+            .get_postprocess_mut(&id)
+            .ok_or_else(|| GraphicsError::ResourceNotFound(format!("post process {name}")))?;
+
+        if let Ok(state) = self.surface_state.lock() {
+            if let Some(state) = state.as_ref() {
+                effect.update_uniform(pass, data, &state.queue)?;
+            };
+        }
+
+        Ok(())
+    }
+    pub fn set_postprocess_enabled(
+        &mut self,
+        name: &str,
+        value: bool,
     ) -> Result<(), GraphicsError> {
         let id = *self
             .assets
             .get_postprocess_id(name)
             .ok_or_else(|| GraphicsError::ResourceNotFound(format!("post process {name}")))?;
-        let pass = self
+        let effect = self
             .assets
             .get_postprocess_mut(&id)
             .ok_or_else(|| GraphicsError::ResourceNotFound(format!("post process {name}")))?;
 
-        pass.set_strength(value);
+        effect.enabled = value;
 
-        if let Ok(state) = self.surface_state.lock() {
-            if let Some(state) = state.as_ref() {
-                pass.write_buffer(&state.queue)?;
-            };
-        }
         Ok(())
     }
     /// Calculates the dimensions (width and height) a singleline text would
@@ -288,11 +334,11 @@ impl WgpuContext {
     pub fn get_camera_mut(&mut self, id: &Id<Camera2d>) -> Option<&mut Camera2d> {
         self.assets.get_camera_mut(id)
     }
-    /// Retrieves the `Id` of a built-in shader.
-    /// Returns `None` if the shader is not found.
-    pub fn get_builtin_shader(&self, shader: BuiltInShader) -> Option<Id<Shader>> {
-        self.assets.builtin_shaders.get(&shader).copied()
-    }
+    // Retrieves the `Id` of a built-in shader.
+    // Returns `None` if the shader is not found.
+    // pub fn get_builtin_shader(&self, shader: BuiltInShader) ->
+    // Option<Id<Shader>> {     self.assets.builtin_shaders.get(&shader).
+    // copied() }
 }
 
 /// DevTools hidden by a trait.
@@ -365,20 +411,22 @@ impl WgpuContext {
                 let h = state.config.height;
                 log::debug!("State config dim: {}, {}", w, h);
 
-                let _ = self.assets.create_wgpu_data(
-                    w,
-                    h,
-                    &state.device,
-                    &state.queue,
-                    &state.config.format,
-                );
+                self.assets
+                    .create_wgpu_data(
+                        (w, h),
+                        self.rendering_resolution,
+                        &state.device,
+                        &state.queue,
+                        &state.config.format,
+                    )
+                    .inspect_err(|e| log::error!("wgpu data init failed: {e}"))
+                    .expect("wgpu data initialization");
                 log::debug!("Asset data created");
                 let _ = self.renderer2d.create_wgpu_data(
                     &self.assets,
                     w,
                     h,
                     &state.device,
-                    &state.queue,
                     &state.config.format,
                 );
                 log::debug!("Renderer2d data created");
@@ -398,7 +446,9 @@ impl WgpuContext {
             Ok(true) => Ok(()),
             Ok(false) => {
                 let state = self.surface_state.lock().unwrap();
-                let state = state.as_ref().ok_or(GraphicsError::NotReady)?;
+                let state = state
+                    .as_ref()
+                    .ok_or(GraphicsError::NotReady("surface state"))?;
 
                 self.assets
                     .create_font_size(font, size, &state.device, &state.queue)
@@ -447,14 +497,13 @@ impl GraphicsInternal for WgpuContext {
                         width,
                         height,
                         &state.device,
-                        &state.queue,
                         &state.config.format,
                     );
                     let _ = self.assets.update_postprocess_wgpu_data(
+                        PostProcessStage::Upscaled,
                         width,
                         height,
                         &state.device,
-                        &state.queue,
                         &state.config.format,
                     );
                 }
@@ -467,13 +516,16 @@ impl GraphicsInternal for WgpuContext {
         self.handle_surface_refresh();
         if let Ok(state) = self.surface_state.lock() {
             if let Some(state) = state.as_ref() {
-                let _ = self.renderer2d.render(
-                    &self.assets,
-                    self.time,
-                    &state.surface,
-                    &state.device,
-                    &state.queue,
-                );
+                let _ = self
+                    .renderer2d
+                    .render(
+                        &self.assets,
+                        self.time,
+                        &state.surface,
+                        &state.device,
+                        &state.queue,
+                    )
+                    .inspect_err(|e| log::error!("2d renderer failed: {e}"));
             }
         }
     }
@@ -491,8 +543,12 @@ impl GraphicsInternal for WgpuContext {
 pub struct GraphicsSetup<'a>(&'a mut WgpuContext);
 impl<'a> GraphicsSetup<'a> {
     /// Loads a texture from the given file path and returns its `Id`.
-    pub fn load_texture(&mut self, path: &str) -> Id<TextureData> {
-        self.0.assets.texture_from_path(path)
+    pub fn load_texture(
+        &mut self,
+        path: &str,
+        is_data: bool,
+    ) -> Result<Id<TextureData>, GraphicsError> {
+        self.0.assets.texture_from_path(path, is_data)
     }
     /// Loads a material with the given name and parameters.
     /// Materials define how objects are rendered, including their textures and
@@ -530,8 +586,12 @@ impl<'a> GraphicsSetup<'a> {
         self.0.assets.load_font_atlas(name, path, atlas, params)
     }
     /// Adds a post-processing effect to be applied after scene rendering.
-    pub fn add_post_process(&mut self, name: &str, params: PostProcessParams) {
-        self.0.assets.create_post_process(name, params);
+    pub fn add_post_process(
+        &mut self,
+        name: &str,
+        params: PostProcessParams,
+    ) -> Result<(), GraphicsError> {
+        self.0.assets.create_post_process(name, params)
     }
     /// Creates a new 2D camera with a specified scale and target position.
     pub fn create_camera(&mut self, scale: f32, target: Vector2f) -> Id<Camera2d> {

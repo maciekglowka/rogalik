@@ -1,10 +1,6 @@
-use std::collections::HashMap;
-
 use crate::assets::WgpuAssets;
 use crate::structs::{BindParams, Triangle, Vertex};
 use crate::GraphicsError;
-
-use super::uniforms::UniformKind;
 
 struct DynamicBuffer {
     buffer: Option<wgpu::Buffer>,
@@ -92,7 +88,7 @@ impl SpritePass {
         encoder: &mut wgpu::CommandEncoder,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        uniform_bind_groups: &HashMap<UniformKind, wgpu::BindGroup>,
+        uniform_bind_group: &wgpu::BindGroup,
         view: &wgpu::TextureView,
     ) -> Result<(), GraphicsError> {
         if self.triangle_queue.is_empty() {
@@ -157,16 +153,10 @@ impl SpritePass {
                 .ok_or(GraphicsError::InternalError)?
                 .pipeline
                 .as_ref()
-                .ok_or(GraphicsError::NotReady)?;
+                .ok_or(GraphicsError::NotReady("sprite shader pipeline"))?;
             pass.set_pipeline(pipeline);
 
-            let bind_group = assets
-                .get_material(&current_params.material_id)
-                .ok_or(GraphicsError::InternalError)?
-                .bind_group
-                .as_ref()
-                .ok_or(GraphicsError::NotReady)?;
-            pass.set_bind_group(0, bind_group, &[]);
+            pass.set_bind_group(0, uniform_bind_group, &[]);
 
             pass.set_bind_group(
                 1,
@@ -180,11 +170,17 @@ impl SpritePass {
                         ))
                     })?
                     .get_bind_group()
-                    .ok_or(GraphicsError::NotReady)?,
+                    .ok_or(GraphicsError::NotReady("camera bind broup"))?,
                 &[],
             );
-            pass.set_bind_group(2, uniform_bind_groups.get(&UniformKind::Globals), &[]);
-            pass.set_bind_group(3, uniform_bind_groups.get(&UniformKind::Lights), &[]);
+
+            let material_bind_group = assets
+                .get_material(&current_params.material_id)
+                .ok_or(GraphicsError::InternalError)?
+                .bind_group
+                .as_ref()
+                .ok_or(GraphicsError::NotReady("sprite material bind group"))?;
+            pass.set_bind_group(2, material_bind_group, &[]);
 
             pass.set_vertex_buffer(0, self.vertex_buffer.unchecked().slice(..));
             pass.set_index_buffer(
@@ -205,7 +201,7 @@ impl SpritePass {
                             .ok_or(GraphicsError::InternalError)?
                             .pipeline
                             .as_ref()
-                            .ok_or(GraphicsError::NotReady)?;
+                            .ok_or(GraphicsError::NotReady("sprite shader pipeline"))?;
                         pass.set_pipeline(pipeline);
                     }
                     if current_params.material_id != tri.params.material_id {
@@ -214,8 +210,8 @@ impl SpritePass {
                             .ok_or(GraphicsError::InternalError)?
                             .bind_group
                             .as_ref()
-                            .ok_or(GraphicsError::NotReady)?;
-                        pass.set_bind_group(0, bind_group, &[]);
+                            .ok_or(GraphicsError::NotReady("sprite material bind group"))?;
+                        pass.set_bind_group(2, bind_group, &[]);
                     }
                     if current_params.camera_id != tri.params.camera_id {
                         pass.set_bind_group(
@@ -230,7 +226,7 @@ impl SpritePass {
                                     ))
                                 })?
                                 .get_bind_group()
-                                .ok_or(GraphicsError::NotReady)?,
+                                .ok_or(GraphicsError::NotReady("camera bind group"))?,
                             &[],
                         );
                     }

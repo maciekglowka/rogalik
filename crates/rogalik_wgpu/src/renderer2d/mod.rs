@@ -2,17 +2,13 @@ use rogalik_arena::Id;
 use rogalik_math::vectors::Vector2f;
 
 use crate::assets::{
-    atlas::SpriteParams,
-    camera::Camera2d,
-    font::get_text_sprites,
-    material::Material,
-    postprocess::{PostProcessParams, PostProcessPass},
-    texture::{TextureFiltering, TextureRepeat},
-    WgpuAssets,
+    atlas::SpriteParams, bind_groups::BindGroupLayoutKind, camera::Camera2d,
+    font::get_text_sprites, material::Material, WgpuAssets,
 };
 use crate::structs::{BindParams, Color};
 use crate::GraphicsError;
 
+mod postprocess;
 mod sprite_pass;
 mod text;
 pub(crate) mod uniforms;
@@ -21,10 +17,10 @@ const MAX_LIGHTS: u32 = 16;
 
 pub struct Renderer2d {
     sprite_pass: sprite_pass::SpritePass,
+    postprocess_renderer: postprocess::PostProcessRenderer,
     #[cfg(all(dev_tools, feature = "capture"))]
     pub(crate) recorder: crate::tools::Recorder,
     rendering_resolution: Option<(u32, u32)>, // for pixel perfect renders
-    upscale_pass: Option<PostProcessPass>,    // for pixel perfect renders
     uniforms: uniforms::Uniforms,
     text_cache: text::TextCache,
 }
@@ -33,15 +29,21 @@ impl Renderer2d {
         let sprite_pass = sprite_pass::SpritePass::new(wgpu::Color::BLACK);
         Self {
             sprite_pass,
+            postprocess_renderer: postprocess::PostProcessRenderer::default(),
             #[cfg(all(dev_tools, feature = "capture"))]
             recorder: crate::tools::Recorder::default(),
             rendering_resolution: None,
-            upscale_pass: None,
             uniforms: uniforms::Uniforms::default(),
             text_cache: Default::default(),
         }
     }
     pub fn set_clear_color(&mut self, color: wgpu::Color) {
+        self.uniforms.globals.clear_color = [
+            color.r as f32,
+            color.g as f32,
+            color.b as f32,
+            color.a as f32,
+        ];
         self.sprite_pass.clear_color = color;
     }
     pub fn resize(&mut self, w: u32, h: u32) {
@@ -50,55 +52,26 @@ impl Renderer2d {
             self.uniforms.globals.render_size = [w as f32, h as f32];
         }
     }
-    pub fn set_rendering_resolution(
-        &mut self,
-        assets: &mut WgpuAssets,
-        w: u32,
-        h: u32,
-    ) -> Result<(), GraphicsError> {
+    pub fn set_rendering_resolution(&mut self, w: u32, h: u32) -> Result<(), GraphicsError> {
         self.rendering_resolution = Some((w, h));
-        let shader_id = assets
-            .builtin_shaders
-            .get(&crate::BuiltInShader::Upscale)
-            .ok_or(GraphicsError::InternalError)?;
-        self.upscale_pass = Some(PostProcessPass::new(
-            assets.default_diffuse.unwrap(),
-            PostProcessParams {
-                shader: *shader_id,
-                filtering: TextureFiltering::Nearest,
-                repeat: TextureRepeat::default(),
-                texture: None,
-            },
-        ));
         self.uniforms.globals.render_size = [w as f32, h as f32];
         Ok(())
     }
-    pub fn create_upscale_pass(
+    pub fn create_downscale_wgpu_data(
         &mut self,
         assets: &WgpuAssets,
         device: &wgpu::Device,
-        queue: &wgpu::Queue,
         texture_format: &wgpu::TextureFormat,
     ) -> Result<(), GraphicsError> {
         if let Some((w, h)) = self.rendering_resolution {
             log::debug!("Creating upscale pass with w:{}, h:{}", w, h);
-            let postprocess_layout = assets
-                .bind_group_layouts
-                .get(&crate::assets::bind_groups::BindGroupLayoutKind::PostProcess)
-                .ok_or(GraphicsError::InternalError)?;
-            return self
-                .upscale_pass
-                .as_mut()
-                .ok_or(GraphicsError::InternalError)?
-                .create_wgpu_data(
-                    &assets.textures,
-                    postprocess_layout,
-                    w,
-                    h,
-                    device,
-                    queue,
-                    texture_format,
-                );
+            self.postprocess_renderer.create_downscale_wgpu_data(
+                assets,
+                w,
+                h,
+                device,
+                texture_format,
+            )?;
         }
         Ok(())
     }
@@ -122,15 +95,24 @@ impl Renderer2d {
         width: u32,
         height: u32,
         device: &wgpu::Device,
-        queue: &wgpu::Queue,
         texture_format: &wgpu::TextureFormat,
     ) -> Result<(), GraphicsError> {
         log::debug!("Creating Renderer2d data with w:{}, h:{}", width, height);
-        self.create_upscale_pass(assets, device, queue, texture_format)?;
+        self.create_downscale_wgpu_data(assets, device, texture_format)?;
+        self.postprocess_renderer.create_wgpu_data(
+            assets
+                .bind_group_layouts
+                .get(&BindGroupLayoutKind::PostProcessInput)
+                .ok_or(GraphicsError::InternalError)?,
+            width,
+            height,
+            device,
+            texture_format,
+        )?;
         self.uniforms.create_wgpu_data(
             assets
                 .bind_group_layouts
-                .get(&crate::assets::bind_groups::BindGroupLayoutKind::Uniform)
+                .get(&BindGroupLayoutKind::Globals)
                 .ok_or(GraphicsError::InternalError)?,
             device,
         );
@@ -247,7 +229,7 @@ impl Renderer2d {
         Ok(())
     }
 
-    pub fn render(
+    pub(crate) fn render(
         &mut self,
         assets: &WgpuAssets,
         time: f32,
@@ -264,7 +246,7 @@ impl Renderer2d {
 
         let output = surface
             .get_current_texture()
-            .map_err(|_| GraphicsError::NotReady)?;
+            .map_err(|_| GraphicsError::NotReady("surface texture"))?;
 
         let view = output
             .texture
@@ -274,47 +256,40 @@ impl Renderer2d {
             label: Some("Renderer2D Encoder"),
         });
 
-        // TODO avoid allocation here?
-        let mut post_process_queue = Vec::new();
-        if let Some(pass) = &self.upscale_pass {
-            post_process_queue.push(pass);
-        }
-        post_process_queue.extend(
-            assets
-                .postprocess
-                .values()
-                .filter(|p| p.get_strength() > 0.001),
-        );
+        let post_process_queue = self.postprocess_renderer.queue(assets);
 
-        let mut current_view = if let Some(pass) = post_process_queue.first() {
-            pass.get_view().ok_or(GraphicsError::NotReady)?
+        let target = if !post_process_queue.is_empty() {
+            self.postprocess_renderer.view()?
         } else {
             &view
         };
 
-        self.sprite_pass.render(
-            assets,
-            &mut encoder,
-            device,
-            queue,
-            &self.uniforms.bind_groups,
-            current_view,
-        )?;
-
-        let mut post_processes = post_process_queue.iter().peekable();
-        while let Some(pass) = post_processes.next() {
-            current_view = if let Some(next_pass) = post_processes.peek() {
-                next_pass.get_view().ok_or(GraphicsError::NotReady)?
-            } else {
-                &view
-            };
-            pass.render(
+        self.sprite_pass
+            .render(
                 assets,
                 &mut encoder,
-                current_view,
-                &self.uniforms.bind_groups,
-            )?;
-        }
+                device,
+                queue,
+                self.uniforms
+                    .bind_group
+                    .as_ref()
+                    .ok_or(GraphicsError::NotReady("uniforms bind group"))?,
+                target,
+            )
+            .inspect_err(|e| log::error!("sprite pass rendering failed: {e}"))?;
+
+        if !post_process_queue.is_empty() {
+            self.postprocess_renderer.render(
+                assets,
+                &mut encoder,
+                &post_process_queue,
+                &view,
+                self.uniforms
+                    .bind_group
+                    .as_ref()
+                    .ok_or(GraphicsError::NotReady("uniforms bind group"))?,
+            )?
+        };
 
         queue.submit(std::iter::once(encoder.finish()));
 

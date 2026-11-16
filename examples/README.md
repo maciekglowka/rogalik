@@ -4,4 +4,3 @@
 - hello_world - minimal setup example
 - lighting - 2d lighting with normals
 
-Type `cargo run --example <name>` to run.

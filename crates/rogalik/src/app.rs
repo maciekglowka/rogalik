@@ -148,6 +148,11 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
                     self.context.input.handle_mouse_button(&button, &state);
                 }
             }
+            WindowEvent::MouseWheel { delta, .. } => {
+                if self.can_accept_input() {
+                    self.context.input.handle_mouse_wheel(delta);
+                }
+            }
             WindowEvent::CursorMoved { position, .. } => {
                 if self.can_accept_input() {
                     self.context

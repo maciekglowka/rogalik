@@ -73,36 +73,44 @@ impl Camera2d {
             buffer: None,
         }
     }
-    pub fn create_wgpu_data(&mut self, device: &wgpu::Device, layout: &wgpu::BindGroupLayout) {
+    pub(crate) fn create_wgpu_data(
+        &mut self,
+        device: &wgpu::Device,
+        layout: &wgpu::BindGroupLayout,
+    ) {
         let (bind_group, buffer) = Camera2d::create_bind_group(device, layout, self.get_matrix());
         self.bind_group = Some(bind_group);
         self.buffer = Some(buffer);
     }
-    pub fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), GraphicsError> {
+    pub(crate) fn write_buffer(&self, queue: &wgpu::Queue) -> Result<(), GraphicsError> {
         queue.write_buffer(
-            self.buffer.as_ref().ok_or(GraphicsError::NotReady)?,
+            self.buffer
+                .as_ref()
+                .ok_or(GraphicsError::NotReady("camera buffer"))?,
             0,
             bytemuck::cast_slice(&[self.get_matrix()]),
         );
         Ok(())
     }
-    pub fn get_bind_group(&self) -> Option<&wgpu::BindGroup> {
+    pub(crate) fn get_bind_group(&self) -> Option<&wgpu::BindGroup> {
         self.bind_group.as_ref()
     }
-    pub fn resize_viewport(&mut self, vw: f32, vh: f32, rw: f32, rh: f32) {
+    pub(crate) fn resize_viewport(&mut self, vw: f32, vh: f32, rw: f32, rh: f32) {
         self.vw = vw;
         self.vh = vh;
         self.rw = rw;
         self.rh = rh;
     }
     fn get_matrix(&self) -> [[f32; 4]; 4] {
-        let zoom = 1. / self.scale;
         let n = -Z_RANGE;
         let f = Z_RANGE;
-        let l = self.target.x - zoom * self.rw / 2.;
-        let r = self.target.x + zoom * self.rw / 2.;
-        let t = self.target.y - zoom * self.rh / 2.;
-        let b = self.target.y + zoom * self.rh / 2.;
+
+        let mut l = (self.target.x * self.scale - 0.5 * self.rw).floor();
+        let mut t = (self.target.y * self.scale - 0.5 * self.rh).floor();
+        let r = (l + self.rw) / self.scale;
+        let b = (t + self.rh) / self.scale;
+        l /= self.scale;
+        t /= self.scale;
 
         [
             [2. / (r - l), 0., 0., 0.],

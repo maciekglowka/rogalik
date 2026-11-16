@@ -5,6 +5,10 @@ edition = "2024"
 publish = false
 
 [[bin]]
+name = "camera"
+path = "src/camera.rs"
+
+[[bin]]
 name = "font-bitmap"
 path = "src/font_bitmap.rs"
 
@@ -20,5 +24,19 @@ path = "src/lighting.rs"
 name = "sprite-atlas"
 path = "src/sprite_atlas.rs"
 
+[[bin]]
+name = "sprite-shader"
+path = "src/sprite_shader.rs"
+
+[[bin]]
+name = "postprocess-lut"
+path = "src/postprocess_lut.rs"
+
+[[bin]]
+name = "postprocess-multipass"
+path = "src/postprocess_multipass.rs"
+
 [dependencies]
 rogalik = { path = "../../crates/rogalik" }
+
+bytemuck = { workspace = true }

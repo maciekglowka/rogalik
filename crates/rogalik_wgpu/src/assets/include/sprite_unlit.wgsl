@@ -8,7 +8,8 @@ var<uniform> camera: CameraUniform;
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) color: vec4<f32>,
-    @location(2) tex_coords: vec2<f32>,
+    @location(2) secondary_color: vec4<f32>,
+    @location(3) tex_coords: vec2<f32>,
 }
 
 struct VertexOutput {
@@ -29,10 +30,10 @@ fn vs_main(
 }
 
 // Fragment shader
-@group(0) @binding(0)
-var t_diffuse: texture_2d<f32>;
-@group(0) @binding(1)
+@group(2) @binding(0)
 var s_diffuse: sampler;
+@group(2) @binding(1)
+var t_diffuse: texture_2d<f32>;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
