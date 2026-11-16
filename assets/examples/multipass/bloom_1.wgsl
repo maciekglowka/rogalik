@@ -26,6 +26,7 @@ struct GlobalsUniform {
     _padding_2: f32,
     render_size: vec2<f32>,
     viewport_size: vec2<f32>,
+    clear_color: vec4<f32>,
 }
 
 struct BloomUniform {

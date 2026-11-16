@@ -3,12 +3,17 @@ use std::f32;
 use rogalik::prelude::*;
 
 const SPRITE_SIZE: f32 = 8.;
-const PIXEL_SCALE: u32 = 4;
+const RENDER_W: u32 = 240;
+const RENDER_H: u32 = 160;
 
 // Main game object.
 struct GameState;
 impl Game for GameState {
     fn setup(&mut self, context: &mut SetupContext) {
+        context
+            .graphics
+            .set_rendering_resolution(RENDER_W, RENDER_H);
+
         // Load textures
         let color_texture = context
             .graphics
@@ -53,14 +58,6 @@ impl Game for GameState {
 
         // Create camera
         context.graphics.create_camera(1., Vector2f::ZERO);
-    }
-    fn resize(&mut self, context: &mut Context) {
-        // Set pixel perfect rendering
-        let viewport = context.get_physical_size();
-        context.graphics.set_rendering_resolution(
-            viewport.x as u32 / PIXEL_SCALE,
-            viewport.y as u32 / PIXEL_SCALE,
-        );
     }
 }
 
@@ -108,12 +105,30 @@ impl Scene for MainScene {
                 ..Default::default()
             },
         );
+
+        // Stretched BG.
+        context
+            .graphics
+            .draw_atlas_sprite(
+                "color",
+                6 * 16,
+                -0.5 * Vector2f::new(RENDER_W as f32, RENDER_H as f32),
+                -1,
+                Vector2f::new(RENDER_W as f32, RENDER_H as f32),
+                SpriteParams {
+                    slice: Some(2),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
     }
 }
 
 fn main() {
     let engine = EngineBuilder::new()
         .with_title("RGLK".to_string())
+        .with_physical_size(960, 640)
+        .resizable(true)
         .build(GameState, Box::new(MainScene));
     engine.run();
 }

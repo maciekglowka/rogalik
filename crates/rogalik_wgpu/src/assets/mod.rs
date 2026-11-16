@@ -228,7 +228,6 @@ impl WgpuAssets {
 
         let mut updated_textures = HashSet::new();
 
-        // FIXME
         for (id, texture) in self.textures.iter_mut() {
             if let Some((asset_id, asset)) = texture
                 .asset_id()
@@ -244,7 +243,7 @@ impl WgpuAssets {
                     updated_textures.insert(id);
 
                     #[cfg(dev_tools)]
-                    store.mark_read(asset_id.unwrap());
+                    store.mark_read(asset_id);
                 }
             }
         }

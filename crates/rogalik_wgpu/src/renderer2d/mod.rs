@@ -38,6 +38,12 @@ impl Renderer2d {
         }
     }
     pub fn set_clear_color(&mut self, color: wgpu::Color) {
+        self.uniforms.globals.clear_color = [
+            color.r as f32,
+            color.g as f32,
+            color.b as f32,
+            color.a as f32,
+        ];
         self.sprite_pass.clear_color = color;
     }
     pub fn resize(&mut self, w: u32, h: u32) {

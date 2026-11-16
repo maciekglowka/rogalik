@@ -4,12 +4,6 @@ use rogalik_math::vectors::Vector2f;
 
 use crate::{Color, GraphicsError};
 
-#[derive(PartialEq, Eq, Hash)]
-pub enum UniformKind {
-    Globals,
-    Lights,
-}
-
 #[derive(Clone, Debug)]
 pub struct ShaderUniform {
     data: Vec<u8>,
@@ -119,36 +113,13 @@ impl Uniforms {
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, bytemuck::NoUninit, bytemuck::Zeroable)]
 pub struct GlobalsUniform {
-    pub time: f32,
+    pub(crate) time: f32,
     _padding_0: u32,
     _padding_1: u32,
     _padding_2: u32,
-    pub render_size: [f32; 2],
-    pub viewport_size: [f32; 2],
-}
-impl GlobalsUniform {
-    pub fn get_bind_group(
-        &self,
-        device: &wgpu::Device,
-        layout: &wgpu::BindGroupLayout,
-    ) -> (wgpu::BindGroup, wgpu::Buffer) {
-        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Global Buffer"),
-            contents: bytemuck::cast_slice(&[*self]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-        (
-            device.create_bind_group(&wgpu::BindGroupDescriptor {
-                layout,
-                label: Some("Global Bind Group"),
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: buffer.as_entire_binding(),
-                }],
-            }),
-            buffer,
-        )
-    }
+    pub(crate) render_size: [f32; 2],
+    pub(crate) viewport_size: [f32; 2],
+    pub(crate) clear_color: [f32; 4],
 }
 
 #[repr(C)]
@@ -182,28 +153,6 @@ impl LightsUniform {
         self.lights[self.light_count as usize] = PointLight::new(position, radius, color, falloff);
         self.light_count += 1;
         Ok(())
-    }
-    pub fn get_bind_group(
-        &self,
-        device: &wgpu::Device,
-        layout: &wgpu::BindGroupLayout,
-    ) -> (wgpu::BindGroup, wgpu::Buffer) {
-        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Light Buffer"),
-            contents: bytemuck::cast_slice(&[*self]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-        (
-            device.create_bind_group(&wgpu::BindGroupDescriptor {
-                layout,
-                label: Some("Light Bind Group"),
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: buffer.as_entire_binding(),
-                }],
-            }),
-            buffer,
-        )
     }
 }
 

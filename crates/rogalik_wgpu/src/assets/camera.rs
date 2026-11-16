@@ -105,10 +105,11 @@ impl Camera2d {
         let zoom = 1. / self.scale;
         let n = -Z_RANGE;
         let f = Z_RANGE;
-        let l = self.target.x - zoom * self.rw / 2.;
-        let r = self.target.x + zoom * self.rw / 2.;
-        let t = self.target.y - zoom * self.rh / 2.;
-        let b = self.target.y + zoom * self.rh / 2.;
+
+        let l = (self.target.x - zoom * self.rw / 2.).floor();
+        let r = l + self.rw;
+        let t = (self.target.y - zoom * self.rh / 2.).floor();
+        let b = t + self.rh;
 
         [
             [2. / (r - l), 0., 0., 0.],
