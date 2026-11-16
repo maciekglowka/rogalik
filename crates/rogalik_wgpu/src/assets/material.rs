@@ -160,8 +160,8 @@ fn get_material_bind_group(
             binding: 0,
             resource: wgpu::BindingResource::Sampler(sampler),
         });
-        for i in 0..textures.len() {
-            let view = textures[i]
+        for (i, texture) in textures.iter().enumerate() {
+            let view = texture
                 .view
                 .as_ref()
                 .ok_or(GraphicsError::NotReady("material texture view"))?;

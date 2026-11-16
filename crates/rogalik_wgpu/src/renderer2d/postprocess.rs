@@ -200,7 +200,7 @@ fn get_input_bind_group(
             // Scene texture
             wgpu::BindGroupEntry {
                 binding: 1,
-                resource: wgpu::BindingResource::TextureView(&scene_view),
+                resource: wgpu::BindingResource::TextureView(scene_view),
             },
         ],
     }))

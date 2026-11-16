@@ -36,11 +36,10 @@ struct GameState {
 impl Game for GameState {
     fn setup(&mut self, context: &mut SetupContext) {
         // Load sprite texture
-        let sprite_texture = Some(
-            context
-                .graphics
-                .load_texture("examples/arkanoid/sprites.png"),
-        );
+        let sprite_texture = context
+            .graphics
+            .load_texture("examples/arkanoid/sprites.png", false)
+            .unwrap();
         // Create sprite material
         context
             .graphics
@@ -52,7 +51,7 @@ impl Game for GameState {
                         rows: 1,
                         padding: None,
                     }),
-                    diffuse_texture: sprite_texture,
+                    textures: vec![sprite_texture],
                     ..Default::default()
                 },
             )
