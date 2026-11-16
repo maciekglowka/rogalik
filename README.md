@@ -19,8 +19,8 @@ A simple framework for 2d pixel games.
 - normal maps
 - switchable 2d cameras
 - pixel perfect rendering pass
-- custom sprite shaders (no custom uniform buffers though)
-- postprocessing shaders (also no custom uniforms)
+- custom sprite shaders
+- postprocessing shaders
 - text rendering (bitmap and ttf fonts) 
 - basic audio
 - remote control / screenshot (experimental)
