@@ -5,7 +5,7 @@ mod android;
 mod app;
 mod engine;
 pub mod input;
-#[cfg(all(dev_tools, feature = "remote"))]
+#[cfg(feature = "remote")]
 mod remote;
 mod scenes;
 mod time;

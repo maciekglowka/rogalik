@@ -19,6 +19,7 @@ crate-type = ["cdylib", "rlib"]
 [features]
 serialize = [
     "dep:serde",
+    "rogalik_arena/serialize",
     "rogalik_math/serialize",
     "rogalik_wgpu/serialize",
  ]
