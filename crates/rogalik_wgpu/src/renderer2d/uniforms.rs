@@ -1,8 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use rogalik_math::vectors::Vector2f;
-
-use crate::{Color, GraphicsError};
+use crate::GraphicsError;
 
 #[derive(Clone, Debug)]
 pub struct ShaderUniform {
@@ -47,16 +45,20 @@ impl ShaderUniform {
 #[derive(Default)]
 pub struct Uniforms {
     pub(crate) globals: GlobalsUniform,
-    pub(crate) lights: LightsUniform,
+    pub(crate) user_data: Option<ShaderUniform>,
     pub(crate) bind_group: Option<wgpu::BindGroup>,
     pub(crate) globals_buffer: Option<wgpu::Buffer>,
-    pub(crate) lights_buffer: Option<wgpu::Buffer>,
+    pub(crate) user_buffer: Option<wgpu::Buffer>,
 }
 impl Uniforms {
-    pub fn create_wgpu_data(&mut self, layout: &wgpu::BindGroupLayout, device: &wgpu::Device) {
+    pub(crate) fn create_wgpu_data(
+        &mut self,
+        layout: &wgpu::BindGroupLayout,
+        device: &wgpu::Device,
+    ) {
         self.create_bind_group_and_buffers(device, layout);
     }
-    pub fn write_buffers(&self, queue: &wgpu::Queue) -> Result<(), GraphicsError> {
+    pub(crate) fn write_buffers(&self, queue: &wgpu::Queue) -> Result<(), GraphicsError> {
         queue.write_buffer(
             self.globals_buffer
                 .as_ref()
@@ -65,11 +67,14 @@ impl Uniforms {
             bytemuck::cast_slice(&[self.globals]),
         );
         queue.write_buffer(
-            self.lights_buffer
+            self.user_buffer
                 .as_ref()
-                .ok_or(GraphicsError::NotReady("lights uniform buffer"))?,
+                .ok_or(GraphicsError::NotReady("user uniform buffer"))?,
             0,
-            bytemuck::cast_slice(&[self.lights]),
+            self.user_data
+                .as_ref()
+                .ok_or(GraphicsError::NotReady("user uniform"))?
+                .data(),
         );
         Ok(())
     }
@@ -86,10 +91,14 @@ impl Uniforms {
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             }),
         );
-        self.lights_buffer = Some(
+        if self.user_data.is_none() {
+            // Use placeholder if no user specified uniform.
+            self.user_data = Some(ShaderUniform::init(DummyUniform::default()));
+        }
+        self.user_buffer = Some(
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Light Buffer"),
-                contents: bytemuck::cast_slice(&[self.lights]),
+                label: Some("User Buffer"),
+                contents: self.user_data.as_ref().unwrap().data(),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             }),
         );
@@ -103,7 +112,7 @@ impl Uniforms {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: self.lights_buffer.as_ref().unwrap().as_entire_binding(),
+                    resource: self.user_buffer.as_ref().unwrap().as_entire_binding(),
                 },
             ],
         }));
@@ -112,7 +121,7 @@ impl Uniforms {
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, bytemuck::NoUninit, bytemuck::Zeroable)]
-pub struct GlobalsUniform {
+pub(crate) struct GlobalsUniform {
     pub(crate) time: f32,
     _padding_0: u32,
     _padding_1: u32,
@@ -124,55 +133,61 @@ pub struct GlobalsUniform {
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, bytemuck::NoUninit, bytemuck::Zeroable)]
-pub struct LightsUniform {
-    light_count: u32,
-    _padding_0: f32,
-    _padding_1: f32,
-    _padding_2: f32,
-    ambient: [f32; 4],
-    lights: [PointLight; super::MAX_LIGHTS as usize],
-}
-impl LightsUniform {
-    pub fn frame_end(&mut self) {
-        self.light_count = 0;
-    }
-    pub fn set_ambient(&mut self, color: Color) {
-        let rgb = color.as_f32();
-        self.ambient = rgb;
-    }
-    pub fn add_light(
-        &mut self,
-        position: Vector2f,
-        radius: f32,
-        color: Color,
-        falloff: f32,
-    ) -> Result<(), GraphicsError> {
-        if self.light_count >= super::MAX_LIGHTS {
-            return Err(GraphicsError::InternalError);
-        }
-        self.lights[self.light_count as usize] = PointLight::new(position, radius, color, falloff);
-        self.light_count += 1;
-        Ok(())
-    }
+struct DummyUniform {
+    _padding: [f32; 4],
 }
 
-#[repr(C)]
-#[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct PointLight {
-    position: [f32; 3],
-    radius: f32,
-    color: [f32; 3],
-    falloff: f32,
-}
-impl PointLight {
-    pub fn new(position: Vector2f, radius: f32, color: Color, falloff: f32) -> Self {
-        let rgba = color.as_f32();
+// #[repr(C)]
+// #[derive(Copy, Clone, Debug, Default, bytemuck::NoUninit,
+// bytemuck::Zeroable)] pub struct LightsUniform {
+//     light_count: u32,
+//     _padding_0: f32,
+//     _padding_1: f32,
+//     _padding_2: f32,
+//     ambient: [f32; 4],
+//     lights: [PointLight; super::MAX_LIGHTS as usize],
+// }
+// impl LightsUniform {
+//     pub fn frame_end(&mut self) {
+//         self.light_count = 0;
+//     }
+//     pub fn set_ambient(&mut self, color: Color) {
+//         let rgb = color.as_f32();
+//         self.ambient = rgb;
+//     }
+//     pub fn add_light(
+//         &mut self,
+//         position: Vector2f,
+//         radius: f32,
+//         color: Color,
+//         falloff: f32,
+//     ) -> Result<(), GraphicsError> {
+//         if self.light_count >= super::MAX_LIGHTS {
+//             return Err(GraphicsError::InternalError);
+//         }
+//         self.lights[self.light_count as usize] = PointLight::new(position,
+// radius, color, falloff);         self.light_count += 1;
+//         Ok(())
+//     }
+// }
 
-        Self {
-            position: [position.x, position.y, 0.],
-            radius,
-            color: [rgba[0], rgba[1], rgba[2]],
-            falloff,
-        }
-    }
-}
+// #[repr(C)]
+// #[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+// pub struct PointLight {
+//     position: [f32; 3],
+//     radius: f32,
+//     color: [f32; 3],
+//     falloff: f32,
+// }
+// impl PointLight {
+//     pub fn new(position: Vector2f, radius: f32, color: Color, falloff: f32)
+// -> Self {         let rgba = color.as_f32();
+
+//         Self {
+//             position: [position.x, position.y, 0.],
+//             radius,
+//             color: [rgba[0], rgba[1], rgba[2]],
+//             falloff,
+//         }
+//     }
+// }

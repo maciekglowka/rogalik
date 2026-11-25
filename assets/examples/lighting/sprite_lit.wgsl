@@ -32,7 +32,7 @@ fn vs_main(
 }
 
 // Fragment shader
-const MAX_LIGHTS: u32 = 16;
+const MAX_LIGHTS: u32 = 4;
 
 struct PointLight {
     position: vec3<f32>,

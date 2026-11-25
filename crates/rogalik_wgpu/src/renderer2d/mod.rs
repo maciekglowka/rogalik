@@ -5,15 +5,13 @@ use crate::assets::{
     atlas::SpriteParams, bind_groups::BindGroupLayoutKind, camera::Camera2d,
     font::get_text_sprites, material::Material, WgpuAssets,
 };
-use crate::structs::{BindParams, Color};
-use crate::GraphicsError;
+use crate::structs::BindParams;
+use crate::{GraphicsError, ShaderUniform};
 
 mod postprocess;
 mod sprite_pass;
 mod text;
 pub(crate) mod uniforms;
-
-const MAX_LIGHTS: u32 = 16;
 
 pub struct Renderer2d {
     sprite_pass: sprite_pass::SpritePass,
@@ -25,7 +23,7 @@ pub struct Renderer2d {
     text_cache: text::TextCache,
 }
 impl Renderer2d {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let sprite_pass = sprite_pass::SpritePass::new(wgpu::Color::BLACK);
         Self {
             sprite_pass,
@@ -37,7 +35,7 @@ impl Renderer2d {
             text_cache: Default::default(),
         }
     }
-    pub fn set_clear_color(&mut self, color: wgpu::Color) {
+    pub(crate) fn set_clear_color(&mut self, color: wgpu::Color) {
         self.uniforms.globals.clear_color = [
             color.r as f32,
             color.g as f32,
@@ -46,18 +44,35 @@ impl Renderer2d {
         ];
         self.sprite_pass.clear_color = color;
     }
-    pub fn resize(&mut self, w: u32, h: u32) {
+    pub(crate) fn init_user_uniform(&mut self, uniform: ShaderUniform) {
+        if self.uniforms.user_data.is_some() {
+            log::error!("User uniform type is already defined");
+            return;
+        }
+        self.uniforms.user_data = Some(uniform);
+    }
+    pub(crate) fn update_user_uniform<T>(&mut self, data: T) -> Result<(), GraphicsError>
+    where
+        T: bytemuck::NoUninit,
+    {
+        self.uniforms
+            .user_data
+            .as_mut()
+            .ok_or(GraphicsError::NotReady("User uniform is not defined"))?
+            .update(data)
+    }
+    pub(crate) fn resize(&mut self, w: u32, h: u32) {
         self.uniforms.globals.viewport_size = [w as f32, h as f32];
         if self.rendering_resolution.is_none() {
             self.uniforms.globals.render_size = [w as f32, h as f32];
         }
     }
-    pub fn set_rendering_resolution(&mut self, w: u32, h: u32) -> Result<(), GraphicsError> {
+    pub(crate) fn set_rendering_resolution(&mut self, w: u32, h: u32) -> Result<(), GraphicsError> {
         self.rendering_resolution = Some((w, h));
         self.uniforms.globals.render_size = [w as f32, h as f32];
         Ok(())
     }
-    pub fn create_downscale_wgpu_data(
+    pub(crate) fn create_downscale_wgpu_data(
         &mut self,
         assets: &WgpuAssets,
         device: &wgpu::Device,
@@ -75,21 +90,7 @@ impl Renderer2d {
         }
         Ok(())
     }
-    pub fn set_ambient(&mut self, color: Color) {
-        self.uniforms.lights.set_ambient(color);
-    }
-    pub fn add_light(
-        &mut self,
-        position: Vector2f,
-        radius: f32,
-        color: Color,
-        falloff: f32,
-    ) -> Result<(), GraphicsError> {
-        self.uniforms
-            .lights
-            .add_light(position, radius, color, falloff)
-    }
-    pub fn create_wgpu_data(
+    pub(crate) fn create_wgpu_data(
         &mut self,
         assets: &WgpuAssets,
         width: u32,
@@ -120,7 +121,7 @@ impl Renderer2d {
         Ok(())
     }
     #[allow(clippy::too_many_arguments)]
-    pub fn draw_atlas_sprite(
+    pub(crate) fn draw_atlas_sprite(
         &mut self,
         assets: &WgpuAssets,
         index: usize,
@@ -173,7 +174,7 @@ impl Renderer2d {
         Some(Vector2f::new(layout.width, layout.height))
     }
     #[allow(clippy::too_many_arguments)]
-    pub fn draw_text(
+    pub(crate) fn draw_text(
         &mut self,
         assets: &mut WgpuAssets,
         font_name: &str,
@@ -207,7 +208,7 @@ impl Renderer2d {
 
         Ok(Vector2f::new(layout.width, layout.height))
     }
-    pub fn draw_mesh(
+    pub(crate) fn draw_mesh(
         &mut self,
         assets: &WgpuAssets,
         material_name: &str,
@@ -306,7 +307,6 @@ impl Renderer2d {
 
         output.present();
 
-        self.uniforms.lights.frame_end();
         self.text_cache.clean();
 
         Ok(())

@@ -10,7 +10,7 @@ use rogalik_math::vectors::Vector2f;
 use crate::{
     assets::postprocess::PostProcessStage, AtlasParams, Camera2d, Color, FontParams,
     GraphicsDevTools, GraphicsError, GraphicsInternal, MaterialParams, PostProcessParams, Shader,
-    ShaderKind, SpriteParams, TextureData,
+    ShaderKind, ShaderUniform, SpriteParams, TextureData,
 };
 
 const MAX_TIME: f32 = 3600.;
@@ -202,20 +202,11 @@ impl WgpuContext {
             params,
         )
     }
-    /// Sets the global ambient light color for the scene.
-    pub fn set_ambient(&mut self, color: Color) {
-        self.renderer2d.set_ambient(color);
-    }
-    /// Adds a point light source to the scene for the current frame.
-    /// Lights are reset at the end of each frame.
-    pub fn draw_light(
-        &mut self,
-        position: Vector2f,
-        radius: f32,
-        color: Color,
-        falloff: f32,
-    ) -> Result<(), GraphicsError> {
-        self.renderer2d.add_light(position, radius, color, falloff)
+    pub fn update_user_uniform<T>(&mut self, data: T) -> Result<(), GraphicsError>
+    where
+        T: bytemuck::NoUninit,
+    {
+        self.renderer2d.update_user_uniform(data)
     }
     pub fn update_material_uniform<T>(&mut self, name: &str, data: T) -> Result<(), GraphicsError>
     where
@@ -334,11 +325,6 @@ impl WgpuContext {
     pub fn get_camera_mut(&mut self, id: &Id<Camera2d>) -> Option<&mut Camera2d> {
         self.assets.get_camera_mut(id)
     }
-    // Retrieves the `Id` of a built-in shader.
-    // Returns `None` if the shader is not found.
-    // pub fn get_builtin_shader(&self, shader: BuiltInShader) ->
-    // Option<Id<Shader>> {     self.assets.builtin_shaders.get(&shader).
-    // copied() }
 }
 
 /// DevTools hidden by a trait.
@@ -611,15 +597,20 @@ impl<'a> GraphicsSetup<'a> {
     pub fn set_clear_color(&mut self, color: Color) {
         self.0.set_clear_color(color);
     }
+    /// Sets custom uniform accessible by all shaders.
+    pub fn set_user_uniform<T>(&mut self, data: T)
+    where
+        T: bytemuck::NoUninit,
+    {
+        self.0
+            .renderer2d
+            .init_user_uniform(ShaderUniform::init(data));
+    }
     /// Sets a custom rendering resolution, enabling pixel-perfect rendering and
     /// upscaling. If not set, the rendering resolution defaults to the
     /// viewport size.
     pub fn set_rendering_resolution(&mut self, w: u32, h: u32) {
         self.0.set_rendering_resolution(w, h);
-    }
-    /// Sets the global ambient light color for the scene.
-    pub fn set_ambient(&mut self, color: Color) {
-        self.0.set_ambient(color);
     }
     /// Sets the currently active camera by its `Id`.
     /// All subsequent draw calls will use this camera's view.
