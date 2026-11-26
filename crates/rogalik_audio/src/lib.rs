@@ -5,6 +5,7 @@ mod engine;
 mod source;
 
 pub use engine::{AudioEngine, AudioSetup};
+pub use source::{AudioInstance, PlayParams};
 
 #[derive(Clone, Copy)]
 pub struct AudioDeviceParams {
