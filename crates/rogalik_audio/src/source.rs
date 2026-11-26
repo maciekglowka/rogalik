@@ -9,89 +9,85 @@ use rogalik_assets::{Asset, AssetContext, AssetState, AssetStore};
 
 use crate::{engine::CHANNEL_COUNT, AudioError};
 
-#[derive(PartialEq)]
-enum SourceState {
-    Playing,
-    Stopped,
+pub struct PlayParams<'a> {
+    pub volume: f32,
+    pub pan: f32,
+    pub looped: bool,
+    pub bus: Option<&'a str>,
 }
-
-pub(crate) struct AudioSource {
-    asset_id: Id<Asset>,
-    state: SourceState,
-    looped: bool,
-    samples: Vec<f32>,
-    channel_count: usize,
-    cursor: usize,
-    volume: f32,
-    pan: f32,
-}
-impl AudioSource {
-    pub fn new(asset_id: Id<Asset>, asset_store: &AssetStore) -> Result<Self, AudioError> {
-        let mut source = AudioSource {
-            asset_id,
-            state: SourceState::Stopped,
-            looped: false,
-            samples: Vec::new(),
-            channel_count: 0,
-            cursor: 0,
+impl<'a> Default for PlayParams<'a> {
+    fn default() -> Self {
+        Self {
             volume: 1.,
             pan: 0.,
-        };
-        source.create_data(asset_store)?;
-        Ok(source)
-    }
-
-    pub fn play(&mut self, looped: bool) {
-        self.cursor = 0;
-        self.looped = looped;
-        self.state = SourceState::Playing;
-    }
-
-    pub fn resume(&mut self) {
-        self.state = SourceState::Playing;
-    }
-
-    pub fn stop(&mut self) {
-        self.state = SourceState::Stopped;
-    }
-
-    pub fn is_playing(&self) -> bool {
-        self.state == SourceState::Playing
-    }
-
-    pub fn set_volume(&mut self, volume: f32) {
-        self.volume = volume;
-    }
-
-    pub fn set_pan(&mut self, pan: f32) {
-        self.pan = pan;
-    }
-
-    /// Fetch next sample pair from the source.
-    /// If the audio is not playing returns [0., 0.] (silece) as a failsafe.
-    pub fn next(&mut self) -> [f32; CHANNEL_COUNT] {
-        if !self.is_playing() {
-            return [0.; CHANNEL_COUNT];
+            looped: false,
+            bus: None,
         }
+    }
+}
 
-        if self.cursor > self.samples.len() - self.channel_count {
+pub(crate) struct AudioBus {
+    pub(crate) volume: f32,
+}
+impl Default for AudioBus {
+    fn default() -> Self {
+        Self { volume: 1. }
+    }
+}
+
+pub(crate) enum InstanceState {
+    Playing,
+    Paused,
+    Finished,
+}
+
+/// Playing instance of an audio source.
+pub struct AudioInstance {
+    pub(crate) source: Id<AudioSource>,
+    pub(crate) bus: Option<Id<AudioBus>>,
+    volume: f32,
+    looped: bool,
+    cursor: usize,
+    pan: f32,
+    pub(crate) state: InstanceState,
+}
+impl AudioInstance {
+    pub(crate) fn play(
+        source: Id<AudioSource>,
+        bus: Option<Id<AudioBus>>,
+        params: PlayParams,
+    ) -> Self {
+        Self {
+            source,
+            bus,
+            volume: params.volume,
+            pan: params.pan,
+            looped: params.looped,
+            cursor: 0,
+            state: InstanceState::Playing,
+        }
+    }
+    /// Fetch next sound samples.
+    ///
+    /// Returns None on finish.
+    pub fn next(&mut self, source: &AudioSource) -> Option<[f32; CHANNEL_COUNT]> {
+        if self.cursor > source.samples.len() - source.channel_count {
             if !self.looped {
-                self.stop();
-                return [0.; CHANNEL_COUNT];
+                return None;
             } else {
                 self.cursor = 0;
             }
         }
 
-        let (mut l, mut r) = match self.channel_count {
+        let (mut l, mut r) = match source.channel_count {
             1 => {
-                let s = self.samples[self.cursor];
+                let s = source.samples[self.cursor];
                 self.cursor += 1;
                 (s, s)
             }
             2 => {
-                let l = self.samples[self.cursor];
-                let r = self.samples[self.cursor + 1];
+                let l = source.samples[self.cursor];
+                let r = source.samples[self.cursor + 1];
                 self.cursor += 2;
                 (l, r)
             }
@@ -104,10 +100,51 @@ impl AudioSource {
         r *= (self.pan + 1.).clamp(0., 1.);
 
         // Apply volume
-        l *= self.volume;
-        r *= self.volume;
+        l *= self.volume * source.volume;
+        r *= self.volume * source.volume;
 
-        [l, r]
+        Some([l, r])
+    }
+}
+
+pub(crate) struct AudioSource {
+    asset_id: Id<Asset>,
+    samples: Vec<f32>,
+    channel_count: usize,
+    volume: f32,
+}
+impl AudioSource {
+    pub fn new(asset_id: Id<Asset>, asset_store: &AssetStore) -> Result<Self, AudioError> {
+        let mut source = AudioSource {
+            asset_id,
+            samples: Vec::new(),
+            channel_count: 0,
+            volume: 1.,
+        };
+        source.create_data(asset_store)?;
+        Ok(source)
+    }
+
+    // pub fn play(&mut self, looped: bool) {
+    //     self.cursor = 0;
+    //     self.looped = looped;
+    //     self.state = SourceState::Playing;
+    // }
+
+    // pub fn resume(&mut self) {
+    //     self.state = SourceState::Playing;
+    // }
+
+    // pub fn stop(&mut self) {
+    //     self.state = SourceState::Stopped;
+    // }
+
+    // pub fn is_playing(&self) -> bool {
+    //     self.state == SourceState::Playing
+    // }
+
+    pub fn set_volume(&mut self, volume: f32) {
+        self.volume = volume;
     }
 
     pub fn check_update(&mut self, asset_store: &mut AssetStore) {
