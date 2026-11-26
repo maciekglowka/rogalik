@@ -43,9 +43,20 @@ impl AudioEngine {
             .assets
             .with_source_mut(name, |s| s.resume())
     }
+    /// Sets the volume for all audio sources tagged by `label`.
+    /// `volume`: A value between 0.0 and 1.0.
+    ///
+    /// Overwrites individual per clip setting.
+    pub fn set_label_volume(&mut self, label: &str, volume: f32) -> Result<(), AudioError> {
+        self.state
+            .lock()
+            .unwrap()
+            .assets
+            .with_label_mut(label, |s| s.set_volume(volume))
+    }
     /// Sets the individual volume for the audio source identified by `name`.
     /// `volume`: A value between 0.0 and 1.0.
-    pub fn set_volume(&mut self, name: &str, volume: f32) -> Result<(), AudioError> {
+    pub fn set_clip_volume(&mut self, name: &str, volume: f32) -> Result<(), AudioError> {
         self.state
             .lock()
             .unwrap()
@@ -149,17 +160,34 @@ impl crate::AudioInternal for AudioEngine {
 pub struct AudioSetup<'a>(&'a mut AudioEngine);
 impl<'a> AudioSetup<'a> {
     /// Loads an audio source from a given path and associates it with a `name`.
-    pub fn load_source(&mut self, name: &str, path: &str) -> Result<(), AudioError> {
-        self.0.state.lock().unwrap().assets.load_source(name, path)
+    pub fn load_source(
+        &mut self,
+        name: &str,
+        path: &str,
+        label: Option<&str>,
+    ) -> Result<(), AudioError> {
+        self.0
+            .state
+            .lock()
+            .unwrap()
+            .assets
+            .load_source(name, path, label)
     }
     /// Sets the global master volume for all audio playback.
     pub fn set_master_volume(&mut self, volume: f32) {
         self.0.set_master_volume(volume);
     }
+    /// Sets the volume for all audio sources tagged by `label`.
+    /// `volume`: A value between 0.0 and 1.0.
+    ///
+    /// Overwrites individual per clip setting.
+    pub fn set_label_volume(&mut self, label: &str, volume: f32) -> Result<(), AudioError> {
+        self.0.set_label_volume(label, volume)
+    }
     /// Sets the individual volume for the audio source identified by `name`.
     /// `volume`: A value between 0.0 and 1.0.
-    pub fn set_volume(&mut self, name: &str, volume: f32) -> Result<(), AudioError> {
-        self.0.set_volume(name, volume)
+    pub fn set_clip_volume(&mut self, name: &str, volume: f32) -> Result<(), AudioError> {
+        self.0.set_clip_volume(name, volume)
     }
     /// Sets the pan (left-right balance) for the audio source identified by
     /// `name`. `pan` should be between -1.0 (full left) and 1.0 (full right).

@@ -11,6 +11,7 @@ use crate::{source::AudioSource, AudioError};
 pub(crate) struct AudioAssets {
     asset_store: Arc<Mutex<AssetStore>>,
     source_names: HashMap<String, Id<AudioSource>>, // lookup
+    source_labels: HashMap<String, Vec<Id<AudioSource>>>,
     pub(crate) sources: Arena<AudioSource>,
 }
 impl AudioAssets {
@@ -18,10 +19,16 @@ impl AudioAssets {
         Self {
             asset_store,
             source_names: HashMap::new(),
+            source_labels: HashMap::new(),
             sources: Arena::new(),
         }
     }
-    pub(crate) fn load_source(&mut self, name: &str, path: &str) -> Result<(), AudioError> {
+    pub(crate) fn load_source(
+        &mut self,
+        name: &str,
+        path: &str,
+        label: Option<&str>,
+    ) -> Result<(), AudioError> {
         let mut store = self
             .asset_store
             .lock()
@@ -30,12 +37,20 @@ impl AudioAssets {
         let asset_id = store.load(path)?;
 
         let source = AudioSource::new(asset_id, &store)?;
-
         let source_id = self.sources.insert(source);
+
         self.source_names.insert(name.to_string(), source_id);
+
+        if let Some(label) = label {
+            self.source_labels
+                .entry(label.to_string())
+                .or_insert(vec![])
+                .push(source_id);
+        }
 
         Ok(())
     }
+    /// Applies closure to a single clip identified by name.
     pub(crate) fn with_source_mut(
         &mut self,
         name: &str,
@@ -50,6 +65,27 @@ impl AudioAssets {
             )
             .ok_or_else(|| AudioError::SourceNotFound(name.to_string()))?;
         f(source);
+        Ok(())
+    }
+    /// Applies closure to all clips tagged by given label.
+    pub(crate) fn with_label_mut(
+        &mut self,
+        label: &str,
+        mut f: impl FnMut(&mut AudioSource),
+    ) -> Result<(), AudioError> {
+        let label = self
+            .source_labels
+            .get_mut(label)
+            .ok_or(AudioError::LabelNotFound(label.to_string()))?;
+
+        for id in label.iter() {
+            let source = self
+                .sources
+                .get_mut(id)
+                .ok_or(AudioError::SourceNotFound(format!("{id:?}")))?;
+            f(source);
+        }
+
         Ok(())
     }
     pub(crate) fn update_assets(&mut self) {

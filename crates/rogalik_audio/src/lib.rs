@@ -38,6 +38,7 @@ pub enum AudioError {
     AssetError(String),
     SourceNotFound(String),
     SourceError(String),
+    LabelNotFound(String),
 }
 impl std::fmt::Display for AudioError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -50,6 +51,9 @@ impl std::fmt::Display for AudioError {
             }
             Self::SourceError(inner) => {
                 write!(f, "audio source error: {inner}")
+            }
+            Self::LabelNotFound(inner) => {
+                write!(f, "audio label not found: {inner}")
             }
         }
     }
