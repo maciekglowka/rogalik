@@ -9,13 +9,13 @@ use rogalik_assets::{Asset, AssetContext, AssetState, AssetStore};
 
 use crate::{engine::CHANNEL_COUNT, AudioError};
 
-pub struct PlayParams<'a> {
+pub struct PlaybackParams<'a> {
     pub volume: f32,
     pub pan: f32,
     pub looped: bool,
     pub bus: Option<&'a str>,
 }
-impl<'a> Default for PlayParams<'a> {
+impl<'a> Default for PlaybackParams<'a> {
     fn default() -> Self {
         Self {
             volume: 1.,
@@ -35,27 +35,28 @@ impl Default for AudioBus {
     }
 }
 
-pub(crate) enum InstanceState {
+#[derive(Clone, Copy, Debug)]
+pub enum PlaybackState {
     Playing,
     Paused,
     Finished,
 }
 
 /// Playing instance of an audio source.
-pub struct AudioInstance {
+pub struct AudioPlayback {
     pub(crate) source: Id<AudioSource>,
     pub(crate) bus: Option<Id<AudioBus>>,
-    volume: f32,
+    pub volume: f32,
     looped: bool,
     cursor: usize,
-    pan: f32,
-    pub(crate) state: InstanceState,
+    pub pan: f32,
+    pub(crate) state: PlaybackState,
 }
-impl AudioInstance {
+impl AudioPlayback {
     pub(crate) fn play(
         source: Id<AudioSource>,
         bus: Option<Id<AudioBus>>,
-        params: PlayParams,
+        params: PlaybackParams,
     ) -> Self {
         Self {
             source,
@@ -64,13 +65,29 @@ impl AudioInstance {
             pan: params.pan,
             looped: params.looped,
             cursor: 0,
-            state: InstanceState::Playing,
+            state: PlaybackState::Playing,
         }
     }
+
+    /// Stops playback and invalidates its Id.
+    pub fn stop(&mut self) {
+        self.state = PlaybackState::Finished;
+    }
+
+    /// Temporarily pauses playback, which can be resumed later on.
+    pub fn pause(&mut self) {
+        self.state = PlaybackState::Paused;
+    }
+
+    /// Resumes paused playback.
+    pub fn resume(&mut self) {
+        self.state = PlaybackState::Playing;
+    }
+
     /// Fetch next sound samples.
     ///
     /// Returns None on finish.
-    pub fn next(&mut self, source: &AudioSource) -> Option<[f32; CHANNEL_COUNT]> {
+    pub(crate) fn next(&mut self, source: &AudioSource) -> Option<[f32; CHANNEL_COUNT]> {
         if self.cursor > source.samples.len() - source.channel_count {
             if !self.looped {
                 return None;

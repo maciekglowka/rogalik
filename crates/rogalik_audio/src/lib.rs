@@ -5,7 +5,7 @@ mod engine;
 mod source;
 
 pub use engine::{AudioEngine, AudioSetup};
-pub use source::{AudioInstance, PlayParams};
+pub use source::{AudioPlayback, PlaybackParams};
 
 #[derive(Clone, Copy)]
 pub struct AudioDeviceParams {
@@ -41,7 +41,7 @@ pub enum AudioError {
     SourceError(String),
     BusNotFound(String),
     BusExists(String),
-    InstanceNotFound,
+    PlaybackNotFound,
 }
 impl std::fmt::Display for AudioError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -61,8 +61,8 @@ impl std::fmt::Display for AudioError {
             Self::BusExists(inner) => {
                 write!(f, "audio bus already exists: {inner}")
             }
-            Self::InstanceNotFound => {
-                write!(f, "audio instance not found")
+            Self::PlaybackNotFound => {
+                write!(f, "audio playback not found")
             }
         }
     }

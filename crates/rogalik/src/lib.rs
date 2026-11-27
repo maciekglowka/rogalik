@@ -34,7 +34,7 @@ pub mod prelude {
 
     pub use rogalik_arena::{Arena, Id};
     pub use rogalik_assets::{Asset, AssetContext, AssetError, AssetState};
-    pub use rogalik_audio::{AudioDeviceParams, AudioError, AudioInstance, PlayParams};
+    pub use rogalik_audio::{AudioDeviceParams, AudioError, AudioPlayback, PlaybackParams};
     pub use rogalik_math::vectors::{Vector2f, Vector2i};
     pub use rogalik_wgpu::{
         AtlasParams, AtlasPosition, Camera2d, Color, FontParams, GraphicsError, Material,

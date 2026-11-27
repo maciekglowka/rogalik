@@ -7,7 +7,7 @@ use rogalik_arena::{Arena, Id};
 use tinyaudio::{run_output_device, OutputDevice, OutputDeviceParameters};
 
 use crate::{
-    source::{AudioBus, AudioInstance, InstanceState, PlayParams},
+    source::{AudioBus, AudioPlayback, PlaybackParams, PlaybackState},
     AudioDeviceParams, AudioError,
 };
 
@@ -30,8 +30,8 @@ impl AudioEngine {
     pub fn play(
         &mut self,
         name: &str,
-        params: PlayParams,
-    ) -> Result<Id<AudioInstance>, AudioError> {
+        params: PlaybackParams,
+    ) -> Result<Id<AudioPlayback>, AudioError> {
         let mut state = self.state.lock().unwrap();
         let bus = match params.bus {
             None => None,
@@ -51,29 +51,35 @@ impl AudioEngine {
             .ok_or_else(|| AudioError::SourceNotFound(name.to_string()))?;
 
         Ok(state
-            .instances
-            .insert(AudioInstance::play(source, bus, params)))
+            .playbacks
+            .insert(AudioPlayback::play(source, bus, params)))
     }
-    /// Stops playing audio instance.
-    pub fn stop(&mut self, instance: Id<AudioInstance>) -> Result<(), AudioError> {
+    /// Queries state of a playback identified by `id`.
+    ///
+    /// Returns None if `id` is not valid - which most likely would mean that
+    /// the clip has already finished playing or has been stopped by the user.
+    pub fn playback_state(&self, id: &Id<AudioPlayback>) -> Option<PlaybackState> {
         self.state
             .lock()
             .unwrap()
-            .with_instance_mut(&instance, |i| i.state = InstanceState::Finished)
+            .playbacks
+            .get_mut(id)
+            .map(|p| p.state)
     }
-
-    pub fn pause(&mut self, instance: &Id<AudioInstance>) -> Result<(), AudioError> {
-        self.state
+    /// Modify requested playback by a provided closure.
+    pub fn with_playback_mut(
+        &mut self,
+        id: &Id<AudioPlayback>,
+        mut f: impl FnMut(&mut AudioPlayback),
+    ) -> Result<(), AudioError> {
+        f(self
+            .state
             .lock()
             .unwrap()
-            .with_instance_mut(instance, |i| i.state = InstanceState::Paused)
-    }
-    /// Resumes playing a previously stopped audio source identified by `name`.
-    pub fn resume(&mut self, instance: &Id<AudioInstance>) -> Result<(), AudioError> {
-        self.state
-            .lock()
-            .unwrap()
-            .with_instance_mut(instance, |i| i.state = InstanceState::Playing)
+            .playbacks
+            .get_mut(id)
+            .ok_or(AudioError::PlaybackNotFound)?);
+        Ok(())
     }
     /// Sets the volume for an audio bus identified by `name`.
     /// `volume`: A value between 0.0 and 1.0.
@@ -117,7 +123,7 @@ impl AudioEngine {
                 assets: crate::assets::AudioAssets::new(asset_store),
                 bus_names: HashMap::new(),
                 buses: Arena::default(),
-                instances: Arena::default(),
+                playbacks: Arena::default(),
                 master_volume: 1.,
             })),
         }
@@ -158,29 +164,29 @@ impl crate::AudioInternal for AudioEngine {
                                 data_samples[i] = 0.;
                             }
 
-                            for (id, instance) in state.instances.iter_mut() {
-                                match instance.state {
-                                    InstanceState::Playing => (),
-                                    InstanceState::Finished => {
+                            for (id, playback) in state.playbacks.iter_mut() {
+                                match playback.state {
+                                    PlaybackState::Playing => (),
+                                    PlaybackState::Finished => {
                                         to_remove.push(id);
                                         continue;
                                     }
-                                    InstanceState::Paused => continue,
+                                    PlaybackState::Paused => continue,
                                 };
 
-                                let Some(source) = state.assets.sources.get(&instance.source)
+                                let Some(source) = state.assets.sources.get(&playback.source)
                                 else {
                                     // Should never happen.
                                     continue;
                                 };
 
-                                let bus_volume = instance
+                                let bus_volume = playback
                                     .bus
                                     .and_then(|id| state.buses.get(&id))
                                     .map(|b| b.volume)
                                     .unwrap_or(1.);
 
-                                match instance.next(source) {
+                                match playback.next(source) {
                                     Some(samples) => {
                                         for i in 0..CHANNEL_COUNT {
                                             data_samples[i] +=
@@ -188,12 +194,12 @@ impl crate::AudioInternal for AudioEngine {
                                         }
                                     }
                                     // Should be removed and next iteration.
-                                    None => instance.state = InstanceState::Finished,
+                                    None => playback.state = PlaybackState::Finished,
                                 }
                             }
 
                             for id in to_remove.iter() {
-                                state.instances.remove(*id);
+                                state.playbacks.remove(*id);
                             }
                         }
                     }
@@ -257,21 +263,6 @@ struct AudioState {
     assets: crate::assets::AudioAssets,
     buses: Arena<AudioBus>,
     bus_names: HashMap<String, Id<AudioBus>>, // lookup
-    instances: Arena<AudioInstance>,
+    playbacks: Arena<AudioPlayback>,
     master_volume: f32,
-}
-impl AudioState {
-    /// Applies closure to a single audio instance.
-    pub(crate) fn with_instance_mut(
-        &mut self,
-        id: &Id<AudioInstance>,
-        mut f: impl FnMut(&mut AudioInstance),
-    ) -> Result<(), AudioError> {
-        let instance = self
-            .instances
-            .get_mut(id)
-            .ok_or(AudioError::InstanceNotFound)?;
-        f(instance);
-        Ok(())
-    }
 }
