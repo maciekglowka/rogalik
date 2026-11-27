@@ -65,19 +65,8 @@ impl Game for GameState {
             viewport.y as u32 / PIXEL_SCALE,
         );
     }
-}
 
-// At least one scene is needed.
-struct MainScene;
-impl Scene for MainScene {
-    type Game = GameState;
-
-    fn update(
-        &mut self,
-        _game: &mut Self::Game,
-        context: &mut Context,
-        _scenes: &mut SceneController<Self::Game>,
-    ) {
+    fn update(&mut self, context: &mut Context) {
         // Draw entire atlas.
         let _ = context.graphics.draw_sprite(
             "sprites",
@@ -92,6 +81,6 @@ impl Scene for MainScene {
 fn main() {
     let engine = EngineBuilder::new()
         .with_title("RGLK".to_string())
-        .build(GameState, Box::new(MainScene));
+        .build(GameState);
     engine.run();
 }

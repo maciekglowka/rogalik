@@ -57,18 +57,22 @@ pub struct SetupContext<'a> {
     pub graphics: GraphicsSetup<'a>,
 }
 
-#[derive(Default)]
-pub struct EngineBuilder {
+pub struct EngineBuilder<T: Game + 'static> {
     title: Option<String>,
     physical_size: Option<(u32, u32)>,
     logical_size: Option<(f32, f32)>,
     resizable: bool,
     fullscreen: bool,
     audio_params: Option<AudioDeviceParams>,
+    scene: Option<Box<dyn Scene<Game = T>>>,
 }
-impl EngineBuilder {
+impl<T: Game + 'static> EngineBuilder<T> {
     pub fn new() -> Self {
         Self::default()
+    }
+    pub fn with_scenes(mut self, scene: Box<dyn Scene<Game = T>>) -> Self {
+        self.scene = Some(scene);
+        self
     }
     pub fn with_title(mut self, title: String) -> Self {
         self.title = Some(title);
@@ -94,7 +98,7 @@ impl EngineBuilder {
         self.audio_params = Some(params);
         self
     }
-    pub fn build<T>(&self, game: T, scene: Box<dyn Scene<Game = T>>) -> Engine<T>
+    pub fn build(self, game: T) -> Engine<T>
     where
         T: Game + 'static,
     {
@@ -135,12 +139,12 @@ impl EngineBuilder {
             scale_factor: 1.,
             os_path: None,
         };
-        let app = App::new(game, context, scene, window_attributes);
+        let app = App::new(game, context, self.scene, window_attributes);
         Engine { event_loop, app }
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub fn build_wasm<T>(&self, game: T, scene: Box<dyn Scene<Game = T>>) -> Engine<T>
+    pub fn build_wasm<T>(self, game: T) -> Engine<T>
     where
         T: Game + 'static,
     {
@@ -165,18 +169,13 @@ impl EngineBuilder {
 
         let canvas = crate::wasm::get_canvas();
         let window_attributes = WindowAttributes::default().with_canvas(Some(canvas));
-        let app = App::new(game, context, scene, window_attributes);
+        let app = App::new(game, context, self.scene, window_attributes);
 
         Engine { event_loop, app }
     }
 
     #[cfg(target_os = "android")]
-    pub fn build_android<T>(
-        &self,
-        game: T,
-        scene: Box<dyn Scene<Game = T>>,
-        app: AndroidApp,
-    ) -> Engine<T>
+    pub fn build_android<T>(self, game: T, app: AndroidApp) -> Engine<T>
     where
         T: Game + 'static,
     {
@@ -219,9 +218,22 @@ impl EngineBuilder {
             os_path,
         };
 
-        let app = App::new(game, context, scene, window_attributes);
+        let app = App::new(game, context, self.scene, window_attributes);
         log::info!("Creating Engine");
         Engine { event_loop, app }
+    }
+}
+impl<T: Game + 'static> Default for EngineBuilder<T> {
+    fn default() -> Self {
+        Self {
+            title: None,
+            physical_size: None,
+            logical_size: None,
+            resizable: false,
+            fullscreen: false,
+            audio_params: None,
+            scene: None,
+        }
     }
 }
 

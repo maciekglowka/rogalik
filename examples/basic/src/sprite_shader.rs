@@ -60,27 +60,16 @@ impl Game for GameState {
             viewport.y as u32 / PIXEL_SCALE,
         );
     }
-}
 
-// At least one scene is needed.
-struct MainScene;
-impl Scene for MainScene {
-    type Game = GameState;
-
-    fn update(
-        &mut self,
-        game: &mut Self::Game,
-        context: &mut Context,
-        _scenes: &mut SceneController<Self::Game>,
-    ) {
+    fn update(&mut self, context: &mut Context) {
         if context.input.is_key_pressed(rogalik::input::KeyCode::Space) {
-            game.blend = (game.blend + 0.1) % 1.0;
+            self.blend = (self.blend + 0.1) % 1.0;
             context
                 .graphics
                 .update_material_uniform(
                     "sprites",
                     BlendUniform {
-                        blend: game.blend,
+                        blend: self.blend,
                         ..Default::default()
                     },
                 )
@@ -105,6 +94,6 @@ impl Scene for MainScene {
 fn main() {
     let engine = EngineBuilder::new()
         .with_title("RGLK".to_string())
-        .build(GameState::default(), Box::new(MainScene));
+        .build(GameState::default());
     engine.run();
 }

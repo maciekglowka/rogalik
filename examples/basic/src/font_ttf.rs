@@ -25,19 +25,8 @@ impl Game for GameState {
         // Create camera
         context.graphics.create_camera(1., Vector2f::ZERO);
     }
-}
 
-// At least one scene is needed.
-struct MainScene;
-impl Scene for MainScene {
-    type Game = GameState;
-
-    fn update(
-        &mut self,
-        _game: &mut Self::Game,
-        context: &mut Context,
-        _scenes: &mut SceneController<Self::Game>,
-    ) {
+    fn update(&mut self, context: &mut Context) {
         let text = "Hello World!";
         let paragraph =
             "This is a small\nmultiline paragraph. A long line should be wrapped.\n\nEnd.";
@@ -92,6 +81,6 @@ fn main() {
     let engine = EngineBuilder::new()
         .with_title("RGLK TTF".to_string())
         .resizable(true)
-        .build(GameState, Box::new(MainScene));
+        .build(GameState);
     engine.run();
 }

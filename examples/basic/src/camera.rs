@@ -59,33 +59,25 @@ impl Game for GameState {
             0.5 * Vector2f::new(RENDER_W as f32, RENDER_H as f32),
         ));
     }
-}
-
-// At least one scene is needed.
-struct MainScene;
-impl Scene for MainScene {
-    type Game = GameState;
 
     fn update(
         &mut self,
-        game: &mut Self::Game,
         context: &mut Context,
-        _scenes: &mut SceneController<Self::Game>,
     ) {
-        context.graphics.set_camera(&game.main_camera.unwrap());
+        context.graphics.set_camera(&self.main_camera.unwrap());
 
         if context.input.is_mouse_button_pressed(MouseButton::Left) {
-            game.drag_start = Some(context.input.get_mouse_physical_position());
+            self.drag_start = Some(context.input.get_mouse_physical_position());
         }
-        if context.input.is_mouse_button_down(MouseButton::Left) && let Some(start) = game.drag_start {
+        if context.input.is_mouse_button_down(MouseButton::Left) && let Some(start) = self.drag_start {
             let end = context.input.get_mouse_physical_position();
             let camera = context.graphics.get_current_camera_mut();
             let d = (start - end) / camera.get_scale();
             camera.set_target(camera.get_target() + d);
-            game.drag_start = Some(end);
+            self.drag_start = Some(end);
         }
         if context.input.is_mouse_button_released(MouseButton::Left) {
-            game.drag_start = None;
+            self.drag_start = None;
         }
 
         let scroll = match context.input.get_mouse_scroll() {
@@ -117,7 +109,7 @@ impl Scene for MainScene {
         }
 
         // Draw UI
-        context.graphics.set_camera(&game.ui_camera.unwrap());
+        context.graphics.set_camera(&self.ui_camera.unwrap());
 
         context
             .graphics
@@ -141,6 +133,6 @@ fn main() {
         .with_title("RGLK".to_string())
         .with_physical_size(960, 640)
         .resizable(true)
-        .build(GameState::default(), Box::new(MainScene));
+        .build(GameState::default());
     engine.run();
 }

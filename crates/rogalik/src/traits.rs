@@ -8,6 +8,13 @@ pub trait Game {
     fn resize(&mut self, _context: &mut Context) {}
     fn resume(&mut self, _context: &mut Context) {}
     fn reload_assets(&mut self, _context: &mut Context) {}
+    /// Scene independent global update function.
+    ///
+    /// Runs before `Scene::update`.
+    ///
+    /// Useful for shared logic such as background music or
+    /// when scenes are not used.
+    fn update(&mut self, _context: &mut Context) {}
 }
 
 pub trait Scene {
@@ -51,6 +58,9 @@ pub trait Scene {
         scenes: &mut SceneController<Self::Game>,
     ) {
     }
+    /// Main scene logic handler.
+    ///
+    /// Runs after `Game::update`.
     fn update(
         &mut self,
         game: &mut Self::Game,

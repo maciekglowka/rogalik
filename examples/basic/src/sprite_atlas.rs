@@ -59,19 +59,8 @@ impl Game for GameState {
         // Create camera
         context.graphics.create_camera(1., Vector2f::ZERO);
     }
-}
 
-// At least one scene is needed.
-struct MainScene;
-impl Scene for MainScene {
-    type Game = GameState;
-
-    fn update(
-        &mut self,
-        _game: &mut Self::Game,
-        context: &mut Context,
-        _scenes: &mut SceneController<Self::Game>,
-    ) {
+    fn update(&mut self, context: &mut Context) {
         // Simple
         let _ = context.graphics.draw_atlas_sprite(
             "color",
@@ -129,6 +118,6 @@ fn main() {
         .with_title("RGLK".to_string())
         .with_physical_size(960, 640)
         .resizable(true)
-        .build(GameState, Box::new(MainScene));
+        .build(GameState);
     engine.run();
 }

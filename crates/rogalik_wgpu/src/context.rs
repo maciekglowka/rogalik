@@ -354,7 +354,8 @@ impl WgpuContext {
             clear_color: wgpu::Color::BLACK,
             renderer2d: crate::renderer2d::Renderer2d::new(),
             rendering_resolution: None,
-            // This is a WASM only `allow` - to keep code the same across targets.
+            // This is a WASM only `allow` - to keep code the same across
+            // targets.
             #[allow(clippy::arc_with_non_send_sync)]
             surface_state: Arc::new(Mutex::new(None)),
             time: 0.,
@@ -457,6 +458,9 @@ impl GraphicsInternal for WgpuContext {
         pollster::block_on(create_surface_state(self.surface_state.clone(), window));
         #[cfg(target_arch = "wasm32")]
         wasm_bindgen_futures::spawn_local(create_surface_state(self.surface_state.clone(), window));
+
+        // Initialize WGPU data.
+        self.handle_surface_refresh();
     }
     fn update_time(&mut self, delta: f32) {
         self.time += delta;

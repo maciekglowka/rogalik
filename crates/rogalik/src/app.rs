@@ -23,7 +23,7 @@ use rogalik_wgpu::{GraphicsDevTools, GraphicsInternal};
 pub struct App<T> {
     pub context: Context,
     pub game: T,
-    pub scene_manager: SceneManager<T>,
+    pub scene_manager: Option<SceneManager<T>>,
     paused: bool,
     window: Option<Arc<Window>>,
     window_attributes: WindowAttributes,
@@ -34,13 +34,13 @@ impl<T: Game> App<T> {
     pub fn new(
         game: T,
         context: Context,
-        scene: Box<dyn Scene<Game = T>>,
+        scene: Option<Box<dyn Scene<Game = T>>>,
         window_attributes: WindowAttributes,
     ) -> Self {
         Self {
             context,
             game,
-            scene_manager: SceneManager::new(scene),
+            scene_manager: scene.map(SceneManager::new),
             window: None,
             paused: false,
             window_attributes,
@@ -209,7 +209,12 @@ impl<T: Game> ApplicationHandler<ExternalEvent> for App<T> {
                 self.context
                     .graphics
                     .update_time(self.context.time.get_delta());
-                update_scenes(&mut self.scene_manager, &mut self.game, &mut self.context);
+
+                self.game.update(&mut self.context);
+
+                if let Some(manager) = self.scene_manager.as_mut() {
+                    update_scenes(manager, &mut self.game, &mut self.context);
+                }
 
                 self.context.graphics.render();
                 self.context.input.clear();

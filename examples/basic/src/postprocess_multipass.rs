@@ -84,19 +84,8 @@ impl Game for GameState {
             viewport.y as u32 / PIXEL_SCALE,
         );
     }
-}
 
-// At least one scene is needed.
-struct MainScene;
-impl Scene for MainScene {
-    type Game = GameState;
-
-    fn update(
-        &mut self,
-        game: &mut Self::Game,
-        context: &mut Context,
-        _scenes: &mut SceneController<Self::Game>,
-    ) {
+    fn update(&mut self, context: &mut Context) {
         context
             .graphics
             .draw_atlas_sprite(
@@ -109,7 +98,7 @@ impl Scene for MainScene {
             )
             .unwrap();
 
-        game.t += context.time.get_delta();
+        self.t += context.time.get_delta();
 
         context
             .graphics
@@ -117,7 +106,7 @@ impl Scene for MainScene {
                 "bloom",
                 1,
                 BloomUniform {
-                    strength: 0.5 * (1. + (5. * game.t).sin()),
+                    strength: 0.5 * (1. + (5. * self.t).sin()),
                     ..Default::default()
                 },
             )
@@ -128,6 +117,6 @@ impl Scene for MainScene {
 fn main() {
     let engine = EngineBuilder::new()
         .with_title("RGLK".to_string())
-        .build(GameState::default(), Box::new(MainScene));
+        .build(GameState::default());
     engine.run();
 }
