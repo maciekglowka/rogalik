@@ -35,7 +35,7 @@ impl Default for AudioBus {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PlaybackState {
     Playing,
     Paused,

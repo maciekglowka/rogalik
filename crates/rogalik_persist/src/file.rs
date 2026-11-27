@@ -22,16 +22,20 @@ impl FileStore {
 
 impl KVStore for FileStore {
     fn load<T: DeserializeOwned + Serialize>(key: &str, path: Option<&str>) -> Result<T> {
-        let f = File::open(FileStore::get_path(key, path)?)?;
-        Ok(bincode::deserialize_from(f)?)
+        let mut f = File::open(FileStore::get_path(key, path)?)?;
+        let mut bytes = vec![];
+        f.read_to_end(&mut bytes)?;
+        Ok(postcard::from_bytes(&bytes)?)
     }
     fn store<T: DeserializeOwned + Serialize>(
         key: &str,
         value: &T,
         path: Option<&str>,
     ) -> Result<()> {
+        let bytes = postcard::to_allocvec(value)?;
+
         let mut f = File::create(FileStore::get_path(key, path)?)?;
-        bincode::serialize_into(&mut f, value)?;
+        f.write_all(&bytes)?;
         Ok(())
     }
     fn load_raw(key: &str, path: Option<&str>) -> Result<Vec<u8>> {
