@@ -144,10 +144,7 @@ impl<T: Game + 'static> EngineBuilder<T> {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub fn build_wasm<T>(self, game: T) -> Engine<T>
-    where
-        T: Game + 'static,
-    {
+    pub fn build_wasm(self, game: T) -> Engine<T> {
         crate::wasm::configure_handlers();
         log::info!("Logging configured");
         let event_loop = get_event_loop();
@@ -175,10 +172,7 @@ impl<T: Game + 'static> EngineBuilder<T> {
     }
 
     #[cfg(target_os = "android")]
-    pub fn build_android<T>(self, game: T, app: AndroidApp) -> Engine<T>
-    where
-        T: Game + 'static,
-    {
+    pub fn build_android(self, game: T, app: AndroidApp) -> Engine<T> {
         use winit::event_loop::{ControlFlow, EventLoop};
         use winit::platform::android::EventLoopBuilderExtAndroid;
 
